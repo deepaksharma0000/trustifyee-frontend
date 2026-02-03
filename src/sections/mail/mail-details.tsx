@@ -153,9 +153,12 @@ export default function MailDetails({ mail, renderLabel }: Props) {
         p: (theme) => theme.spacing(2, 2, 1, 2),
       }}
     >
-      <Avatar alt={mail.from.name} src={`${mail.from.avatarUrl}`} sx={{ mr: 2 }}>
-        {mail.from.name.charAt(0).toUpperCase()}
-      </Avatar>
+      <Avatar
+        alt={mail.from.name}
+        src={mail.from.avatarUrl ?? undefined}
+        sx={{ mr: 2 }}
+      />
+
 
       <ListItemText
         primary={

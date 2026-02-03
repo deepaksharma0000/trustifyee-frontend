@@ -9,7 +9,7 @@ import { PostDetailsHomeView } from 'src/sections/blog/view';
 export default function PostDetailsHomePage() {
   const params = useParams();
 
-  const { title } = params;
+  const title = params.title ?? '';
 
   return (
     <>
@@ -17,7 +17,7 @@ export default function PostDetailsHomePage() {
         <title> Post: Details</title>
       </Helmet>
 
-      <PostDetailsHomeView title={`${title}`} />
+      <PostDetailsHomeView title={title} />
     </>
   );
 }

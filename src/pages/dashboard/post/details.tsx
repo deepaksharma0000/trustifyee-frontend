@@ -9,7 +9,7 @@ import { PostDetailsView } from 'src/sections/blog/view';
 export default function PostDetailsPage() {
   const params = useParams();
 
-  const { title } = params;
+  const title = params.title ?? '';
 
   return (
     <>
@@ -17,7 +17,7 @@ export default function PostDetailsPage() {
         <title> Dashboard: Post Details</title>
       </Helmet>
 
-      <PostDetailsView title={`${title}`} />
+      <PostDetailsView title={title} />
     </>
   );
 }

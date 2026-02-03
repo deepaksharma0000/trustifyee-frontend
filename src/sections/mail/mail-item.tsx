@@ -32,9 +32,14 @@ export default function MailItem({ mail, selected, onClickMail, sx, ...other }: 
       }}
       {...other}
     >
-      <Avatar alt={mail.from.name} src={`${mail.from.avatarUrl}`} sx={{ mr: 2 }}>
+      <Avatar
+        alt={mail.from.name}
+        src={mail.from.avatarUrl ?? undefined}
+        sx={{ mr: 2 }}
+      >
         {mail.from.name.charAt(0).toUpperCase()}
       </Avatar>
+
 
       <>
         <ListItemText

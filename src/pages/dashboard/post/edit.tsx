@@ -9,7 +9,7 @@ import { PostEditView } from 'src/sections/blog/view';
 export default function PostEditPage() {
   const params = useParams();
 
-  const { title } = params;
+  const title = params.title ?? '';
 
   return (
     <>
@@ -17,7 +17,7 @@ export default function PostEditPage() {
         <title> Dashboard: Post Edit</title>
       </Helmet>
 
-      <PostEditView title={`${title}`} />
+      <PostEditView title={title} />
     </>
   );
 }

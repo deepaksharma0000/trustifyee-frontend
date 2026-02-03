@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useCallback, useMemo } from 'react';
 // utils
 import axios, { endpoints } from 'src/utils/axios';
+import { BACKEND_API } from 'src/config-global';
 //
 import { AuthContext } from './auth-context';
 import { isValidToken, setSession } from './utils';
@@ -84,19 +85,21 @@ export function AuthProvider({ children }: Props) {
 
   const initialize = useCallback(async () => {
     try {
-      const accessToken = sessionStorage.getItem(STORAGE_KEY);
+      const accessToken = localStorage.getItem('authToken');
+      const authUser = localStorage.getItem('authUser');
 
-      if (accessToken && isValidToken(accessToken)) {
+      if (accessToken && authUser) {
         setSession(accessToken);
 
-        const res = await axios.get(endpoints.auth.me);
-
-        const { user } = res.data;
+        const user = JSON.parse(authUser);
 
         dispatch({
           type: Types.INITIAL,
           payload: {
-            user,
+            user: {
+              ...user,
+              displayName: user.full_name || user.user_name || user.email,
+            },
           },
         });
       } else {
@@ -157,7 +160,7 @@ export function AuthProvider({ children }: Props) {
 
       const { accessToken, user } = res.data;
 
-      sessionStorage.setItem(STORAGE_KEY, accessToken);
+      localStorage.setItem('authToken', accessToken);
 
       dispatch({
         type: Types.REGISTER,
@@ -171,10 +174,36 @@ export function AuthProvider({ children }: Props) {
 
   // LOGOUT
   const logout = useCallback(async () => {
-    setSession(null);
-    dispatch({
-      type: Types.LOGOUT,
-    });
+    try {
+      const authUser = localStorage.getItem('authUser');
+      const userObj = authUser ? JSON.parse(authUser) : null;
+      const role = userObj?.role;
+      const token = localStorage.getItem('authToken');
+
+      if (token) {
+        const endpoint =
+          role === 'admin' ? `${BACKEND_API}/api/admin/logout` : `${BACKEND_API}/api/user/logout`;
+
+        await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('authUser');
+      localStorage.removeItem('angel_jwt');
+      localStorage.removeItem('angel_refresh');
+      localStorage.removeItem('angel_feed');
+      setSession(null);
+      dispatch({
+        type: Types.LOGOUT,
+      });
+    }
   }, []);
 
   // ----------------------------------------------------------------------

@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 import { useState } from 'react';
 import {
   Card,
@@ -33,47 +34,11 @@ export default function BrokerConnect() {
     return <Alert severity="info">Demo users cannot connect broker.</Alert>;
   }
 
-  // const handleConnect = async () => {
-  //   try {
-  //     setLoading(true);
-  //     setError('');
-
-  //     const res = await fetch('http://localhost:4000/api/auth/login', {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify(form),
-  //     });
-
-  //     const result = await res.json();
-
-  //     if (!result.ok) {
-  //       throw new Error('AngelOne login failed');
-  //     }
-
-  //     // ✅ MARK BROKER AS CONNECTED (FRONTEND STATE)
-  //     const updatedUser = {
-  //       ...user,
-  //       broker_connected: true,
-  //       broker: 'AngelOne',
-  //     };
-
-  //     localStorage.setItem('authUser', JSON.stringify(updatedUser));
-
-  //     // 👉 Dashboard unlock
-  //     navigate('/dashboard');
-  //   } catch (err: any) {
-  //     setError(err.message || 'Failed to connect AngelOne');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
   const handleConnect = async () => {
     try {
       setLoading(true);
       setError('');
 
-      // 1️⃣ ANGEL LOGIN
       const res = await fetch(`${BROKER_API}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -86,19 +51,10 @@ export default function BrokerConnect() {
         throw new Error('AngelOne login failed');
       }
 
-      /**
-       * result.data se aata hai:
-       * - jwtToken
-       * - refreshToken
-       * - feedToken
-       */
-
-      // 2️⃣ SAVE ANGEL SESSION (🔥 MOST IMPORTANT)
       localStorage.setItem('angel_jwt', result.data.jwtToken);
       localStorage.setItem('angel_refresh', result.data.refreshToken);
       localStorage.setItem('angel_feed', result.data.feedToken);
 
-      // 3️⃣ INSTRUMENT SYNC (🔥 REQUIRED BEFORE OPTION CHAIN)
       const accessToken =
         localStorage.getItem('accessToken') ||
         sessionStorage.getItem('accessToken');
@@ -110,7 +66,6 @@ export default function BrokerConnect() {
         },
       });
 
-      // 4️⃣ UPDATE AUTH USER (UI PURPOSE)
       const updatedUser = {
         ...user,
         broker_connected: true,
@@ -119,7 +74,6 @@ export default function BrokerConnect() {
 
       localStorage.setItem('authUser', JSON.stringify(updatedUser));
 
-      // 5️⃣ REDIRECT → DASHBOARD
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Failed to connect AngelOne');

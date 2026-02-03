@@ -1,3 +1,5 @@
+/* eslint-disable react/jsx-curly-brace-presence */
+
 import { useCallback, useState } from 'react';
 // @mui
 import { alpha } from '@mui/material/styles';
@@ -55,23 +57,25 @@ type Props = {
 
 export default function ProductShopDetailsView({ id }: Props) {
   const settings = useSettingsContext();
-
   const checkout = useCheckoutContext();
 
   const [currentTab, setCurrentTab] = useState('description');
 
   const { product, productLoading, productError } = useGetProduct(id);
 
-  const handleChangeTab = useCallback((event: React.SyntheticEvent, newValue: string) => {
-    setCurrentTab(newValue);
-  }, []);
+  const handleChangeTab = useCallback(
+    (_event: React.SyntheticEvent, newValue: string) => {
+      setCurrentTab(newValue);
+    },
+    []
+  );
 
   const renderSkeleton = <ProductDetailsSkeleton />;
 
   const renderError = (
     <EmptyContent
       filled
-      title={`${productError?.message}`}
+      title={productError?.message}
       action={
         <Button
           component={RouterLink}
@@ -91,11 +95,8 @@ export default function ProductShopDetailsView({ id }: Props) {
       <CustomBreadcrumbs
         links={[
           { name: 'Home', href: '/' },
-          {
-            name: 'Shop',
-            href: paths.product.root,
-          },
-          { name: product?.name },
+          { name: 'Shop', href: paths.product.root },
+          { name: product.name },
         ]}
         sx={{ mb: 5 }}
       />
@@ -127,11 +128,9 @@ export default function ProductShopDetailsView({ id }: Props) {
         {SUMMARY.map((item) => (
           <Box key={item.title} sx={{ textAlign: 'center', px: 5 }}>
             <Iconify icon={item.icon} width={32} sx={{ color: 'primary.main' }} />
-
-            <Typography variant="subtitle1" sx={{ mb: 1, mt: 2 }}>
+            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
               {item.title}
             </Typography>
-
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               {item.description}
             </Typography>
@@ -145,25 +144,16 @@ export default function ProductShopDetailsView({ id }: Props) {
           onChange={handleChangeTab}
           sx={{
             px: 3,
-            boxShadow: (theme) => `inset 0 -2px 0 0 ${alpha(theme.palette.grey[500], 0.08)}`,
+            boxShadow: (theme) =>
+              `inset 0 -2px 0 0 ${alpha(theme.palette.grey[500], 0.08)}`,
           }}
         >
-          {[
-            {
-              value: 'description',
-              label: 'Description',
-            },
-            {
-              value: 'reviews',
-              label: `Reviews (${product.reviews.length})`,
-            },
-          ].map((tab) => (
-            <Tab key={tab.value} value={tab.value} label={tab.label} />
-          ))}
+          <Tab value="description" label="Description" />
+          <Tab value="reviews" label={`Reviews (${product.reviews.length})`} />
         </Tabs>
 
         {currentTab === 'description' && (
-          <ProductDetailsDescription description={product?.description} />
+          <ProductDetailsDescription description={product.description} />
         )}
 
         {currentTab === 'reviews' && (
@@ -179,19 +169,11 @@ export default function ProductShopDetailsView({ id }: Props) {
   );
 
   return (
-    <Container
-      maxWidth={settings.themeStretch ? false : 'lg'}
-      sx={{
-        mt: 5,
-        mb: 15,
-      }}
-    >
+    <Container maxWidth={settings.themeStretch ? false : 'lg'} sx={{ mt: 5, mb: 15 }}>
       <CartIcon totalItems={checkout.totalItems} />
 
       {productLoading && renderSkeleton}
-
       {productError && renderError}
-
       {product && renderProduct}
     </Container>
   );

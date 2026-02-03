@@ -56,7 +56,7 @@ export default function PostDetailsView({ title }: Props) {
   const renderError = (
     <EmptyContent
       filled
-      title={`${postError?.message}`}
+      title={postError?.message}
       action={
         <Button
           component={RouterLink}
@@ -97,7 +97,7 @@ export default function PostDetailsView({ title }: Props) {
           {post.description}
         </Typography>
 
-        <Markdown children={post.content} />
+        <Markdown>{post.content}</Markdown>
 
         <Stack
           spacing={3}
