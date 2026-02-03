@@ -50,6 +50,8 @@ export default function OptionChainPage() {
   const { user } = useAuthContext();
 
   const [marketData, setMarketData] = useState<OptionRow[]>([]);
+  const [activePositions, setActivePositions] = useState<any[]>([]);
+  const [tradeHistory, setTradeHistory] = useState<any[]>([]); // 🔥 NEW
   const [expiryDates, setExpiryDates] = useState<ExpiryDateItem[]>([]);
   const [selectedExpiry, setSelectedExpiry] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -142,11 +144,70 @@ export default function OptionChainPage() {
   }, [selectedExpiry, symbol]);
 
 
+  const fetchActivePositions = useCallback(async () => {
+    if (!clientCode) return;
+    try {
+      const res = await fetch(`${BROKER_API}/api/orders/active-positions/${clientCode}`);
+      const json = await res.json();
+      if (json.ok) {
+        setActivePositions(json.data);
+      }
+    } catch (err) {
+      console.error("Fetch positions error:", err);
+    }
+  }, [clientCode]);
+
+  const fetchTradeHistory = useCallback(async () => {
+    if (!clientCode) return;
+    try {
+      const res = await fetch(`${BROKER_API}/api/orders/trade-history/${clientCode}`);
+      const json = await res.json();
+      if (json.ok) {
+        setTradeHistory(json.data);
+      }
+    } catch (err) {
+      console.error("Fetch history error:", err);
+    }
+  }, [clientCode]);
+
+  const handleExit = async (orderid: string) => {
+    try {
+      if (!window.confirm("Are you sure you want to Exit this position?")) return;
+
+      const res = await fetch(`${BROKER_API}/api/orders/close`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientcode: clientCode, orderid }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        alert("Position exited successfully!");
+        fetchActivePositions();
+        fetchTradeHistory(); // 🔥 Refresh history after exit
+      } else {
+        alert(json.message || "Exit failed");
+      }
+    } catch (err) {
+      alert("Exit error");
+    }
+  };
+
   /* ---------------- EFFECTS ---------------- */
 
   useEffect(() => {
     fetchOptionChainFromLTP();
   }, [fetchOptionChainFromLTP]);
+
+  useEffect(() => {
+    fetchActivePositions();
+    fetchTradeHistory(); // 🔥 Initial fetch
+
+    const timer = setInterval(() => {
+      fetchActivePositions();
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, [fetchActivePositions, fetchTradeHistory]);
 
   const isBrokerConnected =
     localStorage.getItem("angel_jwt") !== null;
@@ -211,6 +272,7 @@ export default function OptionChainPage() {
           clientcode: clientCode,
           orderid: brokerOrderId,
           tradingsymbol: opt.tradingsymbol,
+          symboltoken: opt.symboltoken, // 🔥 NEW
           exchange: "NFO",
           side,
           quantity: 1,
@@ -320,6 +382,57 @@ export default function OptionChainPage() {
 
   return (
     <Container maxWidth="xl" sx={{ mt: 3 }}>
+      {/* 🔥 ACTIVE POSITIONS SECTION */}
+      {activePositions.length > 0 && (
+        <Card sx={{ p: 3, mb: 3, bgcolor: '#f4f6f8' }}>
+          <Typography variant="h5" color="primary" gutterBottom sx={{ fontWeight: 'bold' }}>
+            💼 Active Positions (Live P&L)
+          </Typography>
+          <TableContainer component={Paper}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Symbol</TableCell>
+                  <TableCell>Side</TableCell>
+                  <TableCell>Qty</TableCell>
+                  <TableCell>Entry</TableCell>
+                  <TableCell>LTP</TableCell>
+                  <TableCell>P&L</TableCell>
+                  <TableCell align="right">Action</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {activePositions.map((pos) => (
+                  <TableRow key={pos.orderid}>
+                    <TableCell sx={{ fontWeight: 'bold' }}>{pos.tradingsymbol}</TableCell>
+                    <TableCell color={pos.side === 'BUY' ? 'success' : 'error'}>{pos.side}</TableCell>
+                    <TableCell>{pos.quantity}</TableCell>
+                    <TableCell>{pos.entryPrice}</TableCell>
+                    <TableCell>{pos.ltp}</TableCell>
+                    <TableCell sx={{
+                      color: pos.pnl >= 0 ? 'success.main' : 'error.main',
+                      fontWeight: 'bold'
+                    }}>
+                      {pos.pnl?.toFixed(2)}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        size="small"
+                        onClick={() => handleExit(pos.orderid)}
+                      >
+                        Exit
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Card>
+      )}
+
       <Card sx={{ p: 3 }}>
         <Typography variant="h4" gutterBottom>
           📊 {symbol} Option Chain
@@ -367,6 +480,45 @@ export default function OptionChainPage() {
           </Alert>
         )}
         {content}
+      </Card>
+
+      {/* 🔥 TRADE HISTORY SECTION */}
+      <Card sx={{ p: 3, mt: 3 }}>
+        <Typography variant="h5" color="text.secondary" gutterBottom sx={{ fontWeight: 'bold' }}>
+          📜 Trade History (Closed)
+        </Typography>
+        <TableContainer component={Paper}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Symbol</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell>Qty</TableCell>
+                <TableCell>Entry Price</TableCell>
+                <TableCell>Exit Time</TableCell>
+                <TableCell>Status</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {tradeHistory.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">No history found</TableCell>
+                </TableRow>
+              ) : (
+                tradeHistory.map((history) => (
+                  <TableRow key={history.orderid}>
+                    <TableCell>{history.tradingsymbol}</TableCell>
+                    <TableCell>{history.side}</TableCell>
+                    <TableCell>{history.quantity}</TableCell>
+                    <TableCell>{history.entryPrice}</TableCell>
+                    <TableCell>{new Date(history.exitAt).toLocaleString()}</TableCell>
+                    <TableCell sx={{ color: 'text.secondary', fontWeight: 'bold' }}>CLOSED</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Card>
     </Container>
   );
