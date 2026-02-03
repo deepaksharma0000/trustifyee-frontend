@@ -15,9 +15,12 @@ import {
   TableCell,
   TableBody,
   TableContainer,
-  Paper,
   CircularProgress,
   Alert,
+  Stack,
+  Divider,
+  alpha,
+  useTheme,
 } from "@mui/material";
 import { BROKER_API } from "src/config-global";
 import { useAuthContext } from "src/auth/hooks";
@@ -47,6 +50,7 @@ interface ExpiryDateItem {
 /* ---------------- COMPONENT ---------------- */
 
 export default function OptionChainPage() {
+  const theme = useTheme();
   const { user } = useAuthContext();
 
   const [marketData, setMarketData] = useState<OptionRow[]>([]);
@@ -304,125 +308,119 @@ export default function OptionChainPage() {
 
 
 
-  /* ---------------- UI ---------------- */
-  let content: React.ReactNode;
-
-  if (loading) {
-    content = (
-      <Box textAlign="center" py={4}>
-        <CircularProgress />
-      </Box>
-    );
-  } else if (marketData.length === 0) {
-    content = <Typography>No option chain data</Typography>;
-  } else {
-    content = (
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Strike</TableCell>
-              <TableCell align="center">CALL (CE)</TableCell>
-              <TableCell align="center">PUT (PE)</TableCell>
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {marketData.map((row) => (
-              <TableRow key={row.strikePrice}>
-                <TableCell>{row.strikePrice}</TableCell>
-
-                <TableCell align="center">
-                  {row.CE ? (
-                    <>
-                      <Typography variant="body2">
-                        {row.CE.tradingsymbol}
-                      </Typography>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        sx={{ mt: 1 }}
-                        onClick={() => placeOrder(row.CE!, "BUY")}
-                      >
-                        BUY CE
-                      </Button>
-                    </>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-
-                <TableCell align="center">
-                  {row.PE ? (
-                    <>
-                      <Typography variant="body2">
-                        {row.PE.tradingsymbol}
-                      </Typography>
-                      <Button
-                        size="small"
-                        color="error"
-                        variant="contained"
-                        sx={{ mt: 1 }}
-                        onClick={() => placeOrder(row.PE!, "BUY")}
-                      >
-                        BUY PE
-                      </Button>
-                    </>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    );
-  }
-
   return (
-    <Container maxWidth="xl" sx={{ mt: 3 }}>
+    <Container maxWidth="xl" sx={{ mt: 3, pb: 10 }}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={4}>
+        <Box>
+          <Typography variant="h3" sx={{
+            fontWeight: 800,
+            background: 'linear-gradient(45deg, #1A73E8 30%, #6E00FF 90%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            mb: 1
+          }}>
+            Trustifye Terminal
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Professional Options Trading Dashboard
+          </Typography>
+        </Box>
+
+        <Stack direction="row" spacing={2} sx={{
+          p: 1.5,
+          borderRadius: 2,
+          bgcolor: alpha(theme.palette.success.main, 0.1),
+          border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`
+        }}>
+          <Typography variant="subtitle2" color="success.main" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'success.main', animation: 'pulse 2s infinite' }} />
+            LIVE MARKET CONNECTED
+          </Typography>
+        </Stack>
+      </Stack>
+
+      <style>
+        {`
+          @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+          }
+        `}
+      </style>
+
       {/* 🔥 ACTIVE POSITIONS SECTION */}
       {activePositions.length > 0 && (
-        <Card sx={{ p: 3, mb: 3, bgcolor: '#f4f6f8' }}>
-          <Typography variant="h5" color="primary" gutterBottom sx={{ fontWeight: 'bold' }}>
-            💼 Active Positions (Live P&L)
-          </Typography>
-          <TableContainer component={Paper}>
-            <Table size="small">
-              <TableHead>
+        <Card sx={{
+          p: 0,
+          mb: 4,
+          overflow: 'hidden',
+          borderRadius: 3,
+          boxShadow: theme.customShadows?.z24 || 24,
+          background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.9)} 0%, ${alpha(theme.palette.background.paper, 0.7)} 100%)`,
+          backdropFilter: 'blur(10px)',
+          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+        }}>
+          <Box sx={{ p: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box component="span" sx={{ fontSize: '1.5rem' }}>💼</Box> Active Positions
+            </Typography>
+            <Typography variant="h6" sx={{
+              fontWeight: 700,
+              color: activePositions.reduce((acc, p) => acc + (p.pnl || 0), 0) >= 0 ? 'success.main' : 'error.main'
+            }}>
+              Total P&L: ₹{activePositions.reduce((acc, p) => acc + (p.pnl || 0), 0).toFixed(2)}
+            </Typography>
+          </Box>
+
+          <TableContainer>
+            <Table>
+              <TableHead sx={{ bgcolor: alpha(theme.palette.grey[500], 0.05) }}>
                 <TableRow>
-                  <TableCell>Symbol</TableCell>
-                  <TableCell>Side</TableCell>
-                  <TableCell>Qty</TableCell>
-                  <TableCell>Entry</TableCell>
-                  <TableCell>LTP</TableCell>
-                  <TableCell>P&L</TableCell>
-                  <TableCell align="right">Action</TableCell>
+                  <TableCell sx={{ color: 'text.secondary', fontWeight: 600 }}>Symbol</TableCell>
+                  <TableCell sx={{ color: 'text.secondary', fontWeight: 600 }}>Side</TableCell>
+                  <TableCell sx={{ color: 'text.secondary', fontWeight: 600 }}>Qty</TableCell>
+                  <TableCell sx={{ color: 'text.secondary', fontWeight: 600 }}>Entry</TableCell>
+                  <TableCell sx={{ color: 'text.secondary', fontWeight: 600 }}>LTP</TableCell>
+                  <TableCell sx={{ color: 'text.secondary', fontWeight: 600 }}>P&L</TableCell>
+                  <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 600 }}>Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {activePositions.map((pos) => (
-                  <TableRow key={pos.orderid}>
-                    <TableCell sx={{ fontWeight: 'bold' }}>{pos.tradingsymbol}</TableCell>
-                    <TableCell color={pos.side === 'BUY' ? 'success' : 'error'}>{pos.side}</TableCell>
-                    <TableCell>{pos.quantity}</TableCell>
-                    <TableCell>{pos.entryPrice}</TableCell>
-                    <TableCell>{pos.ltp}</TableCell>
+                  <TableRow key={pos.orderid} sx={{ '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.02) } }}>
+                    <TableCell>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{pos.tradingsymbol}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{
+                        px: 1.5, py: 0.5, borderRadius: 1, display: 'inline-flex',
+                        fontWeight: 700, fontSize: '0.75rem',
+                        bgcolor: pos.side === 'BUY' ? alpha(theme.palette.success.main, 0.1) : alpha(theme.palette.error.main, 0.1),
+                        color: pos.side === 'BUY' ? 'success.main' : 'error.main'
+                      }}>
+                        {pos.side}
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{pos.quantity}</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>₹{pos.entryPrice}</TableCell>
+                    <TableCell sx={{ color: 'primary.main', fontWeight: 700 }}>₹{pos.ltp}</TableCell>
                     <TableCell sx={{
                       color: pos.pnl >= 0 ? 'success.main' : 'error.main',
-                      fontWeight: 'bold'
+                      fontWeight: 800,
+                      fontSize: '1rem'
                     }}>
-                      {pos.pnl?.toFixed(2)}
+                      {pos.pnl >= 0 ? '+' : ''}{pos.pnl?.toFixed(2)}
                     </TableCell>
                     <TableCell align="right">
                       <Button
-                        variant="outlined"
+                        variant="soft"
                         color="error"
                         size="small"
+                        sx={{ fontWeight: 700, borderRadius: 1.5 }}
                         onClick={() => handleExit(pos.orderid)}
                       >
-                        Exit
+                        SQUARE OFF
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -433,86 +431,187 @@ export default function OptionChainPage() {
         </Card>
       )}
 
-      <Card sx={{ p: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          📊 {symbol} Option Chain
-        </Typography>
-        <Box mb={2} maxWidth={220}>
-          <FormControl fullWidth size="small">
-            <InputLabel>Symbol</InputLabel>
-            <Select
-              label="Symbol"
-              value={symbol}
-              onChange={(e) =>
-                setSymbol(e.target.value as "NIFTY" | "BANKNIFTY")
-              }
-            >
-              <MenuItem value="NIFTY">NIFTY 50</MenuItem>
-              <MenuItem value="BANKNIFTY">BANK NIFTY</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { md: '1fr 340px' }, gap: 4 }}>
 
+        {/* OPTION CHAIN CARD */}
+        <Card sx={{
+          borderRadius: 3,
+          boxShadow: theme.customShadows?.card || 4,
+          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+        }}>
+          <Box sx={{ p: 3, borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>📊 {symbol} Option Chain</Typography>
+            <Stack direction="row" spacing={1}>
+              {apiError && <Alert severity="error">{apiError}</Alert>}
+            </Stack>
+          </Box>
 
-        {/* Expiry Selector */}
-        <Box mb={3} maxWidth={240}>
-          <FormControl fullWidth size="small">
-            <InputLabel>Expiry</InputLabel>
-            <Select
-              label="Expiry"
-              value={selectedExpiry}
-              onChange={(e) => {
-                setSelectedExpiry(e.target.value);
-              }}
-            >
-              {expiryDates.map((e) => (
-                <MenuItem key={e.value} value={e.value}>
-                  {e.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
+          <TableContainer>
+            <Table size="small">
+              <TableHead sx={{ bgcolor: alpha(theme.palette.grey[500], 0.02) }}>
+                <TableRow>
+                  <TableCell align="center" sx={{ py: 1.5, fontWeight: 700, color: 'text.secondary' }}>CALL (CE)</TableCell>
+                  <TableCell align="center" sx={{ py: 1.5, fontWeight: 800, bgcolor: alpha(theme.palette.primary.main, 0.03) }}>STRIKE</TableCell>
+                  <TableCell align="center" sx={{ py: 1.5, fontWeight: 700, color: 'text.secondary' }}>PUT (PE)</TableCell>
+                </TableRow>
+              </TableHead>
 
-        {apiError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {apiError}
-          </Alert>
-        )}
-        {content}
-      </Card>
+              <TableBody>
+                {marketData.map((row) => (
+                  <TableRow key={row.strikePrice} sx={{ '&:hover': { bgcolor: alpha(theme.palette.divider, 0.02) } }}>
+                    {/* CE COLUMN */}
+                    <TableCell align="center" sx={{ py: 2 }}>
+                      {row.CE ? (
+                        <Button
+                          fullWidth
+                          size="small"
+                          variant="outlined"
+                          color="success"
+                          sx={{
+                            borderRadius: 1.5, py: 1,
+                            borderWidth: 1.5, fontWeight: 700,
+                            '&:hover': { bgcolor: alpha(theme.palette.success.main, 0.05), borderScale: 1.02 }
+                          }}
+                          onClick={() => placeOrder(row.CE!, "BUY")}
+                        >
+                          BUY CE
+                        </Button>
+                      ) : "-"}
+                    </TableCell>
+
+                    {/* STRIKE COLUMN */}
+                    <TableCell align="center" sx={{
+                      fontWeight: 800, fontSize: '1.1rem',
+                      bgcolor: alpha(theme.palette.primary.main, 0.02),
+                      color: theme.palette.mode === 'dark' ? 'primary.light' : 'primary.dark'
+                    }}>
+                      {row.strikePrice}
+                    </TableCell>
+
+                    {/* PE COLUMN */}
+                    <TableCell align="center" sx={{ py: 2 }}>
+                      {row.PE ? (
+                        <Button
+                          fullWidth
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          sx={{
+                            borderRadius: 1.5, py: 1,
+                            borderWidth: 1.5, fontWeight: 700,
+                            '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.05) }
+                          }}
+                          onClick={() => placeOrder(row.PE!, "BUY")}
+                        >
+                          BUY PE
+                        </Button>
+                      ) : "-"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Card>
+
+        {/* SIDEBAR CONTROLS */}
+        <Stack spacing={3}>
+          <Card sx={{ p: 3, borderRadius: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2.5, fontWeight: 700 }}>Settings</Typography>
+            <Stack spacing={2.5}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Select Symbol</InputLabel>
+                <Select
+                  label="Select Symbol"
+                  value={symbol}
+                  onChange={(e) => setSymbol(e.target.value as "NIFTY" | "BANKNIFTY")}
+                  sx={{ borderRadius: 1.5 }}
+                >
+                  <MenuItem value="NIFTY">NIFTY 50</MenuItem>
+                  <MenuItem value="BANKNIFTY">BANK NIFTY</MenuItem>
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth size="small">
+                <InputLabel>Expiry Date</InputLabel>
+                <Select
+                  label="Expiry Date"
+                  value={selectedExpiry}
+                  onChange={(e) => setSelectedExpiry(e.target.value)}
+                  sx={{ borderRadius: 1.5 }}
+                >
+                  {expiryDates.map((e) => (
+                    <MenuItem key={e.value} value={e.value}>
+                      {e.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Button variant="contained" color="primary" fullWidth sx={{ py: 1.2, borderRadius: 1.5, fontWeight: 700, boxShadow: theme.customShadows?.primary }}>
+                Refresh Data
+              </Button>
+            </Stack>
+          </Card>
+
+          <Card sx={{ p: 3, borderRadius: 3, bgcolor: alpha(theme.palette.warning.main, 0.05), border: `1px dashed ${theme.palette.warning.main}` }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'warning.dark', mb: 1 }}>
+              ⚠️ Warning
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Algo trading involves high risk. Make sure you have enough margin and correct settings before placing orders.
+            </Typography>
+          </Card>
+        </Stack>
+
+      </Box>
 
       {/* 🔥 TRADE HISTORY SECTION */}
-      <Card sx={{ p: 3, mt: 3 }}>
-        <Typography variant="h5" color="text.secondary" gutterBottom sx={{ fontWeight: 'bold' }}>
-          📜 Trade History (Closed)
-        </Typography>
-        <TableContainer component={Paper}>
+      <Card sx={{
+        p: 0, mt: 6, borderRadius: 3, overflow: 'hidden',
+        boxShadow: theme.customShadows?.card || 2,
+        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+      }}>
+        <Box sx={{ p: 2.5, borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}` }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+            📜 Trade History (Closed)
+          </Typography>
+        </Box>
+        <TableContainer>
           <Table size="small">
-            <TableHead>
+            <TableHead sx={{ bgcolor: alpha(theme.palette.grey[500], 0.02) }}>
               <TableRow>
-                <TableCell>Symbol</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Qty</TableCell>
-                <TableCell>Entry Price</TableCell>
-                <TableCell>Exit Time</TableCell>
-                <TableCell>Status</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Symbol</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Qty</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Entry Price</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Exit Time</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {tradeHistory.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">No history found</TableCell>
+                  <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.disabled' }}>No history found</TableCell>
                 </TableRow>
               ) : (
                 tradeHistory.map((history) => (
-                  <TableRow key={history.orderid}>
-                    <TableCell>{history.tradingsymbol}</TableCell>
-                    <TableCell>{history.side}</TableCell>
+                  <TableRow key={history.orderid} sx={{ '&:hover': { bgcolor: alpha(theme.palette.divider, 0.01) } }}>
+                    <TableCell sx={{ fontWeight: 600 }}>{history.tradingsymbol}</TableCell>
+                    <TableCell>
+                      <Box sx={{
+                        px: 1, py: 0.2, borderRadius: 0.5, fontSize: '0.7rem', fontWeight: 700, display: 'inline-block',
+                        bgcolor: alpha(theme.palette.grey[500], 0.1), color: 'text.secondary'
+                      }}>
+                        {history.side}
+                      </Box>
+                    </TableCell>
                     <TableCell>{history.quantity}</TableCell>
-                    <TableCell>{history.entryPrice}</TableCell>
+                    <TableCell>₹{history.entryPrice}</TableCell>
                     <TableCell>{new Date(history.exitAt).toLocaleString()}</TableCell>
-                    <TableCell sx={{ color: 'text.secondary', fontWeight: 'bold' }}>CLOSED</TableCell>
+                    <TableCell>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.disabled' }}>CLOSED</Typography>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
