@@ -16,8 +16,10 @@ import { paths } from 'src/routes/paths';
 
 import { useBoolean } from 'src/hooks/use-boolean';
 
-
 import Iconify from 'src/components/iconify';
+
+
+import { BACKEND_API } from 'src/config-global';
 import FormProvider, { RHFTextField } from 'src/components/hook-form';
 
 // ----------------------------------------------------------------------
@@ -52,104 +54,104 @@ export default function ClassicLoginView() {
 
   // ✅ MAIN LOGIN HANDLER
   const onSubmit = handleSubmit(async (data) => {
-  try {
-    let result: any = null;
+    try {
+      let result: any = null;
 
-    // ===============================
-    // 1️⃣ TRY ADMIN LOGIN FIRST
-    // ===============================
-    const adminRes = await fetch('http://localhost:3000/api/admin/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: data.email,
-        password: data.password,
-      }),
-    });
+      // ===============================
+      // 1️⃣ TRY ADMIN LOGIN FIRST
+      // ===============================
+      const adminRes = await fetch(`${BACKEND_API}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+        }),
+      });
 
-    if (adminRes.ok) {
-      const adminResult = await adminRes.json();
+      if (adminRes.ok) {
+        const adminResult = await adminRes.json();
 
-      // ✅ CONFIRM ADMIN ROLE FROM DB
-      if (adminResult?.data?.role === 'admin') {
-        result = adminResult;
+        // ✅ CONFIRM ADMIN ROLE FROM DB
+        if (adminResult?.data?.role === 'admin') {
+          result = adminResult;
 
-        localStorage.setItem('authToken', result.access.token);
-        localStorage.setItem(
-          'authUser',
-          JSON.stringify({
-            ...result.data,
-            role: 'admin',
-          })
-        );
+          localStorage.setItem('authToken', result.access.token);
+          localStorage.setItem(
+            'authUser',
+            JSON.stringify({
+              ...result.data,
+              role: 'admin',
+            })
+          );
 
-        console.log('✅ Admin logged in');
+          console.log('✅ Admin logged in');
 
-        navigate('/dashboard');
-        return;
+          navigate('/dashboard');
+          return;
+        }
       }
+
+      // ===============================
+      // 2️⃣ IF NOT ADMIN → TRY USER LOGIN
+      // ===============================
+      const userRes = await fetch(`${BACKEND_API}/api/user/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_name: data.email, // 👈 same input field reuse
+          password: data.password,
+        }),
+      });
+
+      if (!userRes.ok) {
+        throw new Error('Invalid username or password');
+      }
+
+      const userResult = await userRes.json();
+
+      if (!userResult.status) {
+        throw new Error(userResult.message || 'Login failed');
+      }
+
+      // ✅ USER LOGIN SUCCESS
+      const userData = userResult.data;
+
+      localStorage.setItem('authToken', userResult.access.token);
+
+      localStorage.setItem(
+        'authUser',
+        JSON.stringify({
+          // ❗ role sirf internal use ke liye
+          role: 'user',
+
+          // basic identity
+          full_name: userData.full_name,
+          user_name: userData.user_name,
+          email: userData.email,
+
+          // 🔥 algo trading control fields
+          licence: userData.licence,               // Live | Demo
+          broker: userData.broker || '',            // AngelOne / empty
+          trading_status: userData.trading_status,  // enabled | disabled
+
+          // temporary logic (jab tak backend flag na ho)
+          // broker_connected: !!userData.broker,
+          broker_connected: false
+
+        })
+      );
+
+
+      console.log('✅ User logged in');
+
+      navigate('/dashboard');
+
+    } catch (error: any) {
+      console.error('Login error:', error.message);
+      alert(error.message || 'Login failed');
     }
-
-    // ===============================
-    // 2️⃣ IF NOT ADMIN → TRY USER LOGIN
-    // ===============================
-    const userRes = await fetch('http://localhost:3000/api/user/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_name: data.email, // 👈 same input field reuse
-        password: data.password,
-      }),
-    });
-
-    if (!userRes.ok) {
-      throw new Error('Invalid username or password');
-    }
-
-    const userResult = await userRes.json();
-
-    if (!userResult.status) {
-      throw new Error(userResult.message || 'Login failed');
-    }
-
-    // ✅ USER LOGIN SUCCESS
-  const userData = userResult.data;
-
-localStorage.setItem('authToken', userResult.access.token);
-
-localStorage.setItem(
-  'authUser',
-  JSON.stringify({
-    // ❗ role sirf internal use ke liye
-    role: 'user',
-
-    // basic identity
-    full_name: userData.full_name,
-    user_name: userData.user_name,
-    email: userData.email,
-
-    // 🔥 algo trading control fields
-    licence: userData.licence,               // Live | Demo
-    broker: userData.broker || '',            // AngelOne / empty
-    trading_status: userData.trading_status,  // enabled | disabled
-
-    // temporary logic (jab tak backend flag na ho)
-    // broker_connected: !!userData.broker,
-    broker_connected: false
-
-  })
-);
-
-
-    console.log('✅ User logged in');
-
-    navigate('/dashboard');
-
-  } catch (error: any) {
-    console.error('Login error:', error.message);
-    alert(error.message || 'Login failed');
-  }
-});
+  });
 
 
   // ----------------------------------------------------------------------

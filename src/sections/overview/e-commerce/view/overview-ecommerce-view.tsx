@@ -34,6 +34,7 @@ import {
 } from '@mui/x-data-grid';
 // components
 import Iconify from 'src/components/iconify';
+import { BACKEND_API } from 'src/config-global';
 
 // Types
 interface ClientFormData {
@@ -79,7 +80,7 @@ interface ClientData {
   end_date: string;
   last_login?: string;
   avatar_color?: string;
-   isStarred?: boolean;
+  isStarred?: boolean;
 }
 
 // ----------------------------------------------------------------------
@@ -87,25 +88,25 @@ interface ClientData {
 
 // Enhanced columns with actions and better styling
 const getColumns = (handleEdit: (client: ClientData) => void, handleOpenDeleteDialog: (client: ClientData) => void): GridColDef[] => [
-  { 
-    field: 'srNo', 
-    headerName: 'SR. No.', 
+  {
+    field: 'srNo',
+    headerName: 'SR. No.',
     width: 80,
     headerAlign: 'center',
     align: 'center',
     valueGetter: (params) => params.row.srNo
   },
-  { 
-    field: 'avatar', 
+  {
+    field: 'avatar',
     headerName: '',
     width: 60,
     sortable: false,
     filterable: false,
     renderCell: (params) => (
-      <Avatar 
-        sx={{ 
+      <Avatar
+        sx={{
           bgcolor: params.row.avatar_color || '#4caf50',
-          width: 32, 
+          width: 32,
           height: 32,
           fontSize: '0.875rem'
         }}
@@ -114,9 +115,9 @@ const getColumns = (handleEdit: (client: ClientData) => void, handleOpenDeleteDi
       </Avatar>
     )
   },
-  { 
-    field: 'user_name', 
-    headerName: 'User Name', 
+  {
+    field: 'user_name',
+    headerName: 'User Name',
     flex: 1,
     minWidth: 120,
     renderCell: (params) => (
@@ -125,9 +126,9 @@ const getColumns = (handleEdit: (client: ClientData) => void, handleOpenDeleteDi
       </Tooltip>
     )
   },
-  { 
-    field: 'email', 
-    headerName: 'Email', 
+  {
+    field: 'email',
+    headerName: 'Email',
     flex: 1,
     minWidth: 150,
     renderCell: (params) => (
@@ -136,9 +137,9 @@ const getColumns = (handleEdit: (client: ClientData) => void, handleOpenDeleteDi
       </Tooltip>
     )
   },
-  { 
-    field: 'full_name', 
-    headerName: 'Full Name', 
+  {
+    field: 'full_name',
+    headerName: 'Full Name',
     flex: 1,
     minWidth: 120,
     renderCell: (params) => (
@@ -147,9 +148,9 @@ const getColumns = (handleEdit: (client: ClientData) => void, handleOpenDeleteDi
       </Tooltip>
     )
   },
-  { 
-    field: 'client_key', 
-    headerName: 'Client Key', 
+  {
+    field: 'client_key',
+    headerName: 'Client Key',
     flex: 1,
     minWidth: 120,
     renderCell: (params) => (
@@ -163,35 +164,35 @@ const getColumns = (handleEdit: (client: ClientData) => void, handleOpenDeleteDi
       </Tooltip>
     )
   },
-  { 
-    field: 'phone_number', 
-    headerName: 'Phone', 
-    width: 120 
+  {
+    field: 'phone_number',
+    headerName: 'Phone',
+    width: 120
   },
-  { 
-    field: 'broker', 
-    headerName: 'Broker', 
+  {
+    field: 'broker',
+    headerName: 'Broker',
     width: 100,
     renderCell: (params) => (
-      <Chip 
-        label={params.value} 
-        size="small" 
-        variant="outlined" 
+      <Chip
+        label={params.value}
+        size="small"
+        variant="outlined"
         color={params.value === 'Zerodha' ? 'primary' : 'default'}
       />
     )
   },
-  { 
-    field: 'to_month', 
-    headerName: 'Month', 
+  {
+    field: 'to_month',
+    headerName: 'Month',
     width: 80,
     headerAlign: 'center',
     align: 'center',
     renderCell: (params) => (
-      <Chip 
-        label={params.value} 
-        size="small" 
-        color="secondary" 
+      <Chip
+        label={params.value}
+        size="small"
+        color="secondary"
         variant="outlined"
       />
     )
@@ -206,18 +207,18 @@ const getColumns = (handleEdit: (client: ClientData) => void, handleOpenDeleteDi
       const isActive = params.value === 'Active';
       return (
         <Tooltip title={isActive ? 'Click to deactivate' : 'Click to activate'}>
-          <IconButton 
-            size="small" 
+          <IconButton
+            size="small"
             onClick={() => {
               // Handle status toggle here
               console.log('Toggle status for:', params.row.id);
             }}
             color={isActive ? 'success' : 'default'}
           >
-            <Iconify 
-              icon={isActive ? 'eva:power-fill' : 'eva:power-outline'} 
-              width={20} 
-              color={isActive ? '#4caf50' : '#9e9e9e'} 
+            <Iconify
+              icon={isActive ? 'eva:power-fill' : 'eva:power-outline'}
+              width={20}
+              color={isActive ? '#4caf50' : '#9e9e9e'}
             />
           </IconButton>
         </Tooltip>
@@ -234,35 +235,35 @@ const getColumns = (handleEdit: (client: ClientData) => void, handleOpenDeleteDi
       const isEnabled = params.value === 'enabled';
       return (
         <Tooltip title={isEnabled ? 'Trading enabled - Click to disable' : 'Trading disabled - Click to enable'}>
-          <IconButton 
-            size="small" 
+          <IconButton
+            size="small"
             onClick={() => {
               // Handle trading status toggle here
               console.log('Toggle trading for:', params.row.id);
             }}
             color={isEnabled ? 'success' : 'default'}
           >
-            <Iconify 
-              icon={isEnabled ? 'eva:checkmark-circle-2-fill' : 'eva:close-circle-outline'} 
-              width={24} 
-              color={isEnabled ? '#4caf50' : '#9e9e9e'} 
+            <Iconify
+              icon={isEnabled ? 'eva:checkmark-circle-2-fill' : 'eva:close-circle-outline'}
+              width={24}
+              color={isEnabled ? '#4caf50' : '#9e9e9e'}
             />
           </IconButton>
         </Tooltip>
       );
     },
   },
-  { 
-    field: 'api_key', 
-    headerName: 'API Key', 
+  {
+    field: 'api_key',
+    headerName: 'API Key',
     flex: 1,
     minWidth: 120,
     renderCell: (params) => (
       <Tooltip title={params.value || 'No API key'}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <span style={{ 
-            textOverflow: 'ellipsis', 
-            overflow: 'hidden', 
+          <span style={{
+            textOverflow: 'ellipsis',
+            overflow: 'hidden',
             maxWidth: 100,
             opacity: params.value ? 1 : 0.5
           }}>
@@ -277,95 +278,95 @@ const getColumns = (handleEdit: (client: ClientData) => void, handleOpenDeleteDi
       </Tooltip>
     )
   },
-  { 
-    field: 'created_at', 
-    headerName: 'Created', 
+  {
+    field: 'created_at',
+    headerName: 'Created',
     width: 120,
     valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString() : 'N/A'
   },
-  { 
-    field: 'start_date', 
-    headerName: 'Start Date', 
+  {
+    field: 'start_date',
+    headerName: 'Start Date',
     width: 120,
     valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString() : 'N/A'
   },
-  { 
-    field: 'end_date', 
-    headerName: 'End Date', 
+  {
+    field: 'end_date',
+    headerName: 'End Date',
     width: 120,
     valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString() : 'N/A',
     renderCell: (params) => {
-    if (!params.value) return 'N/A';
-   
-    const endDate = new Date(params.value);
-    const today = new Date();
-    const daysLeft = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+      if (!params.value) return 'N/A';
 
-    let color: 'default' | 'error' | 'warning' = 'default';
-    if (daysLeft < 0) color = 'error';
-    else if (daysLeft < 7) color = 'warning';
+      const endDate = new Date(params.value);
+      const today = new Date();
+      const daysLeft = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
 
-    const timeLabel = daysLeft < 0 ? 'ago' : 'remaining'; // ✅ extracted ternary
+      let color: 'default' | 'error' | 'warning' = 'default';
+      if (daysLeft < 0) color = 'error';
+      else if (daysLeft < 7) color = 'warning';
 
-    return (
-      <Tooltip title={`${daysLeft} days ${timeLabel}`}>
-        <Chip
-          label={new Date(params.value).toLocaleDateString()}
-          size="small"
-          color={color as any}
-          variant="outlined"
-        />
-      </Tooltip>
-    );
-  }
+      const timeLabel = daysLeft < 0 ? 'ago' : 'remaining'; // ✅ extracted ternary
+
+      return (
+        <Tooltip title={`${daysLeft} days ${timeLabel}`}>
+          <Chip
+            label={new Date(params.value).toLocaleDateString()}
+            size="small"
+            color={color as any}
+            variant="outlined"
+          />
+        </Tooltip>
+      );
+    }
 
   },
   {
-  field: 'star',
-  headerName: 'Star',
-  width: 80,
-  headerAlign: 'center',
-  align: 'center',
-  sortable: false,
-  filterable: false,
-  renderCell: (params) => {
-    const isStarred = params.row.isStarred;
+    field: 'star',
+    headerName: 'Star',
+    width: 80,
+    headerAlign: 'center',
+    align: 'center',
+    sortable: false,
+    filterable: false,
+    renderCell: (params) => {
+      const isStarred = params.row.isStarred;
 
-    return (
-      <Tooltip title={isStarred ? "Unstar Client" : "Star this Client"}>
-        <IconButton
-          size="small"
-          color={isStarred ? "warning" : "default"}
-          onClick={async () => {
-            try {
-              const newStatus = !isStarred;
-               if (newStatus) {
-           await apiService.toggleStarClient(
-            params.row.id,           // ✅ user_id
-            params.row.user_name,    // ✅ user_name
-            params.row.email       // ✅ email
-          );
-           } else {
-             await apiService.deleteStarClient(params.row.id);
-           }
-              // ✅ Update UI instantly
-              params.api.updateRows([{ ...params.row, isStarred: newStatus }]);
+      return (
+        <Tooltip title={isStarred ? "Unstar Client" : "Star this Client"}>
+          <IconButton
+            size="small"
+            color={isStarred ? "warning" : "default"}
+            onClick={async () => {
+              try {
+                const newStatus = !isStarred;
+                if (newStatus) {
+                  await apiService.toggleStarClient(
+                    params.row.id,           // ✅ user_id
+                    params.row.user_name,    // ✅ user_name
+                    params.row.email       // ✅ email
+                  );
+                } else {
+                  await apiService.deleteStarClient(params.row.id);
+                }
+                // ✅ Update UI instantly
+                params.api.updateRows([{ ...params.row, isStarred: newStatus }]);
 
-            } catch (error) {
-              console.error('Failed to update star status', error);
-              alert('Failed to update star status');
-            }
-          }}
-        >
-          <Iconify
-            icon={isStarred ? "mdi:star" : "mdi:star-outline"}
-            width={24}
-            color={isStarred ? "#fbc02d" : "#9e9e9e"}
-          />
-        </IconButton>
-      </Tooltip>
-    );
-  }
+              } catch (error) {
+                console.error('Failed to update star status', error);
+                alert('Failed to update star status');
+              }
+            }}
+          >
+            <Iconify
+              icon={isStarred ? "mdi:star" : "mdi:star-outline"}
+              width={24}
+              color={isStarred ? "#fbc02d" : "#9e9e9e"}
+            />
+          </IconButton>
+        </Tooltip>
+      );
+    }
   },
   {
     field: 'dashboard',
@@ -416,14 +417,14 @@ type Props = {
 
 
 // API Service Functions
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = BACKEND_API;
 
 const apiService = {
   registerClient: async (clientData: Omit<ClientFormData, 'strategies'>): Promise<ApiResponse> => {
     try {
       console.log('Making API call to:', `${API_BASE_URL}/api/user/register`);
       console.log('Request data:', clientData);
-      
+
       const response = await fetch(`${API_BASE_URL}/api/user/register`, {
         method: 'POST',
         headers: {
@@ -433,7 +434,7 @@ const apiService = {
       });
 
       console.log('API response status:', response.status);
-      
+
       // Check if response is OK (status 200-299)
       if (!response.ok) {
         // Try to get error message from response
@@ -457,43 +458,43 @@ const apiService = {
       throw new Error(error instanceof Error ? error.message : 'Network error');
     }
   },
- toggleStarClient: async (userId: string, userName: string, email: string): Promise<ApiResponse> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/admin/star-client`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: userId,
-        user_name: userName,
-        email
-      }),
-    });
+  toggleStarClient: async (userId: string, userName: string, email: string): Promise<ApiResponse> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/star-client`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          user_name: userName,
+          email
+        }),
+      });
 
-    if (!response.ok) throw new Error('Failed to update star status');
-    return await response.json();
-  } catch (error) {
-    console.error('Error starring client:', error);
-    throw new Error(error instanceof Error ? error.message : 'Network error');
-  }
-},
-deleteStarClient: async (userId: string): Promise<ApiResponse> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/admin/delete-star-client/${userId}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+      if (!response.ok) throw new Error('Failed to update star status');
+      return await response.json();
+    } catch (error) {
+      console.error('Error starring client:', error);
+      throw new Error(error instanceof Error ? error.message : 'Network error');
+    }
+  },
+  deleteStarClient: async (userId: string): Promise<ApiResponse> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/delete-star-client/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-    if (!response.ok) throw new Error('Failed to remove star status');
-    return await response.json();
-  } catch (error) {
-    console.error('Error removing star client:', error);
-    throw new Error(error instanceof Error ? error.message : 'Network error');
-  }
-},
+      if (!response.ok) throw new Error('Failed to remove star status');
+      return await response.json();
+    } catch (error) {
+      console.error('Error removing star client:', error);
+      throw new Error(error instanceof Error ? error.message : 'Network error');
+    }
+  },
 
 
 
@@ -501,65 +502,65 @@ deleteStarClient: async (userId: string): Promise<ApiResponse> => {
 
   // Add function to update client
   updateClient: async (
-  clientId: string,
-  clientData: any
-): Promise<ApiResponse> => {
-  try {
-    const token = localStorage.getItem('authToken');
+    clientId: string,
+    clientData: any
+  ): Promise<ApiResponse> => {
+    try {
+      const token = localStorage.getItem('authToken');
 
-    if (!token) {
-      throw new Error('Auth token missing');
-    }
-
-    const response = await fetch(
-      `${API_BASE_URL}/api/user/update-register/${clientId}`,
-      {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-access-token': token, // 🔥 REQUIRED
-        },
-        body: JSON.stringify(clientData),
+      if (!token) {
+        throw new Error('Auth token missing');
       }
-    );
 
-    if (!response.ok) {
-      let errorMessage = `Failed to update client (Status: ${response.status})`;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-      } catch(err) {
-        console.warn('Failed to parse error response', err);
+      const response = await fetch(
+        `${API_BASE_URL}/api/user/update-register/${clientId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-access-token': token, // 🔥 REQUIRED
+          },
+          body: JSON.stringify(clientData),
+        }
+      );
+
+      if (!response.ok) {
+        let errorMessage = `Failed to update client (Status: ${response.status})`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (err) {
+          console.warn('Failed to parse error response', err);
+        }
+        throw new Error(errorMessage);
       }
-      throw new Error(errorMessage);
-    }
 
-    return await response.json();
-  } catch (error) {
-    console.error('Error updating client:', error);
-    throw new Error(error instanceof Error ? error.message : 'Network error');
-  }
-},  
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating client:', error);
+      throw new Error(error instanceof Error ? error.message : 'Network error');
+    }
+  },
 
   // Add function to fetch logged-in clients by creation date
   getLoggedInClients: async (): Promise<ClientData[]> => {
     try {
       const getAuthHeaders = () => {
         const token = localStorage.getItem('authToken');
-        
+
         return {
           'Content-Type': 'application/json',
-           'x-access-token': token || '',
+          'x-access-token': token || '',
         };
       };
 
-const response = await fetch(
-  `${API_BASE_URL}/api/user/by-enddate?filter=custom&date=2099-12-31`,
-  {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  }
-);
+      const response = await fetch(
+        `${API_BASE_URL}/api/user/by-enddate?filter=custom&date=2099-12-31`,
+        {
+          method: 'GET',
+          headers: getAuthHeaders(),
+        }
+      );
 
       if (!response.ok) {
         throw new Error('Failed to fetch logged-in clients');
@@ -583,7 +584,7 @@ const response = await fetch(
         start_date: client.start_date || '',
         end_date: client.end_date || '',
         isStarred: client.isStarred || false,
-        avatar_color: `#${Math.floor(Math.random()*16777215).toString(16)}`
+        avatar_color: `#${Math.floor(Math.random() * 16777215).toString(16)}`
       }));
     } catch (error) {
       console.error('Error fetching logged-in clients:', error);
@@ -593,34 +594,34 @@ const response = await fetch(
 
   // Add function to delete client
   deleteClient: async (clientId: string): Promise<ApiResponse> => {
-  try {
-    const token = localStorage.getItem('authToken');
+    try {
+      const token = localStorage.getItem('authToken');
 
-    if (!token) {
-      throw new Error('Auth token missing');
-    }
-
-    const response = await fetch(
-      `${API_BASE_URL}/api/user/delete-client/${clientId}`,
-      {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-access-token': token, // ✅ REQUIRED
-        },
+      if (!token) {
+        throw new Error('Auth token missing');
       }
-    );
 
-    if (!response.ok) {
-      throw new Error('Failed to delete client');
+      const response = await fetch(
+        `${API_BASE_URL}/api/user/delete-client/${clientId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-access-token': token, // ✅ REQUIRED
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to delete client');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      throw new Error(error instanceof Error ? error.message : 'Network error');
     }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error deleting client:', error);
-    throw new Error(error instanceof Error ? error.message : 'Network error');
-  }
-},
+  },
 
 };
 
@@ -668,11 +669,11 @@ export default function DataGridCustom({ data = [] }: Props) {
   const [showPasswordField, setShowPasswordField] = useState(false);
   const handleLicenceChange = (value: string) => {
     setFormData(prev => ({
-    ...prev,
-    licence: value,
-    broker: value === 'Demo' ? '' : prev.broker, // reset broker if Demo
+      ...prev,
+      licence: value,
+      broker: value === 'Demo' ? '' : prev.broker, // reset broker if Demo
     }));
-    };
+  };
 
   const [formData, setFormData] = useState<ClientFormData>({
     user_name: '',
@@ -749,11 +750,11 @@ export default function DataGridCustom({ data = [] }: Props) {
   // Handle confirm delete
   const handleConfirmDelete = async () => {
     if (!clientToDelete) return;
-    
+
     try {
       setLoading(true);
       const response = await apiService.deleteClient(clientToDelete.id);
-      
+
       if (response.status) {
         setSnackbar({ open: true, message: 'Client deleted successfully', severity: 'success' });
         // Refresh the clients list
@@ -813,23 +814,23 @@ export default function DataGridCustom({ data = [] }: Props) {
     setFormData(prev => {
       const strategies = [...prev.strategies || []];
       const index = strategies.indexOf(strategy);
-      
+
       if (index > -1) {
         strategies.splice(index, 1);
       } else {
         strategies.push(strategy);
       }
-      
+
       return { ...prev, strategies };
     });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Create data without strategies for validation and API call
     const { strategies, ...formDataWithoutStrategies } = formData;
-    
+
     // Validate form (don't require password for edit mode unless it's being changed)
     const errors = validateForm(formDataWithoutStrategies, editMode && !showPasswordField);
     if (errors.length > 0) {
@@ -843,16 +844,16 @@ export default function DataGridCustom({ data = [] }: Props) {
 
     try {
       let response;
-      
+
       if (editMode && editingClient) {
         // Prepare data for update - only include fields that have changed
         const updateData: Partial<ClientFormData> = {};
-        
+
         // Only include password if it's being changed
         // if (showPasswordField && formData.password) {
         //   updateData.password = formData.password;
         // }
-        
+
         // Include other fields that might have changed
         if (formData.user_name !== editingClient.user_name) updateData.user_name = formData.user_name;
         if (formData.email !== editingClient.email) updateData.email = formData.email;
@@ -861,21 +862,21 @@ export default function DataGridCustom({ data = [] }: Props) {
         if (formData.broker !== editingClient.broker) updateData.broker = formData.broker;
         if (formData.status !== editingClient.status.toLowerCase()) updateData.status = formData.status;
         if (formData.trading_status !== editingClient.trading_status) updateData.trading_status = formData.trading_status;
-        
+
         // Always include these fields
         updateData.licence = formData.licence;
         updateData.sub_admin = formData.sub_admin;
         updateData.group_service = formData.group_service;
-        
+
         console.log('Updating client with data:', updateData);
         response = await apiService.updateClient(editingClient.id, updateData);
       } else {
         console.log('Creating new client with data:', formDataWithoutStrategies);
         response = await apiService.registerClient(formDataWithoutStrategies);
       }
-      
+
       console.log('API Response:', response);
-      
+
       if (response.status) {
         setSnackbar({ open: true, message: response.message, severity: 'success' });
         setFormData({
@@ -896,7 +897,7 @@ export default function DataGridCustom({ data = [] }: Props) {
         setEditMode(false);
         setEditingClient(null);
         setShowPasswordField(false);
-        
+
         // Refresh the clients list
         fetchLoggedInClients();
       } else {
@@ -904,7 +905,7 @@ export default function DataGridCustom({ data = [] }: Props) {
       }
     } catch (error) {
       console.error('API Error:', error);
-     
+
     } finally {
       setLoading(false);
     }
@@ -961,9 +962,9 @@ export default function DataGridCustom({ data = [] }: Props) {
   return (
     <Box>
       {/* Notification Snackbar */}
-      <Snackbar 
-        open={snackbar.open} 
-        autoHideDuration={6000} 
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
@@ -977,15 +978,15 @@ export default function DataGridCustom({ data = [] }: Props) {
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete client <strong>{clientToDelete?.user_name}</strong>? 
+            Are you sure you want to delete client <strong>{clientToDelete?.user_name}</strong>?
             This action cannot be undone.
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDeleteDialog} disabled={loading}>Cancel</Button>
-          <Button 
-            onClick={handleConfirmDelete} 
-            color="error" 
+          <Button
+            onClick={handleConfirmDelete}
+            color="error"
             variant="contained"
             disabled={loading}
             startIcon={loading ? <CircularProgress size={20} /> : null}
@@ -1112,20 +1113,20 @@ export default function DataGridCustom({ data = [] }: Props) {
 
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
-                <TextField 
-                  fullWidth 
-                  required 
-                  label="Username" 
+                <TextField
+                  fullWidth
+                  required
+                  label="Username"
                   value={formData.user_name}
                   onChange={(e) => handleInputChange('user_name', e.target.value)}
                   error={formErrors.some(err => err.toLowerCase().includes('username'))}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField 
-                  fullWidth 
-                  required 
-                  label="Full Name" 
+                <TextField
+                  fullWidth
+                  required
+                  label="Full Name"
                   value={formData.full_name}
                   onChange={(e) => handleInputChange('full_name', e.target.value)}
                   error={formErrors.some(err => err.toLowerCase().includes('full name'))}
@@ -1133,10 +1134,10 @@ export default function DataGridCustom({ data = [] }: Props) {
               </Grid>
 
               <Grid item xs={12} sm={6}>
-                <TextField 
-                  fullWidth 
-                  required 
-                  label="Email" 
+                <TextField
+                  fullWidth
+                  required
+                  label="Email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
@@ -1144,10 +1145,10 @@ export default function DataGridCustom({ data = [] }: Props) {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField 
-                  fullWidth 
-                  required 
-                  label="Mobile" 
+                <TextField
+                  fullWidth
+                  required
+                  label="Mobile"
                   value={formData.phone_number}
                   onChange={(e) => handleInputChange('phone_number', e.target.value)}
                   error={formErrors.some(err => err.toLowerCase().includes('phone'))}
@@ -1183,50 +1184,50 @@ export default function DataGridCustom({ data = [] }: Props) {
               )}
 
               <Grid item xs={12} sm={6}>
-            <TextField 
-            fullWidth 
-            select 
-            required
-            label="Broker"
-            value={formData.broker}
-            onChange={(e) => handleInputChange('broker', e.target.value)}
-            error={formErrors.some(err => err.toLowerCase().includes('broker'))}
-            disabled={formData.licence === 'Demo'} // ✅ disable when Demo
-            >
-            <MenuItem value="Zerodha">Zerodha</MenuItem>
-            <MenuItem value="AngelOne">Angel Broking</MenuItem>
-            <MenuItem value="Upstox">Upstox</MenuItem>
-            <MenuItem value="ICICI Direct">ICICI Direct</MenuItem>
-            </TextField>
+                <TextField
+                  fullWidth
+                  select
+                  required
+                  label="Broker"
+                  value={formData.broker}
+                  onChange={(e) => handleInputChange('broker', e.target.value)}
+                  error={formErrors.some(err => err.toLowerCase().includes('broker'))}
+                  disabled={formData.licence === 'Demo'} // ✅ disable when Demo
+                >
+                  <MenuItem value="Zerodha">Zerodha</MenuItem>
+                  <MenuItem value="AngelOne">Angel Broking</MenuItem>
+                  <MenuItem value="Upstox">Upstox</MenuItem>
+                  <MenuItem value="ICICI Direct">ICICI Direct</MenuItem>
+                </TextField>
 
               </Grid>
 
               {formData.licence && (
-            <>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                type="date"
-                label="Start Date"
-                value={formData.start_date || ''}
-                onChange={(e) => handleInputChange('start_date', e.target.value)}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                type="date"
-                label="End Date"
-                value={formData.end_date || ''}
-                onChange={(e) => handleInputChange('end_date', e.target.value)}
-              />
-            </Grid>
-          </>
-        )}
+                <>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      type="date"
+                      label="Start Date"
+                      value={formData.start_date || ''}
+                      onChange={(e) => handleInputChange('start_date', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      type="date"
+                      label="End Date"
+                      value={formData.end_date || ''}
+                      onChange={(e) => handleInputChange('end_date', e.target.value)}
+                    />
+                  </Grid>
+                </>
+              )}
 
 
               <Grid item xs={12} sm={6}>
-               <TextField
+                <TextField
                   fullWidth
                   select
                   required
@@ -1240,9 +1241,9 @@ export default function DataGridCustom({ data = [] }: Props) {
 
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField 
-                  fullWidth 
-                  select 
+                <TextField
+                  fullWidth
+                  select
                   label="Sub-Admin"
                   value={formData.sub_admin}
                   onChange={(e) => handleInputChange('sub_admin', e.target.value)}
@@ -1253,9 +1254,9 @@ export default function DataGridCustom({ data = [] }: Props) {
               </Grid>
 
               <Grid item xs={12} sm={6}>
-                <TextField 
-                  fullWidth 
-                  select 
+                <TextField
+                  fullWidth
+                  select
                   label="Group Service"
                   value={formData.group_service}
                   onChange={(e) => handleInputChange('group_service', e.target.value)}
@@ -1264,14 +1265,14 @@ export default function DataGridCustom({ data = [] }: Props) {
                   <MenuItem value="service2">Service 2</MenuItem>
                 </TextField>
               </Grid>
-              
+
               {/* Status and Trading Status for edit mode */}
               {editMode && (
                 <>
                   <Grid item xs={12} sm={6}>
-                    <TextField 
-                      fullWidth 
-                      select 
+                    <TextField
+                      fullWidth
+                      select
                       label="Status"
                       value={formData.status}
                       onChange={(e) => handleInputChange('status', e.target.value)}
@@ -1281,9 +1282,9 @@ export default function DataGridCustom({ data = [] }: Props) {
                     </TextField>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField 
-                      fullWidth 
-                      select 
+                    <TextField
+                      fullWidth
+                      select
                       label="Trading Status"
                       value={formData.trading_status}
                       onChange={(e) => handleInputChange('trading_status', e.target.value)}
@@ -1294,7 +1295,7 @@ export default function DataGridCustom({ data = [] }: Props) {
                   </Grid>
                 </>
               )}
-              
+
               {/* Strategy Checkboxes */}
               <Grid item xs={12}>
                 <Typography variant="subtitle1">All Strategies</Typography>
@@ -1303,7 +1304,7 @@ export default function DataGridCustom({ data = [] }: Props) {
                     <FormControlLabel
                       key={strategy}
                       control={
-                        <Checkbox 
+                        <Checkbox
                           checked={formData.strategies?.includes(strategy) || false}
                           onChange={() => handleStrategyToggle(strategy)}
                         />
@@ -1319,9 +1320,9 @@ export default function DataGridCustom({ data = [] }: Props) {
               <Button variant="outlined" onClick={handleCancelForm} disabled={loading}>
                 Cancel
               </Button>
-              <Button 
-                variant="contained" 
-                color="primary" 
+              <Button
+                variant="contained"
+                color="primary"
                 type="submit"
                 onClick={handleSubmit}
                 disabled={loading}
@@ -1353,14 +1354,14 @@ export default function DataGridCustom({ data = [] }: Props) {
             onRowSelectionModelChange={(newSelectionModel) => setSelectedRows(newSelectionModel)}
             columnVisibilityModel={columnVisibilityModel}
             onColumnVisibilityModelChange={handleChangeColumnVisibilityModel}
-            slots={{ 
+            slots={{
               toolbar: GridToolbar,
               pagination: () => null,
             }}
-            slotProps={{ 
-              toolbar: { 
+            slotProps={{
+              toolbar: {
                 showQuickFilter: true,
-                quickFilterProps: { debounceMs: 500 } 
+                quickFilterProps: { debounceMs: 500 }
               },
               pagination: {
                 labelRowsPerPage: '',

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback,useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -31,6 +31,7 @@ import { SeoIllustration } from 'src/assets/illustrations';
 import Iconify from 'src/components/iconify';
 import AppWelcome from '../app-welcome';
 import AppWidgetSummary from '../app-widget-summary';
+import { BACKEND_API } from 'src/config-global';
 
 // ----------------------------------------------------------------------
 
@@ -42,7 +43,7 @@ type StatsResponse = {
   demo: number;
 };
 
-const API_BASE = 'http://localhost:3000';
+const API_BASE = BACKEND_API;
 
 // ----------------------------------------------------------------------
 
@@ -61,15 +62,15 @@ export default function OverviewAppView() {
 
   const api = useMemo(
     () =>
-       
-   axios.create({
-    baseURL: API_BASE,
-    headers: {
-      Authorization: token ? `Bearer ${token}` : '',
-    },
-  }),
- [token]
-);
+
+      axios.create({
+        baseURL: API_BASE,
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+      }),
+    [token]
+  );
 
   // ----------------------------------------------------------------------
   // ✅ FETCH DASHBOARD DATA (LIVE USER ONLY)
@@ -79,17 +80,17 @@ export default function OverviewAppView() {
 
     setLoading(true);
     try {
-      const totalRes = await api.get('/api/user/total-count',{
+      const totalRes = await api.get('/api/user/total-count', {
         headers: {
-        'x-access-token': token ?? '',
-      },
-    });
+          'x-access-token': token ?? '',
+        },
+      });
 
-      const usersRes = await api.get('/api/user/logged-in',{
+      const usersRes = await api.get('/api/user/logged-in', {
         headers: {
-        'x-access-token': token ?? '',
-      },
-    });
+          'x-access-token': token ?? '',
+        },
+      });
 
       const users = usersRes.data?.data || [];
       const today = new Date().toISOString().split('T')[0];
@@ -116,14 +117,14 @@ export default function OverviewAppView() {
     } finally {
       setLoading(false);
     }
-  }, [api, user,token]);
-  
+  }, [api, user, token]);
+
   useEffect(() => {
     if (user && (user.licence === 'Live' || user.role === 'admin')) {
       fetchData();
     }
   }, [fetchData, user]);
-  
+
   useEffect(() => {
     console.log('STATS 👉', stats);
   }, [stats]);

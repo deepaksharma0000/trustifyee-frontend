@@ -24,6 +24,7 @@ import { useSnackbar } from 'src/components/snackbar';
 
 // hook-form components
 import FormProvider, { RHFTextField, RHFSelect } from 'src/components/hook-form';
+import { BACKEND_API } from 'src/config-global';
 
 // types
 import { IProductItem } from 'src/types/product';
@@ -82,7 +83,7 @@ export default function ProductNewEditForm({ currentProduct }: Props) {
   const onSubmit = handleSubmit(async (data) => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3000/api/strategy/add-strategies', {
+      const response = await fetch(`${BACKEND_API}/api/strategy/add-strategies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),

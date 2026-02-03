@@ -19,6 +19,8 @@ import Tab from '@mui/material/Tab';
 import { alpha } from '@mui/material/styles';
 import Alert from '@mui/material/Alert';
 
+import { BACKEND_API } from 'src/config-global';
+
 // Internal imports
 import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
@@ -93,7 +95,7 @@ export default function UserListView() {
       setError(null);
 
       const currentDate = format(new Date(), 'yyyy-MM-dd');
-      const apiUrl = `http://localhost:3000/api/users/by-enddate?filter=custom&date=${currentDate}`;
+      const apiUrl = `${BACKEND_API}/api/users/by-enddate?filter=custom&date=${currentDate}`;
 
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -116,33 +118,33 @@ export default function UserListView() {
         return;
       }
 
-  const transformedData: IUserItem[] = data.map((user: any, index: number) => ({
-  id: user.id || user._id || `temp-${index}`,
-  name: user.user_name || 'N/A',
-  email: user.email || 'N/A',
-  fullname: user.full_name || 'N/A',
-  phoneNumber: user.phone_number || 'N/A',
-  broker: user.broker || 'N/A',
-  status: user.status || 'N/A',
-  tradingStatus: user.trading_status || 'N/A',
-  month: user.month || 'N/A',
-  isVerified: user.isVerified ?? false,
+      const transformedData: IUserItem[] = data.map((user: any, index: number) => ({
+        id: user.id || user._id || `temp-${index}`,
+        name: user.user_name || 'N/A',
+        email: user.email || 'N/A',
+        fullname: user.full_name || 'N/A',
+        phoneNumber: user.phone_number || 'N/A',
+        broker: user.broker || 'N/A',
+        status: user.status || 'N/A',
+        tradingStatus: user.trading_status || 'N/A',
+        month: user.month || 'N/A',
+        isVerified: user.isVerified ?? false,
 
-  // ✅ Required fields in IUserItem that might not come from API
-  city: user.city || 'N/A',
-  state: user.state || 'N/A',
-  address: user.address || 'N/A',
-  country: user.country || 'N/A',
-  zipCode: user.zipCode || 'N/A',
-  company: user.company || 'N/A',
-  avatarUrl: user.avatarUrl || '',
+        // ✅ Required fields in IUserItem that might not come from API
+        city: user.city || 'N/A',
+        state: user.state || 'N/A',
+        address: user.address || 'N/A',
+        country: user.country || 'N/A',
+        zipCode: user.zipCode || 'N/A',
+        company: user.company || 'N/A',
+        avatarUrl: user.avatarUrl || '',
 
-  role: user.role || 'user',
+        role: user.role || 'user',
 
-  // ✅ Dates converted properly
-  startdate: user.start_date ? new Date(user.start_date) : new Date(),
-  enddate: user.end_date ? new Date(user.end_date) : new Date(),
-}));
+        // ✅ Dates converted properly
+        startdate: user.start_date ? new Date(user.start_date) : new Date(),
+        enddate: user.end_date ? new Date(user.end_date) : new Date(),
+      }));
 
 
 
@@ -436,12 +438,12 @@ function applyFilter({
   inputData = stabilizedThis.map((el) => el[0]);
 
   if (name) {
-  const search = name.toLowerCase();
+    const search = name.toLowerCase();
 
-  inputData = inputData.filter(
-    (user) => (user.name ?? '').toLowerCase().includes(search)
-  );
-}
+    inputData = inputData.filter(
+      (user) => (user.name ?? '').toLowerCase().includes(search)
+    );
+  }
 
 
   if (status !== 'all') {

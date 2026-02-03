@@ -7,8 +7,10 @@ import {
   Typography,
   Box,
 } from '@mui/material';
+
 import { useNavigate } from 'react-router-dom';
 import { useAuthUser } from 'src/hooks/use-auth-user';
+import { BACKEND_API, BROKER_API } from 'src/config-global';
 
 export default function BrokerConnect() {
   const { user } = useAuthUser();
@@ -67,64 +69,64 @@ export default function BrokerConnect() {
   // };
 
   const handleConnect = async () => {
-  try {
-    setLoading(true);
-    setError('');
+    try {
+      setLoading(true);
+      setError('');
 
-    // 1️⃣ ANGEL LOGIN
-    const res = await fetch('http://localhost:4000/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
+      // 1️⃣ ANGEL LOGIN
+      const res = await fetch(`${BROKER_API}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
 
-    const result = await res.json();
+      const result = await res.json();
 
-    if (!result.ok) {
-      throw new Error('AngelOne login failed');
+      if (!result.ok) {
+        throw new Error('AngelOne login failed');
+      }
+
+      /**
+       * result.data se aata hai:
+       * - jwtToken
+       * - refreshToken
+       * - feedToken
+       */
+
+      // 2️⃣ SAVE ANGEL SESSION (🔥 MOST IMPORTANT)
+      localStorage.setItem('angel_jwt', result.data.jwtToken);
+      localStorage.setItem('angel_refresh', result.data.refreshToken);
+      localStorage.setItem('angel_feed', result.data.feedToken);
+
+      // 3️⃣ INSTRUMENT SYNC (🔥 REQUIRED BEFORE OPTION CHAIN)
+      const accessToken =
+        localStorage.getItem('accessToken') ||
+        sessionStorage.getItem('accessToken');
+
+      await fetch(`${BACKEND_API}/api/instruments/sync`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      // 4️⃣ UPDATE AUTH USER (UI PURPOSE)
+      const updatedUser = {
+        ...user,
+        broker_connected: true,
+        broker: 'AngelOne',
+      };
+
+      localStorage.setItem('authUser', JSON.stringify(updatedUser));
+
+      // 5️⃣ REDIRECT → DASHBOARD
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Failed to connect AngelOne');
+    } finally {
+      setLoading(false);
     }
-
-    /**
-     * result.data se aata hai:
-     * - jwtToken
-     * - refreshToken
-     * - feedToken
-     */
-
-    // 2️⃣ SAVE ANGEL SESSION (🔥 MOST IMPORTANT)
-    localStorage.setItem('angel_jwt', result.data.jwtToken);
-    localStorage.setItem('angel_refresh', result.data.refreshToken);
-    localStorage.setItem('angel_feed', result.data.feedToken);
-
-    // 3️⃣ INSTRUMENT SYNC (🔥 REQUIRED BEFORE OPTION CHAIN)
-    const accessToken =
-      localStorage.getItem('accessToken') ||
-      sessionStorage.getItem('accessToken');
-
-    await fetch('http://localhost:3000/api/instruments/sync', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    // 4️⃣ UPDATE AUTH USER (UI PURPOSE)
-    const updatedUser = {
-      ...user,
-      broker_connected: true,
-      broker: 'AngelOne',
-    };
-
-    localStorage.setItem('authUser', JSON.stringify(updatedUser));
-
-    // 5️⃣ REDIRECT → DASHBOARD
-    navigate('/dashboard');
-  } catch (err: any) {
-    setError(err.message || 'Failed to connect AngelOne');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <Card sx={{ p: 3, maxWidth: 500 }}>
