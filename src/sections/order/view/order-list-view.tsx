@@ -20,6 +20,7 @@ import {
   Alert,
 } from "@mui/material";
 import { BROKER_API } from "src/config-global";
+import { useAuthContext } from "src/auth/hooks";
 
 /* ---------------- TYPES ---------------- */
 
@@ -46,12 +47,17 @@ interface ExpiryDateItem {
 /* ---------------- COMPONENT ---------------- */
 
 export default function OptionChainPage() {
+  const { user } = useAuthContext();
+
   const [marketData, setMarketData] = useState<OptionRow[]>([]);
   const [expiryDates, setExpiryDates] = useState<ExpiryDateItem[]>([]);
   const [selectedExpiry, setSelectedExpiry] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [symbol, setSymbol] = useState<"NIFTY" | "BANKNIFTY">("NIFTY");
+
+  // @ts-ignore
+  const clientCode = (user?.role === 'admin' ? user?.panel_client_key : user?.client_key) || "ANBG1133";
 
 
 
@@ -89,8 +95,8 @@ export default function OptionChainPage() {
       // );
       const apiUrl =
         symbol === "NIFTY"
-          ? `${BROKER_API}/api/nifty/option-chain?ltp=25000`
-          : `${BROKER_API}/api/nifty/option-chain?symbol=BANKNIFTY&ltp=52000`;
+          ? `${BROKER_API}/api/nifty/option-chain`
+          : `${BROKER_API}/api/nifty/option-chain?symbol=BANKNIFTY`;
 
       const res = await fetch(apiUrl);
 
@@ -175,7 +181,7 @@ export default function OptionChainPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          clientcode: "ANBG1133",
+          clientcode: clientCode,
           exchange: "NFO",
           tradingsymbol: opt.tradingsymbol,
           side,
@@ -185,15 +191,25 @@ export default function OptionChainPage() {
       });
 
       const json = await res.json();
-      if (!json.ok) throw new Error("Order failed");
+
+      if (!json.ok) {
+        throw new Error(json.error || "Order placement failed at backend");
+      }
+
+      // 🚨 Ensure we have a valid order ID from broker
+      const brokerOrderId = json.resp?.data?.orderid;
+
+      if (!brokerOrderId) {
+        throw new Error(`Order status: ${json.resp?.message || 'Unknown error. No orderid received.'}`);
+      }
 
       // ✅ save order to DB
-      await fetch(`${BROKER_API}/api/orders/save`, {
+      const saveRes = await fetch(`${BROKER_API}/api/orders/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          clientcode: "ANBG1133",
-          orderid: json.resp.data.orderid,
+          clientcode: clientCode,
+          orderid: brokerOrderId,
           tradingsymbol: opt.tradingsymbol,
           exchange: "NFO",
           side,
@@ -202,8 +218,15 @@ export default function OptionChainPage() {
         }),
       });
 
-      alert("Order placed successfully");
+      const saveJson = await saveRes.json();
+      if (!saveJson.ok) {
+        console.error("Save to DB failed:", saveJson);
+        throw new Error("Order was placed at broker but failed to save in Dashboard! Check logs.");
+      }
+
+      alert(`Order placed successfully! ID: ${brokerOrderId}`);
     } catch (err: any) {
+      console.error("Place Order Error:", err);
       alert(err.message || "Order error");
     }
   };
@@ -211,7 +234,7 @@ export default function OptionChainPage() {
   // check status 
   const checkOrderStatus = async (orderid: string) => {
     const res = await fetch(
-      `${BROKER_API}/api/orders/status/ANBG1133/${orderid}`
+      `${BROKER_API}/api/orders/status/${clientCode}/${orderid}`
     );
     const json = await res.json();
     return json.status === "COMPLETE";
