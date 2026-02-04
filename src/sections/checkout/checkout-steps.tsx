@@ -6,6 +6,7 @@ import Stack from '@mui/material/Stack';
 import Stepper, { StepperProps } from '@mui/material/Stepper';
 import StepLabel, { stepLabelClasses } from '@mui/material/StepLabel';
 import MuiStepConnector, { stepConnectorClasses } from '@mui/material/StepConnector';
+import type { StepIconProps } from '@mui/material/StepIcon'; // ✅ Use MUI type
 // components
 import Iconify from 'src/components/iconify';
 
@@ -65,12 +66,8 @@ export default function CheckoutSteps({ steps, activeStep, sx, ...other }: Props
 
 // ----------------------------------------------------------------------
 
-type StepIconProps = {
-  active: boolean;
-  completed: boolean;
-};
-
-function StepIcon({ active, completed }: StepIconProps) {
+// ✅ Use MUI StepIconProps and make values safe with defaults
+function StepIcon({ active = false, completed = false }: StepIconProps) {
   return (
     <Stack
       alignItems="center"

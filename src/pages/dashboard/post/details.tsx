@@ -7,17 +7,17 @@ import { PostDetailsView } from 'src/sections/blog/view';
 // ----------------------------------------------------------------------
 
 export default function PostDetailsPage() {
-  const params = useParams();
+  const { title } = useParams();
 
-  const { title } = params;
+  if (!title) return null; // or a loader / redirect
 
   return (
     <>
       <Helmet>
-        <title> Dashboard: Post Details</title>
+        <title>Dashboard: Post Details</title>
       </Helmet>
 
-      <PostDetailsView title={`${title}`} />
+      <PostDetailsView title={title} />
     </>
   );
 }

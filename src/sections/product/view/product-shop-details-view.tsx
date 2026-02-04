@@ -55,9 +55,7 @@ type Props = {
 
 export default function ProductShopDetailsView({ id }: Props) {
   const settings = useSettingsContext();
-
   const checkout = useCheckoutContext();
-
   const [currentTab, setCurrentTab] = useState('description');
 
   const { product, productLoading, productError } = useGetProduct(id);
@@ -71,7 +69,7 @@ export default function ProductShopDetailsView({ id }: Props) {
   const renderError = (
     <EmptyContent
       filled
-      title={`${productError?.message}`}
+      title={productError?.message}
       action={
         <Button
           component={RouterLink}
@@ -91,11 +89,8 @@ export default function ProductShopDetailsView({ id }: Props) {
       <CustomBreadcrumbs
         links={[
           { name: 'Home', href: '/' },
-          {
-            name: 'Shop',
-            href: paths.product.root,
-          },
-          { name: product?.name },
+          { name: 'Shop', href: paths.product.root },
+          { name: product.name },
         ]}
         sx={{ mb: 5 }}
       />
@@ -127,11 +122,9 @@ export default function ProductShopDetailsView({ id }: Props) {
         {SUMMARY.map((item) => (
           <Box key={item.title} sx={{ textAlign: 'center', px: 5 }}>
             <Iconify icon={item.icon} width={32} sx={{ color: 'primary.main' }} />
-
             <Typography variant="subtitle1" sx={{ mb: 1, mt: 2 }}>
               {item.title}
             </Typography>
-
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               {item.description}
             </Typography>
@@ -149,21 +142,15 @@ export default function ProductShopDetailsView({ id }: Props) {
           }}
         >
           {[
-            {
-              value: 'description',
-              label: 'Description',
-            },
-            {
-              value: 'reviews',
-              label: `Reviews (${product.reviews.length})`,
-            },
+            { value: 'description', label: 'Description' },
+            { value: 'reviews', label: `Reviews (${product.reviews.length})` },
           ].map((tab) => (
             <Tab key={tab.value} value={tab.value} label={tab.label} />
           ))}
         </Tabs>
 
         {currentTab === 'description' && (
-          <ProductDetailsDescription description={product?.description} />
+          <ProductDetailsDescription description={product.description} />
         )}
 
         {currentTab === 'reviews' && (
@@ -179,19 +166,11 @@ export default function ProductShopDetailsView({ id }: Props) {
   );
 
   return (
-    <Container
-      maxWidth={settings.themeStretch ? false : 'lg'}
-      sx={{
-        mt: 5,
-        mb: 15,
-      }}
-    >
+    <Container maxWidth={settings.themeStretch ? false : 'lg'} sx={{ mt: 5, mb: 15 }}>
       <CartIcon totalItems={checkout.totalItems} />
 
       {productLoading && renderSkeleton}
-
       {productError && renderError}
-
       {product && renderProduct}
     </Container>
   );

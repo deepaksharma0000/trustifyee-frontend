@@ -54,6 +54,7 @@
     "@mui/system": "^5.14.0",
     "@mui/x-data-grid": "^6.10.0",
     "@mui/x-date-pickers": "^6.10.0",
+    "@mui/x-tree-view": "^6.17.0",
     "@react-pdf/renderer": "^3.1.12",
     "apexcharts": "^3.41.0",
     "autosuggest-highlight": "^3.3.4",

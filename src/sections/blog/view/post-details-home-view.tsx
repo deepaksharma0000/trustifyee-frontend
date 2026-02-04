@@ -36,7 +36,6 @@ type Props = {
 
 export default function PostDetailsHomeView({ title }: Props) {
   const { post, postError, postLoading } = useGetPost(title);
-
   const { latestPosts, latestPostsLoading } = useGetLatestPosts(title);
 
   const renderSkeleton = <PostDetailsSkeleton />;
@@ -45,7 +44,7 @@ export default function PostDetailsHomeView({ title }: Props) {
     <Container sx={{ my: 10 }}>
       <EmptyContent
         filled
-        title={`${postError?.message}`}
+        title={postError?.message}
         action={
           <Button
             component={RouterLink}
@@ -80,17 +79,9 @@ export default function PostDetailsHomeView({ title }: Props) {
       >
         <CustomBreadcrumbs
           links={[
-            {
-              name: 'Home',
-              href: '/',
-            },
-            {
-              name: 'Blog',
-              href: paths.post.root,
-            },
-            {
-              name: post?.title,
-            },
+            { name: 'Home', href: '/' },
+            { name: 'Blog', href: paths.post.root },
+            { name: post.title },
           ]}
           sx={{ maxWidth: 720, mx: 'auto' }}
         />
@@ -102,7 +93,7 @@ export default function PostDetailsHomeView({ title }: Props) {
             {post.description}
           </Typography>
 
-          <Markdown children={post.content} />
+          <Markdown>{post.content}</Markdown>
 
           <Stack
             spacing={3}
@@ -143,7 +134,6 @@ export default function PostDetailsHomeView({ title }: Props) {
 
           <Stack direction="row" sx={{ mb: 3, mt: 5 }}>
             <Typography variant="h4">Comments</Typography>
-
             <Typography variant="subtitle2" sx={{ color: 'text.disabled' }}>
               ({post.comments.length})
             </Typography>
@@ -176,12 +166,11 @@ export default function PostDetailsHomeView({ title }: Props) {
   return (
     <>
       {postLoading && renderSkeleton}
-
       {postError && renderError}
-
       {post && renderPost}
-
-      <Container sx={{ pb: 15 }}>{!!latestPosts.length && renderLatestPosts}</Container>
+      <Container sx={{ pb: 15 }}>
+        {!!latestPosts.length && renderLatestPosts}
+      </Container>
     </>
   );
 }

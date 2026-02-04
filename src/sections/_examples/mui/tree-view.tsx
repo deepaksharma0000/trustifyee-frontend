@@ -1,15 +1,18 @@
-// @mui
-import TreeView from '@mui/lab/TreeView';
-import TreeItem, { TreeItemProps, treeItemClasses } from '@mui/lab/TreeItem';
+// MUI Tree View (v6 — CRA compatible)
+import { TreeView } from '@mui/x-tree-view/TreeView';
+import { TreeItem, treeItemClasses } from '@mui/x-tree-view/TreeItem';
+import type { TreeItemProps } from '@mui/x-tree-view/TreeItem';
+
+// MUI Core
 import { alpha, styled } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
+
 // routes
 import { paths } from 'src/routes/paths';
 // components
 import Iconify from 'src/components/iconify';
 import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
-//
 import ComponentBlock from '../component-block';
 
 // ----------------------------------------------------------------------
@@ -48,13 +51,10 @@ export default function TreeViews() {
           <CustomBreadcrumbs
             heading="Tree View"
             links={[
-              {
-                name: 'Components',
-                href: paths.components,
-              },
+              { name: 'Components', href: paths.components },
               { name: 'Tree View' },
             ]}
-            moreLink={['https://mui.com/components/tree-view']}
+            moreLink={['https://mui.com/x/react-tree-view/']}
           />
         </Container>
       </Box>
@@ -63,10 +63,7 @@ export default function TreeViews() {
         <Box
           gap={3}
           display="grid"
-          gridTemplateColumns={{
-            xs: 'repeat(1, 1fr)',
-            md: 'repeat(3, 1fr)',
-          }}
+          gridTemplateColumns={{ xs: 'repeat(1, 1fr)', md: 'repeat(3, 1fr)' }}
         >
           <ComponentBlock title="Basic">
             <StyledTreeView

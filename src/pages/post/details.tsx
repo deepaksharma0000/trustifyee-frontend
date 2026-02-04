@@ -7,17 +7,17 @@ import { PostDetailsHomeView } from 'src/sections/blog/view';
 // ----------------------------------------------------------------------
 
 export default function PostDetailsHomePage() {
-  const params = useParams();
+  const { title } = useParams();
 
-  const { title } = params;
+  if (!title) return null; // or redirect
 
   return (
     <>
       <Helmet>
-        <title> Post: Details</title>
+        <title>Post: Details</title>
       </Helmet>
 
-      <PostDetailsHomeView title={`${title}`} />
+      <PostDetailsHomeView title={title} />
     </>
   );
 }

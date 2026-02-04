@@ -8,7 +8,7 @@ import Button from '@mui/material/Button';
 import Stepper from '@mui/material/Stepper';
 import StepLabel from '@mui/material/StepLabel';
 import Typography from '@mui/material/Typography';
-import { StepIconProps } from '@mui/material/StepIcon';
+import type { StepIconProps } from '@mui/material/StepIcon';
 import StepConnector, { stepConnectorClasses } from '@mui/material/StepConnector';
 // theme
 import { bgGradient } from 'src/theme/css';
@@ -25,15 +25,11 @@ const QontoConnector = styled(StepConnector)(({ theme }) => ({
     left: 'calc(-50% + 16px)',
     right: 'calc(50% + 16px)',
   },
-  [`&.${stepConnectorClasses.active}`]: {
-    [`& .${stepConnectorClasses.line}`]: {
-      borderColor: theme.palette.success.main,
-    },
+  [`&.${stepConnectorClasses.active} .${stepConnectorClasses.line}`]: {
+    borderColor: theme.palette.success.main,
   },
-  [`&.${stepConnectorClasses.completed}`]: {
-    [`& .${stepConnectorClasses.line}`]: {
-      borderColor: theme.palette.success.main,
-    },
+  [`&.${stepConnectorClasses.completed} .${stepConnectorClasses.line}`]: {
+    borderColor: theme.palette.success.main,
   },
   [`& .${stepConnectorClasses.line}`]: {
     borderRadius: 1,
@@ -42,15 +38,13 @@ const QontoConnector = styled(StepConnector)(({ theme }) => ({
   },
 }));
 
-const QontoStepIconRoot = styled('div')<{ ownerState: { active?: boolean } }>(
+const QontoStepIconRoot = styled('div')<{ ownerState: { active: boolean } }>(
   ({ theme, ownerState }) => ({
     height: 22,
     display: 'flex',
     alignItems: 'center',
     color: theme.palette.text.disabled,
-    ...(ownerState.active && {
-      color: theme.palette.success.main,
-    }),
+    ...(ownerState.active && { color: theme.palette.success.main }),
     '& .QontoStepIcon-completedIcon': {
       zIndex: 1,
       fontSize: 18,
@@ -65,18 +59,11 @@ const QontoStepIconRoot = styled('div')<{ ownerState: { active?: boolean } }>(
   })
 );
 
-function QontoStepIcon(props: StepIconProps) {
-  const { active, completed, className } = props;
-
+function QontoStepIcon({ active = false, completed = false, className }: StepIconProps) {
   return (
-    <QontoStepIconRoot ownerState={{ active }} className={className}>
+    <QontoStepIconRoot ownerState={{ active: !!active }} className={className}>
       {completed ? (
-        <Iconify
-          icon="eva:checkmark-fill"
-          className="QontoStepIcon-completedIcon"
-          width={24}
-          height={24}
-        />
+        <Iconify icon="eva:checkmark-fill" className="QontoStepIcon-completedIcon" width={24} height={24} />
       ) : (
         <div className="QontoStepIcon-circle" />
       )}
@@ -84,25 +71,15 @@ function QontoStepIcon(props: StepIconProps) {
   );
 }
 
+// ----------------------------------------------------------------------
+
 const ColorlibConnector = styled(StepConnector)(({ theme }) => ({
-  [`&.${stepConnectorClasses.alternativeLabel}`]: {
-    top: 22,
+  [`&.${stepConnectorClasses.alternativeLabel}`]: { top: 22 },
+  [`&.${stepConnectorClasses.active} .${stepConnectorClasses.line}`]: {
+    ...bgGradient({ startColor: theme.palette.error.light, endColor: theme.palette.error.main }),
   },
-  [`&.${stepConnectorClasses.active}`]: {
-    [`& .${stepConnectorClasses.line}`]: {
-      ...bgGradient({
-        startColor: theme.palette.error.light,
-        endColor: theme.palette.error.main,
-      }),
-    },
-  },
-  [`&.${stepConnectorClasses.completed}`]: {
-    [`& .${stepConnectorClasses.line}`]: {
-      ...bgGradient({
-        startColor: theme.palette.error.light,
-        endColor: theme.palette.error.main,
-      }),
-    },
+  [`&.${stepConnectorClasses.completed} .${stepConnectorClasses.line}`]: {
+    ...bgGradient({ startColor: theme.palette.error.light, endColor: theme.palette.error.main }),
   },
   [`& .${stepConnectorClasses.line}`]: {
     height: 3,
@@ -113,7 +90,7 @@ const ColorlibConnector = styled(StepConnector)(({ theme }) => ({
 }));
 
 const ColorlibStepIconRoot = styled('div')<{
-  ownerState: { completed?: boolean; active?: boolean };
+  ownerState: { completed: boolean; active: boolean };
 }>(({ theme, ownerState }) => ({
   zIndex: 1,
   width: 50,
@@ -123,40 +100,33 @@ const ColorlibStepIconRoot = styled('div')<{
   alignItems: 'center',
   justifyContent: 'center',
   color: theme.palette.text.disabled,
-  backgroundColor:
-    theme.palette.mode === 'light' ? theme.palette.grey[300] : theme.palette.grey[700],
+  backgroundColor: theme.palette.mode === 'light' ? theme.palette.grey[300] : theme.palette.grey[700],
   ...(ownerState.active && {
     boxShadow: '0 4px 10px 0 rgba(0,0,0,.25)',
     color: theme.palette.common.white,
-    ...bgGradient({
-      startColor: theme.palette.error.light,
-      endColor: theme.palette.error.main,
-    }),
+    ...bgGradient({ startColor: theme.palette.error.light, endColor: theme.palette.error.main }),
   }),
   ...(ownerState.completed && {
     color: theme.palette.common.white,
-    ...bgGradient({
-      startColor: theme.palette.error.light,
-      endColor: theme.palette.error.main,
-    }),
+    ...bgGradient({ startColor: theme.palette.error.light, endColor: theme.palette.error.main }),
   }),
 }));
 
-function ColorlibStepIcon(props: StepIconProps) {
-  const { active, completed, className, icon } = props;
-
-  const icons: { [index: string]: React.ReactElement } = {
+function ColorlibStepIcon({ active = false, completed = false, className, icon }: StepIconProps) {
+  const icons: { [key: string]: React.ReactElement } = {
     1: <Iconify icon="eva:settings-2-outline" width={24} />,
     2: <Iconify icon="eva:person-add-outline" width={24} />,
     3: <Iconify icon="eva:monitor-outline" width={24} />,
   };
 
   return (
-    <ColorlibStepIconRoot ownerState={{ completed, active }} className={className}>
+    <ColorlibStepIconRoot ownerState={{ completed: !!completed, active: !!active }} className={className}>
       {icons[String(icon)]}
     </ColorlibStepIconRoot>
   );
 }
+
+// ----------------------------------------------------------------------
 
 function getStepContent(step: number) {
   switch (step) {
@@ -173,18 +143,6 @@ function getStepContent(step: number) {
 
 export default function CustomizedSteppers() {
   const [activeStep, setActiveStep] = useState(0);
-
-  const handleNext = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep + 1);
-  };
-
-  const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
-  };
-
-  const handleReset = () => {
-    setActiveStep(0);
-  };
 
   return (
     <>
@@ -206,46 +164,18 @@ export default function CustomizedSteppers() {
         ))}
       </Stepper>
 
-      {activeStep === STEPS.length ? (
-        <>
-          <Paper
-            sx={{
-              p: 3,
-              my: 3,
-              minHeight: 120,
-              bgcolor: (theme) => alpha(theme.palette.grey[500], 0.12),
-            }}
-          >
-            <Typography sx={{ my: 1 }}>All steps completed - you&apos;re finished</Typography>
-          </Paper>
+      <Paper sx={{ p: 3, my: 3, minHeight: 120, bgcolor: (t) => alpha(t.palette.grey[500], 0.12) }}>
+        <Typography sx={{ my: 1 }}>{getStepContent(activeStep)}</Typography>
+      </Paper>
 
-          <Button color="inherit" onClick={handleReset} sx={{ mr: 1 }}>
-            Reset
-          </Button>
-        </>
-      ) : (
-        <>
-          <Paper
-            sx={{
-              p: 3,
-              my: 3,
-              minHeight: 120,
-              bgcolor: (theme) => alpha(theme.palette.grey[500], 0.12),
-            }}
-          >
-            <Typography sx={{ my: 1 }}>{getStepContent(activeStep)}</Typography>
-          </Paper>
-
-          <Box sx={{ textAlign: 'right' }}>
-            <Button disabled={activeStep === 0} onClick={handleBack} sx={{ mr: 1 }}>
-              Back
-            </Button>
-            <Button variant="contained" onClick={handleNext} sx={{ mr: 1 }}>
-              {activeStep === STEPS.length - 1 ? 'Finish' : 'Next'}
-            </Button>
-          </Box>
-        </>
-      )}
+      <Box sx={{ textAlign: 'right' }}>
+        <Button disabled={activeStep === 0} onClick={() => setActiveStep((s) => s - 1)} sx={{ mr: 1 }}>
+          Back
+        </Button>
+        <Button variant="contained" onClick={() => setActiveStep((s) => s + 1)} sx={{ mr: 1 }}>
+          {activeStep === STEPS.length - 1 ? 'Finish' : 'Next'}
+        </Button>
+      </Box>
     </>
   );
 }

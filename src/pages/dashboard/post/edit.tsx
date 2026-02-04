@@ -7,17 +7,17 @@ import { PostEditView } from 'src/sections/blog/view';
 // ----------------------------------------------------------------------
 
 export default function PostEditPage() {
-  const params = useParams();
+  const { title } = useParams();
 
-  const { title } = params;
+  if (!title) return null; // or redirect / loader
 
   return (
     <>
       <Helmet>
-        <title> Dashboard: Post Edit</title>
+        <title>Dashboard: Post Edit</title>
       </Helmet>
 
-      <PostEditView title={`${title}`} />
+      <PostEditView title={title} />
     </>
   );
 }

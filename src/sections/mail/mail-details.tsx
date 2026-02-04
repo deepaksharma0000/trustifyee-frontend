@@ -32,7 +32,7 @@ import { IMail, IMailLabel } from 'src/types/mail';
 // ----------------------------------------------------------------------
 
 type Props = {
-  mail: IMail;
+  mail?: IMail;
   renderLabel: (id: string) => IMailLabel;
 };
 
@@ -53,12 +53,14 @@ export default function MailDetails({ mail, renderLabel }: Props) {
     );
   }
 
+  // ✅ Narrowed non-null alias for full type safety
+  const m = mail;
+
   const renderHead = (
     <Stack direction="row" alignItems="center" flexShrink={0} sx={{ height: 56, pl: 2, pr: 1 }}>
       <Stack direction="row" spacing={1} flexGrow={1}>
-        {mail.labelIds.map((labelId) => {
+        {m.labelIds.map((labelId) => {
           const label = renderLabel(labelId);
-
           return label ? (
             <Label
               key={label.id}
@@ -81,34 +83,23 @@ export default function MailDetails({ mail, renderLabel }: Props) {
           color="warning"
           icon={<Iconify icon="eva:star-outline" />}
           checkedIcon={<Iconify icon="eva:star-fill" />}
-          checked={mail.isStarred}
+          checked={m.isStarred}
         />
-
         <Checkbox
           color="warning"
           icon={<Iconify icon="material-symbols:label-important-rounded" />}
           checkedIcon={<Iconify icon="material-symbols:label-important-rounded" />}
-          checked={mail.isImportant}
+          checked={m.isImportant}
         />
-
         <Tooltip title="Archive">
-          <IconButton>
-            <Iconify icon="solar:archive-down-minimlistic-bold" />
-          </IconButton>
+          <IconButton><Iconify icon="solar:archive-down-minimlistic-bold" /></IconButton>
         </Tooltip>
-
         <Tooltip title="Mark Unread">
-          <IconButton>
-            <Iconify icon="fluent:mail-unread-20-filled" />
-          </IconButton>
+          <IconButton><Iconify icon="fluent:mail-unread-20-filled" /></IconButton>
         </Tooltip>
-
         <Tooltip title="Trash">
-          <IconButton>
-            <Iconify icon="solar:trash-bin-trash-bold" />
-          </IconButton>
+          <IconButton><Iconify icon="solar:trash-bin-trash-bold" /></IconButton>
         </Tooltip>
-
         <IconButton>
           <Iconify icon="eva:more-vertical-fill" />
         </IconButton>
@@ -119,100 +110,67 @@ export default function MailDetails({ mail, renderLabel }: Props) {
   const renderSubject = (
     <Stack spacing={2} direction="row" flexShrink={0} sx={{ p: 2 }}>
       <TextMaxLine variant="subtitle2" sx={{ flexGrow: 1 }}>
-        Re: {mail.subject}
+        Re: {m.subject}
       </TextMaxLine>
 
       <Stack spacing={0.5}>
         <Stack direction="row" alignItems="center" justifyContent="flex-end">
-          <IconButton size="small">
-            <Iconify width={18} icon="solar:reply-bold" />
-          </IconButton>
-
-          <IconButton size="small">
-            <Iconify width={18} icon="solar:multiple-forward-left-broken" />
-          </IconButton>
-
-          <IconButton size="small">
-            <Iconify width={18} icon="solar:forward-bold" />
-          </IconButton>
+          <IconButton size="small"><Iconify width={18} icon="solar:reply-bold" /></IconButton>
+          <IconButton size="small"><Iconify width={18} icon="solar:multiple-forward-left-broken" /></IconButton>
+          <IconButton size="small"><Iconify width={18} icon="solar:forward-bold" /></IconButton>
         </Stack>
 
         <Typography variant="caption" noWrap sx={{ color: 'text.disabled' }}>
-          {fDateTime(mail.createdAt)}
+          {fDateTime(m.createdAt)}
         </Typography>
       </Stack>
     </Stack>
   );
 
-  const renderSender = (
-    <Stack
-      flexShrink={0}
-      direction="row"
-      alignItems="center"
-      sx={{
-        p: (theme) => theme.spacing(2, 2, 1, 2),
-      }}
-    >
-      <Avatar alt={mail.from.name} src={`${mail.from.avatarUrl}`} sx={{ mr: 2 }}>
-        {mail.from.name.charAt(0).toUpperCase()}
-      </Avatar>
+// inside renderSender
 
-      <ListItemText
-        primary={
-          <>
-            {mail.from.name}
-            <Box component="span" sx={{ typography: 'body2', color: 'text.disabled' }}>
-              {` <${mail.from.email}>`}
-            </Box>
-          </>
-        }
-        secondary={
-          <>
-            {`To: `}
-            {mail.to.map((person) => (
-              <Link key={person.email} sx={{ color: 'text.secondary' }}>
-                {`${person.email}, `}
-              </Link>
-            ))}
-          </>
-        }
-        secondaryTypographyProps={{
-          mt: 0.5,
-          noWrap: true,
-          component: 'span',
-          typography: 'caption',
-        }}
-      />
-    </Stack>
-  );
+const renderSender = (
+  <Stack flexShrink={0} direction="row" alignItems="center" sx={{ p: (t) => t.spacing(2, 2, 1, 2) }}>
+    <Avatar
+      alt={m.from.name}
+      src={m.from.avatarUrl || undefined}   // ✅ FIX HERE
+      sx={{ mr: 2 }}
+    >
+      {m.from.name.charAt(0).toUpperCase()}
+    </Avatar>
+
+    <ListItemText
+      primary={
+        <>
+          {m.from.name}
+          <Box component="span" sx={{ typography: 'body2', color: 'text.disabled' }}>
+            {' '} &lt;{m.from.email}&gt;
+          </Box>
+        </>
+      }
+      secondary={
+        <>
+          To:{' '}
+          {m.to.map((person) => (
+            <Link key={person.email} sx={{ color: 'text.secondary' }}>
+              {person.email},{' '}
+            </Link>
+          ))}
+        </>
+      }
+      secondaryTypographyProps={{ mt: 0.5, noWrap: true, component: 'span', typography: 'caption' }}
+    />
+  </Stack>
+);
+
 
   const renderAttachments = (
-    <Stack
-      spacing={1}
-      sx={{
-        p: 1,
-        borderRadius: 1,
-        bgcolor: 'background.neutral',
-      }}
-    >
+    <Stack spacing={1} sx={{ p: 1, borderRadius: 1, bgcolor: 'background.neutral' }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between">
-        <ButtonBase
-          onClick={showAttachments.onToggle}
-          sx={{
-            color: 'text.secondary',
-            typography: 'caption',
-            borderRadius: 0.5,
-          }}
-        >
+        <ButtonBase onClick={showAttachments.onToggle} sx={{ color: 'text.secondary', typography: 'caption', borderRadius: 0.5 }}>
           <Iconify icon="eva:attach-2-fill" sx={{ mr: 0.5 }} />
-          {mail.attachments.length} attachments
-          <Iconify
-            icon={
-              showAttachments.value ? 'eva:arrow-ios-upward-fill' : 'eva:arrow-ios-downward-fill'
-            }
-            width={16}
-            sx={{ ml: 0.5 }}
-          />
+          {m.attachments.length} attachments
+          <Iconify icon={showAttachments.value ? 'eva:arrow-ios-upward-fill' : 'eva:arrow-ios-downward-fill'} width={16} sx={{ ml: 0.5 }} />
         </ButtonBase>
 
         <Button startIcon={<Iconify icon="eva:cloud-download-fill" />}>Download</Button>
@@ -220,28 +178,9 @@ export default function MailDetails({ mail, renderLabel }: Props) {
 
       <Collapse in={showAttachments.value} unmountOnExit timeout="auto">
         <Stack direction="row" flexWrap="wrap" spacing={1}>
-          {mail.attachments.map((attachment) => (
-            <Stack
-              key={attachment.id}
-              alignItems="center"
-              justifyContent="center"
-              sx={{
-                width: 40,
-                height: 40,
-                flexShrink: 0,
-                borderRadius: 1,
-                overflow: 'hidden',
-                position: 'relative',
-                backgroundColor: 'background.neutral',
-              }}
-            >
-              <FileThumbnail
-                tooltip
-                imageView
-                file={attachment.preview}
-                onDownload={() => console.info('DOWNLOAD')}
-                sx={{ width: 24, height: 24 }}
-              />
+          {m.attachments.map((attachment) => (
+            <Stack key={attachment.id} alignItems="center" justifyContent="center" sx={{ width: 40, height: 40, flexShrink: 0, borderRadius: 1, overflow: 'hidden', position: 'relative', backgroundColor: 'background.neutral' }}>
+              <FileThumbnail tooltip imageView file={attachment.preview} onDownload={() => console.info('DOWNLOAD')} sx={{ width: 24, height: 24 }} />
             </Stack>
           ))}
         </Stack>
@@ -252,44 +191,22 @@ export default function MailDetails({ mail, renderLabel }: Props) {
   const renderContent = (
     <Box sx={{ py: 3, overflow: 'hidden', flexGrow: 1 }}>
       <Scrollbar>
-        <Markdown
-          children={mail.message}
-          sx={{
-            px: 2,
-            '& p': {
-              typography: 'body2',
-            },
-          }}
-        />
+        <Markdown sx={{ px: 2, '& p': { typography: 'body2' } }}>
+          {m.message}
+        </Markdown>
       </Scrollbar>
     </Box>
   );
 
   const renderEditor = (
-    <Stack
-      spacing={2}
-      sx={{
-        p: (theme) => theme.spacing(0, 2, 2, 2),
-      }}
-    >
+    <Stack spacing={2} sx={{ p: (t) => t.spacing(0, 2, 2, 2) }}>
       <Editor simple id="reply-mail" />
-
       <Stack direction="row" alignItems="center">
         <Stack direction="row" alignItems="center" flexGrow={1}>
-          <IconButton>
-            <Iconify icon="solar:gallery-add-bold" />
-          </IconButton>
-
-          <IconButton>
-            <Iconify icon="eva:attach-2-fill" />
-          </IconButton>
+          <IconButton><Iconify icon="solar:gallery-add-bold" /></IconButton>
+          <IconButton><Iconify icon="eva:attach-2-fill" /></IconButton>
         </Stack>
-
-        <Button
-          variant="contained"
-          color="primary"
-          endIcon={<Iconify icon="iconamoon:send-fill" />}
-        >
+        <Button variant="contained" color="primary" endIcon={<Iconify icon="iconamoon:send-fill" />}>
           Send
         </Button>
       </Stack>
@@ -297,29 +214,14 @@ export default function MailDetails({ mail, renderLabel }: Props) {
   );
 
   return (
-    <Stack
-      flexGrow={1}
-      sx={{
-        width: 1,
-        minWidth: 0,
-        borderRadius: 1.5,
-        bgcolor: 'background.default',
-      }}
-    >
+    <Stack flexGrow={1} sx={{ width: 1, minWidth: 0, borderRadius: 1.5, bgcolor: 'background.default' }}>
       {renderHead}
-
       <Divider sx={{ borderStyle: 'dashed' }} />
-
       {renderSubject}
-
       <Divider sx={{ borderStyle: 'dashed' }} />
-
       {renderSender}
-
-      {!!mail.attachments.length && <Stack sx={{ px: 2 }}> {renderAttachments} </Stack>}
-
+      {!!m.attachments.length && <Stack sx={{ px: 2 }}>{renderAttachments}</Stack>}
       {renderContent}
-
       {renderEditor}
     </Stack>
   );

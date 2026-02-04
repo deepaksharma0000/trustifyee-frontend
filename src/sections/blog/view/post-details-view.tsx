@@ -47,7 +47,7 @@ export default function PostDetailsView({ title }: Props) {
 
   useEffect(() => {
     if (post) {
-      setPublish(post?.publish);
+      setPublish(post.publish);
     }
   }, [post]);
 
@@ -56,7 +56,7 @@ export default function PostDetailsView({ title }: Props) {
   const renderError = (
     <EmptyContent
       filled
-      title={`${postError?.message}`}
+      title={postError?.message}
       action={
         <Button
           component={RouterLink}
@@ -67,9 +67,7 @@ export default function PostDetailsView({ title }: Props) {
           Back to List
         </Button>
       }
-      sx={{
-        py: 20,
-      }}
+      sx={{ py: 20 }}
     />
   );
 
@@ -77,8 +75,8 @@ export default function PostDetailsView({ title }: Props) {
     <>
       <PostDetailsToolbar
         backLink={paths.dashboard.post.root}
-        editLink={paths.dashboard.post.edit(`${post?.title}`)}
-        liveLink={paths.post.details(`${post?.title}`)}
+        editLink={paths.dashboard.post.edit(post.title)}
+        liveLink={paths.post.details(post.title)}
         publish={publish || ''}
         onChangePublish={handleChangePublish}
         publishOptions={POST_PUBLISH_OPTIONS}
@@ -97,7 +95,7 @@ export default function PostDetailsView({ title }: Props) {
           {post.description}
         </Typography>
 
-        <Markdown children={post.content} />
+        <Markdown>{post.content}</Markdown>
 
         <Stack
           spacing={3}
@@ -145,8 +143,7 @@ export default function PostDetailsView({ title }: Props) {
 
         <Stack direction="row" sx={{ mb: 3, mt: 5 }}>
           <Typography variant="h4">Comments</Typography>
-
-          <Typography variant="subtitle2" sx={{ color: 'text.disabled' }}>
+          <Typography variant="subtitle2" sx={{ color: 'text.disabled', ml: 1 }}>
             ({post.comments.length})
           </Typography>
         </Stack>
@@ -163,9 +160,7 @@ export default function PostDetailsView({ title }: Props) {
   return (
     <Container maxWidth={false}>
       {postLoading && renderSkeleton}
-
       {postError && renderError}
-
       {post && renderPost}
     </Container>
   );
