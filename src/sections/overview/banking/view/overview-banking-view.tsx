@@ -118,6 +118,7 @@ export default function AllSignalsView() {
   const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || '';
   const accessToken =
     localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+  const authToken = localStorage.getItem('authToken');
 
   const handleEnable = () => {
     const isBrokerConnected = localStorage.getItem('angel_jwt') !== null;
@@ -201,8 +202,33 @@ export default function AllSignalsView() {
         sx={{ mb: 3 }}
       >
         <Typography variant="h4">All Signals</Typography>
-        <Button variant="contained" color="primary">
-          Export Excel
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => {
+            const url = `${API_BASE}/api/algo/trades/export`;
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'algo-trades.csv';
+            link.target = '_blank';
+            if (authToken) {
+              fetch(url, {
+                headers: { Authorization: `Bearer ${authToken}` },
+              })
+                .then((r) => r.blob())
+                .then((blob) => {
+                  const objectUrl = window.URL.createObjectURL(blob);
+                  link.href = objectUrl;
+                  link.click();
+                  window.URL.revokeObjectURL(objectUrl);
+                })
+                .catch(() => {});
+            } else {
+              link.click();
+            }
+          }}
+        >
+          Export Trades CSV
         </Button>
       </Stack>
 

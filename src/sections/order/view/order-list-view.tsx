@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Container,
   Card,
@@ -65,12 +65,24 @@ export default function OptionChainPage() {
   const [summary, setSummary] = useState<any>(null);
   const [selectedOption, setSelectedOption] = useState<OptionItem | null>(null);
   const [selectedSide, setSelectedSide] = useState<"CE" | "PE" | null>(null);
+  const [quoteMap, setQuoteMap] = useState<
+    Record<
+      string,
+      { ltp: number; oi: number | null; dir?: "up" | "down" }
+    >
+  >({});
+  const wsRef = useRef<WebSocket | null>(null);
+  const blinkTimers = useRef<Record<string, number>>({});
 
   const authUserRaw = localStorage.getItem("authUser");
   const authUser = authUserRaw ? JSON.parse(authUserRaw) : null;
   const isAdmin = authUser?.role === "admin";
   const token = localStorage.getItem("authToken");
   const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || "";
+  const WS_URL = (API_BASE
+    ? API_BASE.replace(/^http/, "ws")
+    : window.location.origin.replace(/^http/, "ws")
+  ) + "/ws/market";
  
   
 
@@ -187,6 +199,55 @@ export default function OptionChainPage() {
   }, [fetchOptionChainFromLTP]);
 
   useEffect(() => {
+    const ws = new WebSocket(WS_URL);
+    wsRef.current = ws;
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type !== "tick" || !Array.isArray(msg.items)) return;
+
+        setQuoteMap((prev) => {
+          const next = { ...prev };
+          for (const item of msg.items) {
+            const token = item.symboltoken;
+            const ltp = Number(item.ltp || 0);
+            const oi =
+              item.oi === null || item.oi === undefined ? null : Number(item.oi);
+            const prevLtp = prev[token]?.ltp;
+            const dir =
+              prevLtp !== undefined && ltp !== prevLtp
+                ? ltp > prevLtp
+                  ? "up"
+                  : "down"
+                : undefined;
+            next[token] = { ltp, oi, dir };
+
+            if (dir) {
+              if (blinkTimers.current[token]) {
+                window.clearTimeout(blinkTimers.current[token]);
+              }
+              blinkTimers.current[token] = window.setTimeout(() => {
+                setQuoteMap((p) => {
+                  if (!p[token]) return p;
+                  return { ...p, [token]: { ...p[token], dir: undefined } };
+                });
+              }, 350);
+            }
+          }
+          return next;
+        });
+      } catch {
+        // ignore parse errors
+      }
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [WS_URL]);
+
+  useEffect(() => {
     const fetchStatus = async () => {
       if (!isAdmin) return;
       const res = await fetch(`${API_BASE}/api/algo/status`, {
@@ -235,6 +296,39 @@ export default function OptionChainPage() {
     };
     fetchTrades();
   }, [API_BASE, isAdmin, token, algoStatus]);
+
+  useEffect(() => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+    const items: { exchange: string; tradingsymbol: string; symboltoken: string }[] = [];
+    marketData.forEach((row) => {
+      if (row.CE) {
+        items.push({
+          exchange: "NFO",
+          tradingsymbol: row.CE.tradingsymbol,
+          symboltoken: row.CE.symboltoken,
+        });
+      }
+      if (row.PE) {
+        items.push({
+          exchange: "NFO",
+          tradingsymbol: row.PE.tradingsymbol,
+          symboltoken: row.PE.symboltoken,
+        });
+      }
+    });
+
+    if (items.length) {
+      ws.send(
+        JSON.stringify({
+          type: "subscribe",
+          intervalMs: 2000,
+          items,
+        })
+      );
+    }
+  }, [marketData]);
 
   const isBrokerConnected =
     localStorage.getItem("angel_jwt") !== null;
@@ -426,6 +520,31 @@ if (loading) {
                     <Typography variant="body2">
                       {row.CE.tradingsymbol}
                     </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: "block",
+                        color:
+                          quoteMap[row.CE.symboltoken]?.dir === "up"
+                            ? "success.main"
+                            : quoteMap[row.CE.symboltoken]?.dir === "down"
+                            ? "error.main"
+                            : "text.secondary",
+                        backgroundColor:
+                          quoteMap[row.CE.symboltoken]?.dir === "up"
+                            ? "rgba(76, 175, 80, 0.12)"
+                            : quoteMap[row.CE.symboltoken]?.dir === "down"
+                            ? "rgba(244, 67, 54, 0.12)"
+                            : "transparent",
+                        borderRadius: 1,
+                        px: 0.5,
+                        py: 0.25,
+                        mt: 0.5,
+                      }}
+                    >
+                      LTP: {quoteMap[row.CE.symboltoken]?.ltp ?? "-"} | OI:{" "}
+                      {quoteMap[row.CE.symboltoken]?.oi ?? "-"}
+                    </Typography>
                     <Button
                       size="small"
                       variant="contained"
@@ -446,6 +565,31 @@ if (loading) {
                   <>
                     <Typography variant="body2">
                       {row.PE.tradingsymbol}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: "block",
+                        color:
+                          quoteMap[row.PE.symboltoken]?.dir === "up"
+                            ? "success.main"
+                            : quoteMap[row.PE.symboltoken]?.dir === "down"
+                            ? "error.main"
+                            : "text.secondary",
+                        backgroundColor:
+                          quoteMap[row.PE.symboltoken]?.dir === "up"
+                            ? "rgba(76, 175, 80, 0.12)"
+                            : quoteMap[row.PE.symboltoken]?.dir === "down"
+                            ? "rgba(244, 67, 54, 0.12)"
+                            : "transparent",
+                        borderRadius: 1,
+                        px: 0.5,
+                        py: 0.25,
+                        mt: 0.5,
+                      }}
+                    >
+                      LTP: {quoteMap[row.PE.symboltoken]?.ltp ?? "-"} | OI:{" "}
+                      {quoteMap[row.PE.symboltoken]?.oi ?? "-"}
                     </Typography>
                     <Button
                       size="small"
