@@ -22,7 +22,7 @@ export default function AuthGuard({ children }: Props) {
   if (!token) {
     return (
       <Navigate
-        to="/login"
+        to="/auth/jwt/login"
         replace
         state={{ returnTo: location.pathname }}
       />

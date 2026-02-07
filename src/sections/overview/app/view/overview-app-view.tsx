@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import Grid from '@mui/material/Unstable_Grid2';
+import { HOST_API } from 'src/config-global';
 
 // hooks
 import { useSettingsContext } from 'src/components/settings';
@@ -42,7 +43,7 @@ type StatsResponse = {
   demo: number;
 };
 
-const API_BASE = 'http://localhost:3000';
+const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || '';
 
 // ----------------------------------------------------------------------
 

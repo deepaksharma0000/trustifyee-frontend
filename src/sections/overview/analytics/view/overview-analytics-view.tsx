@@ -28,6 +28,7 @@ import {
   Alert,
 } from '@mui/material';
 import { useSettingsContext } from 'src/components/settings';
+import { HOST_API } from 'src/config-global';
 
 // ----------------------------------------------------------------------
 
@@ -58,7 +59,7 @@ export default function SubAdminManagementView() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-  const API_BASE = 'http://localhost:3000/api/admin';
+  const API_BASE = `${HOST_API || process.env.REACT_APP_API_BASE_URL || ''}/api/admin`;
   const STORE_ENDPOINT = `${API_BASE}/register`;
   const UPDATE_ENDPOINT = `${API_BASE}/update-register/`;
   const SHOW_ENDPOINT = `${API_BASE}/get-admin/`;

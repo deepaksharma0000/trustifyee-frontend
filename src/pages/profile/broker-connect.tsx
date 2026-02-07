@@ -22,6 +22,7 @@ export default function BrokerConnect() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const API_BASE = process.env.REACT_APP_HOST_API || process.env.REACT_APP_API_BASE_URL || '';
 
   if (!user) {
     return <Alert severity="error">Session expired. Please login again.</Alert>;
@@ -72,7 +73,7 @@ export default function BrokerConnect() {
     setError('');
 
     // 1️⃣ ANGEL LOGIN
-    const res = await fetch('http://localhost:4000/api/auth/login', {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
@@ -101,7 +102,7 @@ export default function BrokerConnect() {
       localStorage.getItem('accessToken') ||
       sessionStorage.getItem('accessToken');
 
-    await fetch('http://localhost:3000/api/instruments/sync', {
+    await fetch(`${API_BASE}/api/instruments/sync`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,

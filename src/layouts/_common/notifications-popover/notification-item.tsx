@@ -161,7 +161,7 @@ const displayName =
       }}
     >
       <FileThumbnail
-        file="http://localhost:8080/httpsdesign-suriname-2015.mp3"
+        file="/httpsdesign-suriname-2015.mp3"
         sx={{ width: 40, height: 40 }}
       />
 

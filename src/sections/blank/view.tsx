@@ -19,6 +19,7 @@ import {
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useSettingsContext } from 'src/components/settings';
+import { HOST_API } from 'src/config-global';
 
 // ----------------------------------------------------------------------
 
@@ -38,6 +39,7 @@ export default function ClientsView() {
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || '';
 
   // ---------------- Handle Filters ----------------
   const handleFilterChange = (key: string, value: string) => {
@@ -49,7 +51,7 @@ export default function ClientsView() {
     try {
       setLoading(true);
       setError('');
-      const response = await axios.get('http://localhost:3000/api/admin/star-client');
+      const response = await axios.get(`${API_BASE}/api/admin/star-client`);
       setClients(response.data.data || []);
     } catch (err: any) {
       console.error(err);

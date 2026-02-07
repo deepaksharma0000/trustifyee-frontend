@@ -34,6 +34,7 @@ import {
 } from '@mui/x-data-grid';
 // components
 import Iconify from 'src/components/iconify';
+import { HOST_API } from 'src/config-global';
 
 // Types
 interface ClientFormData {
@@ -416,7 +417,7 @@ type Props = {
 
 
 // API Service Functions
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = HOST_API || process.env.REACT_APP_API_BASE_URL || '';
 
 const apiService = {
   registerClient: async (clientData: Omit<ClientFormData, 'strategies'>): Promise<ApiResponse> => {

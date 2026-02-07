@@ -21,6 +21,7 @@ import LoadingButton from '@mui/lab/LoadingButton';
 import { useResponsive } from 'src/hooks/use-responsive';
 import { useRouter } from 'src/routes/hooks';
 import { useSnackbar } from 'src/components/snackbar';
+import { HOST_API } from 'src/config-global';
 
 // hook-form components
 import FormProvider, { RHFTextField, RHFSelect } from 'src/components/hook-form';
@@ -77,12 +78,13 @@ export default function ProductNewEditForm({ currentProduct }: Props) {
   useEffect(() => {
     if (currentProduct) reset(defaultValues);
   }, [currentProduct, defaultValues, reset]);
+  const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || '';
 
   // -------------------- SUBMIT --------------------
   const onSubmit = handleSubmit(async (data) => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3000/api/strategy/add-strategies', {
+      const response = await fetch(`${API_BASE}/api/strategy/add-strategies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),

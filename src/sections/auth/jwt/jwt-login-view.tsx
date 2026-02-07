@@ -13,6 +13,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 
 import { RouterLink } from 'src/routes/components';
 import { paths } from 'src/routes/paths';
+import { HOST_API } from 'src/config-global';
 
 import { useBoolean } from 'src/hooks/use-boolean';
 
@@ -30,6 +31,7 @@ type LoginFormValues = {
 export default function ClassicLoginView() {
   const password = useBoolean();
   const navigate = useNavigate();
+  const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || '';
 
   // ✅ Validation
   const LoginSchema = Yup.object().shape({
@@ -58,7 +60,7 @@ export default function ClassicLoginView() {
     // ===============================
     // 1️⃣ TRY ADMIN LOGIN FIRST
     // ===============================
-    const adminRes = await fetch('http://localhost:3000/api/admin/login', {
+    const adminRes = await fetch(`${API_BASE}/api/admin/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -93,7 +95,7 @@ export default function ClassicLoginView() {
     // ===============================
     // 2️⃣ IF NOT ADMIN → TRY USER LOGIN
     // ===============================
-    const userRes = await fetch('http://localhost:3000/api/user/login', {
+    const userRes = await fetch(`${API_BASE}/api/user/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

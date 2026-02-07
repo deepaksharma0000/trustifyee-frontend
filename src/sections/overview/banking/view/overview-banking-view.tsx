@@ -1,4 +1,5 @@
 // @mui
+import { useState } from 'react';
 import {
   Container,
   Stack,
@@ -13,8 +14,19 @@ import {
   TableRow,
   TableContainer,
   Paper,
+  Card,
+  Switch,
+  FormControlLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
+  Box,
 } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
+import { useNavigate } from 'react-router-dom';
+import { HOST_API } from 'src/config-global';
 
 // ----------------------------------------------------------------------
 
@@ -90,8 +102,97 @@ const tableData = [
 // ----------------------------------------------------------------------
 
 export default function AllSignalsView() {
+  const navigate = useNavigate();
+  const [tradingEnabled, setTradingEnabled] = useState(
+    localStorage.getItem('trading_enabled') === 'true'
+  );
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({
+    clientcode: '',
+    password: '',
+    totp: '',
+  });
+
+  const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || '';
+  const accessToken =
+    localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+
+  const handleEnable = () => {
+    const isBrokerConnected = localStorage.getItem('angel_jwt') !== null;
+    if (!isBrokerConnected) {
+      setLoginOpen(true);
+      return;
+    }
+
+    localStorage.setItem('trading_enabled', 'true');
+    setTradingEnabled(true);
+    navigate('/dashboard/order');
+  };
+
+  const handleDisable = () => {
+    localStorage.setItem('trading_enabled', 'false');
+    setTradingEnabled(false);
+  };
+
+  const handleBrokerLogin = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+
+      const result = await res.json();
+      if (!result.ok) throw new Error('AngelOne login failed');
+
+      localStorage.setItem('angel_jwt', result.data.jwtToken);
+      localStorage.setItem('angel_refresh', result.data.refreshToken);
+      localStorage.setItem('angel_feed', result.data.feedToken);
+
+      if (accessToken) {
+        await fetch(`${API_BASE}/api/instruments/sync`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+      }
+
+      localStorage.setItem('trading_enabled', 'true');
+      setTradingEnabled(true);
+      setLoginOpen(false);
+      navigate('/dashboard/order');
+    } catch (err: any) {
+      setError(err.message || 'Failed to connect AngelOne');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Container maxWidth="xl">
+      <Card sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h5" sx={{ mb: 1 }}>
+          Trading Details
+        </Typography>
+        <Typography variant="body2" sx={{ mb: 2 }}>
+          Enable trading to open Option Chain. If token expired, login again.
+        </Typography>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={tradingEnabled}
+              onChange={(_, checked) => (checked ? handleEnable() : handleDisable())}
+              color="success"
+            />
+          }
+          label={tradingEnabled ? 'Enabled' : 'Disabled'}
+        />
+      </Card>
+
       {/* Header */}
       <Stack
         direction="row"
@@ -152,6 +253,49 @@ export default function AllSignalsView() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Dialog open={loginOpen} onClose={() => setLoginOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>AngelOne Login</DialogTitle>
+        <DialogContent>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          <Box sx={{ mt: 1 }}>
+            <TextField
+              fullWidth
+              label="Client Code"
+              margin="normal"
+              value={form.clientcode}
+              onChange={(e) => setForm({ ...form, clientcode: e.target.value })}
+            />
+            <TextField
+              fullWidth
+              label="Password"
+              type="password"
+              margin="normal"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+            />
+            <TextField
+              fullWidth
+              label="TOTP"
+              margin="normal"
+              value={form.totp}
+              onChange={(e) => setForm({ ...form, totp: e.target.value })}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLoginOpen(false)} disabled={loading}>
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={handleBrokerLogin} disabled={loading}>
+            {loading ? 'Connecting...' : 'Connect'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

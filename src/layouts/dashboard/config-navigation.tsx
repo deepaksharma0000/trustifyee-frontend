@@ -113,7 +113,7 @@ export function useNavData() {
             title: t("Open Position"),
             path: paths.dashboard.order.root,
             icon: ICONS.order,
-            show: role === "user", // ✅ sirf admin/subadmin
+            show: true,
             children: [
               { title: t("Option Chain"), path: paths.dashboard.order.root },
               { title: t("Open Position"), path: paths.dashboard.user.account },
@@ -155,3 +155,4 @@ export function useNavData() {
 
   return filteredData;
 }
+

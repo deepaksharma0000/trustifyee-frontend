@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 // @mui
 import {
   Box,
@@ -31,6 +31,7 @@ import { useSettingsContext } from 'src/components/settings';
 import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
 // routes
 import { paths } from 'src/routes/paths';
+import { HOST_API } from 'src/config-global';
 
 // ----------------------------------------------------------------------
 
@@ -47,16 +48,30 @@ export default function OpenPositionView() {
   const [positions, setPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || '';
 
 
   const OPEN_POSITIONS_DATA = positions;
 
 
+ const fetchOpenPositions = useCallback(async () => {
+  try {
+    setLoading(true);
+    const res = await fetch(
+      `${API_BASE}/api/positions/open/ANBG1133`
+    );
+    const json = await res.json();
+    if (json.ok) setPositions(json.data);
+  } finally {
+    setLoading(false);
+  }
+}, [API_BASE]);
+
  useEffect(() => {
   fetchOpenPositions();
   const interval = setInterval(fetchOpenPositions, 5000); // auto refresh
   return () => clearInterval(interval);
-}, []);
+}, [fetchOpenPositions]);
 
 
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,7 +84,7 @@ export default function OpenPositionView() {
 
 const handleSquareOff = async (orderid: string) => {
   try {
-    await fetch("http://localhost:4000/api/positions/close", {
+    await fetch(`${API_BASE}/api/positions/close`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -119,7 +134,7 @@ const fetchOrderStatus = async (
 ) => {
   try {
     const res = await fetch(
-      `http://localhost:4000/api/orders/status/${clientcode}/${orderid}`
+      `${API_BASE}/api/orders/status/${clientcode}/${orderid}`
     );
 
     const json = await res.json();
@@ -128,18 +143,6 @@ const fetchOrderStatus = async (
     return json === true;
   } catch (err) {
     return false;
-  }
-};
-const fetchOpenPositions = async () => {
-  try {
-    setLoading(true);
-    const res = await fetch(
-      "http://localhost:4000/api/positions/open/ANBG1133"
-    );
-    const json = await res.json();
-    if (json.ok) setPositions(json.data);
-  } finally {
-    setLoading(false);
   }
 };
 
