@@ -56,15 +56,9 @@ export default function OptionChainPage() {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [symbol, setSymbol] = useState<"NIFTY" | "BANKNIFTY" | "FINNIFTY">("NIFTY");
-  const [tradingLive, setTradingLive] = useState(false);
   const [strategy, setStrategy] = useState<string>("Gamma");
-  const [algoStatus, setAlgoStatus] = useState<any>(null);
-  const manualOrdersEnabled = false;
-  const [runHistory, setRunHistory] = useState<any[]>([]);
-  const [recentTrades, setRecentTrades] = useState<any[]>([]);
-  const [summary, setSummary] = useState<any>(null);
-  const [selectedOption, setSelectedOption] = useState<OptionItem | null>(null);
-  const [selectedSide, setSelectedSide] = useState<"CE" | "PE" | null>(null);
+  const [selectedOptions, setSelectedOptions] = useState<OptionItem[]>([]);
+  const [orderQuantity, setOrderQuantity] = useState<number>(1);
   const [quoteMap, setQuoteMap] = useState<
     Record<
       string,
@@ -83,8 +77,8 @@ export default function OptionChainPage() {
     ? API_BASE.replace(/^http/, "ws")
     : window.location.origin.replace(/^http/, "ws")
   ) + "/ws/market";
- 
-  
+
+
 
   /* ---------------- HELPERS ---------------- */
 
@@ -125,7 +119,7 @@ export default function OptionChainPage() {
   }, [getExpiryLabel, getExpiryValue]);
 
   /* ---------------- API CALL ---------------- */
-  
+
   const fetchOptionChainFromLTP = useCallback(async () => {
     try {
       setLoading(true);
@@ -151,10 +145,10 @@ export default function OptionChainPage() {
       /* Expiry dropdown */
       const expiryList = expiries.length
         ? expiries.map((value) => ({
-            value,
-            label: getExpiryLabel(value),
-            timestamp: value,
-          }))
+          value,
+          label: getExpiryLabel(value),
+          timestamp: value,
+        }))
         : extractExpiryList(options);
       setExpiryDates(expiryList);
 
@@ -191,7 +185,7 @@ export default function OptionChainPage() {
     }
   }, [selectedExpiry, symbol, API_BASE, extractExpiryList, getExpiryLabel, getExpiryValue]);
 
-  
+
   /* ---------------- EFFECTS ---------------- */
 
   useEffect(() => {
@@ -247,55 +241,7 @@ export default function OptionChainPage() {
     };
   }, [WS_URL]);
 
-  useEffect(() => {
-    const fetchStatus = async () => {
-      if (!isAdmin) return;
-      const res = await fetch(`${API_BASE}/api/algo/status`, {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : "",
-        },
-      });
-      const json = await res.json();
-      if (json.ok) setAlgoStatus(json.run);
-    };
-    fetchStatus();
-  }, [API_BASE, isAdmin, token]);
 
-  useEffect(() => {
-    const fetchRuns = async () => {
-      if (!isAdmin) return;
-      const res = await fetch(`${API_BASE}/api/algo/runs?limit=20`, {
-        headers: { Authorization: token ? `Bearer ${token}` : "" },
-      });
-      const json = await res.json();
-      if (json.ok) setRunHistory(json.runs || []);
-    };
-    fetchRuns();
-  }, [API_BASE, isAdmin, token]);
-
-  useEffect(() => {
-    const fetchSummary = async () => {
-      if (!isAdmin) return;
-      const res = await fetch(`${API_BASE}/api/algo/summary`, {
-        headers: { Authorization: token ? `Bearer ${token}` : "" },
-      });
-      const json = await res.json();
-      if (json.ok) setSummary(json.summary);
-    };
-    fetchSummary();
-  }, [API_BASE, isAdmin, token]);
-
-  useEffect(() => {
-    const fetchTrades = async () => {
-      if (!isAdmin || !algoStatus?._id) return;
-      const res = await fetch(`${API_BASE}/api/algo/trades/${algoStatus._id}?limit=50`, {
-        headers: { Authorization: token ? `Bearer ${token}` : "" },
-      });
-      const json = await res.json();
-      if (json.ok) setRecentTrades(json.trades || []);
-    };
-    fetchTrades();
-  }, [API_BASE, isAdmin, token, algoStatus]);
 
   useEffect(() => {
     const ws = wsRef.current;
@@ -334,285 +280,269 @@ export default function OptionChainPage() {
     localStorage.getItem("angel_jwt") !== null;
   const isTradingEnabled =
     localStorage.getItem("trading_enabled") === "true";
-  
+
   if (!isBrokerConnected) {
-  return (
-    <Container maxWidth="md" sx={{ mt: 6 }}>
-      <Card sx={{ p: 4, textAlign: "center" }}>
-        <Typography variant="h5" gutterBottom>
-          🔒 Broker not connected
-        </Typography>
+    return (
+      <Container maxWidth="md" sx={{ mt: 6 }}>
+        <Card sx={{ p: 4, textAlign: "center" }}>
+          <Typography variant="h5" gutterBottom>
+            🔒 Broker not connected
+          </Typography>
 
-        <Typography variant="body2" sx={{ mb: 3 }}>
-          Option Chain access ke liye pehle broker connect karein
-        </Typography>
+          <Typography variant="body2" sx={{ mb: 3 }}>
+            Option Chain access ke liye pehle broker connect karein
+          </Typography>
 
-        <Button
-          variant="contained"
-          onClick={() => { window.location.href = "/dashboard/profile"}}
-        >
-          Connect Broker
-        </Button>
-      </Card>
-    </Container>
-  );
-}
+          <Button
+            variant="contained"
+            onClick={() => { window.location.href = "/dashboard/profile" }}
+          >
+            Connect Broker
+          </Button>
+        </Card>
+      </Container>
+    );
+  }
   if (!isTradingEnabled) {
-  return (
-    <Container maxWidth="md" sx={{ mt: 6 }}>
-      <Card sx={{ p: 4, textAlign: "center" }}>
-        <Typography variant="h5" gutterBottom>
-          Trading Disabled
-        </Typography>
+    return (
+      <Container maxWidth="md" sx={{ mt: 6 }}>
+        <Card sx={{ p: 4, textAlign: "center" }}>
+          <Typography variant="h5" gutterBottom>
+            Trading Disabled
+          </Typography>
 
-        <Typography variant="body2" sx={{ mb: 3 }}>
-          Option Chain access ke liye Trading Details me Enable karein
-        </Typography>
+          <Typography variant="body2" sx={{ mb: 3 }}>
+            Option Chain access ke liye Trading Details me Enable karein
+          </Typography>
 
-        <Button
-          variant="contained"
-          onClick={() => { window.location.href = "/dashboard/banking"}}
-        >
-          Go to Trading Details
-        </Button>
-      </Card>
-    </Container>
-  );
-}
-  /* ---------------- ORDER HANDLER (STUB) ---------------- */
+          <Button
+            variant="contained"
+            onClick={() => { window.location.href = "/dashboard/banking" }}
+          >
+            Go to Trading Details
+          </Button>
+        </Card>
+      </Container>
+    );
+  }
+  /* ---------------- ORDER HANDLER (REAL) ---------------- */
 
- const placeOrder = async (opt: OptionItem, side: "BUY" | "SELL") => {
-  try {
-    if (!manualOrdersEnabled) {
-      alert("Manual orders are disabled. Use Start Algo.");
+  const handleSelectOption = (opt: OptionItem) => {
+    setSelectedOptions((prev) => {
+      const exists = prev.find((o) => o.symboltoken === opt.symboltoken);
+      if (exists) {
+        // Deselect if already selected
+        return prev.filter((o) => o.symboltoken !== opt.symboltoken);
+      }
+      // Add to selection
+      return [...prev, opt];
+    });
+  };
+
+  const isOptionSelected = (opt: OptionItem) => {
+    return selectedOptions.some((o) => o.symboltoken === opt.symboltoken);
+  };
+
+  const executeSelectedOrders = async () => {
+    if (selectedOptions.length === 0) {
+      alert("Please select at least one option (CE or PE) to trade");
       return;
     }
+
     if (!isAdmin) {
       alert("Only admin can place trades");
       return;
     }
-    if (!tradingLive) {
-      alert("Trading is disabled. Enable Live first.");
+
+    // Get the AngelOne clientcode from localStorage
+    const angelClientcode = localStorage.getItem('angel_clientcode');
+    if (!angelClientcode) {
+      alert("❌ No AngelOne session found. Please connect your broker first.");
       return;
     }
 
-    const res = await fetch(`${API_BASE}/api/orders/place-all`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: token ? `Bearer ${token}` : "",
-      },
-      body: JSON.stringify({
-        exchange: "NFO",
-        tradingsymbol: opt.tradingsymbol,
-        side,
-        transactiontype: side,
-        quantity: 1,
-        ordertype: "MARKET",
-      }),
-    });
+    const confirmMsg = `Place ${selectedOptions.length} order(s) with quantity ${orderQuantity} lots?\n\nClient: ${angelClientcode}`;
+    if (!window.confirm(confirmMsg)) return;
 
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error || "Order failed");
+    let successCount = 0;
+    let failCount = 0;
+    const errors: string[] = [];
 
-    alert("Order placed successfully");
-  } catch (err: any) {
-    alert(err.message || "Order error");
-  }
-};
+    for (const opt of selectedOptions) {
+      try {
+        const res = await fetch(`${API_BASE}/api/orders/place`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+          body: JSON.stringify({
+            clientcode: angelClientcode, // 🔥 USE ANGEL CLIENTCODE
+            exchange: "NFO",
+            tradingsymbol: opt.tradingsymbol,
+            side: "BUY",
+            transactiontype: "BUY",
+            quantity: orderQuantity,
+            ordertype: "MARKET",
+            symboltoken: opt.symboltoken,
+          }),
+        });
 
-// check status 
-const checkOrderStatus = async (orderid: string) => {
-  const res = await fetch(
-    `${API_BASE}/api/orders/status/ANBG1133/${orderid}`
-  );
-  const json = await res.json();
-  return json.status === "COMPLETE";
-};
+        const json = await res.json();
 
- const handleSelect = (opt: OptionItem) => {
-  setSelectedOption(opt);
-  setSelectedSide(opt.optiontype);
- };
+        if (!json.ok) {
+          failCount++;
+          errors.push(`${opt.tradingsymbol}: ${json.error || "Order failed"}`);
+        } else {
+          successCount++;
+        }
+      } catch (err: any) {
+        failCount++;
+        errors.push(`${opt.tradingsymbol}: ${err.message || "Network error"}`);
+      }
+    }
 
- const startAlgo = async () => {
-  if (!isAdmin) return;
-  if (!selectedExpiry) {
-    alert("Select expiry first");
-    return;
-  }
-  if (!strategy) {
-    alert("Select strategy first");
-    return;
-  }
-  const res = await fetch(`${API_BASE}/api/algo/start`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: token ? `Bearer ${token}` : "",
-    },
-    body: JSON.stringify({
-      symbol,
-      expiry: selectedExpiry,
-      strategy,
-      optionSide: selectedSide || "BOTH",
-    }),
-  });
-  const json = await res.json();
-  if (!json.ok) {
-    alert(json.error || "Failed to start");
-    return;
-  }
-  setAlgoStatus(json.run);
-  setTradingLive(true);
- };
+    // Clear selection after execution
+    setSelectedOptions([]);
 
- const stopAlgo = async () => {
-  if (!algoStatus?._id) return;
-  const res = await fetch(`${API_BASE}/api/algo/stop`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: token ? `Bearer ${token}` : "",
-    },
-    body: JSON.stringify({ runId: algoStatus._id, reason: "Manual stop" }),
-  });
-  const json = await res.json();
-  if (json.ok) {
-    setAlgoStatus(null);
-    setTradingLive(false);
-  }
- };
+    // Show results
+    let resultMsg = `✅ Success: ${successCount}\n❌ Failed: ${failCount}`;
+    if (errors.length > 0) {
+      resultMsg += "\n\nErrors:\n" + errors.join("\n");
+    }
+    alert(resultMsg);
+  };
 
 
 
   /* ---------------- UI ---------------- */
-let content: React.ReactNode;
+  let content: React.ReactNode;
 
-if (loading) {
-  content = (
-    <Box textAlign="center" py={4}>
-      <CircularProgress />
-    </Box>
-  );
-} else if (marketData.length === 0) {
-  content = <Typography>No option chain data</Typography>;
-} else {
-  content = (
-    <TableContainer component={Paper}>
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>Strike</TableCell>
-            <TableCell align="center">CALL (CE)</TableCell>
-            <TableCell align="center">PUT (PE)</TableCell>
-          </TableRow>
-        </TableHead>
-
-        <TableBody>
-            {marketData.map((row) => (
-            <TableRow key={row.strikePrice}>
-              <TableCell>{row.strikePrice}</TableCell>
-
-              <TableCell align="center">
-                {row.CE ? (
-                  <>
-                    <Typography variant="body2">
-                      {row.CE.tradingsymbol}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        display: "block",
-                        color:
-                          quoteMap[row.CE.symboltoken]?.dir === "up"
-                            ? "success.main"
-                            : quoteMap[row.CE.symboltoken]?.dir === "down"
-                            ? "error.main"
-                            : "text.secondary",
-                        backgroundColor:
-                          quoteMap[row.CE.symboltoken]?.dir === "up"
-                            ? "rgba(76, 175, 80, 0.12)"
-                            : quoteMap[row.CE.symboltoken]?.dir === "down"
-                            ? "rgba(244, 67, 54, 0.12)"
-                            : "transparent",
-                        borderRadius: 1,
-                        px: 0.5,
-                        py: 0.25,
-                        mt: 0.5,
-                      }}
-                    >
-                      LTP: {quoteMap[row.CE.symboltoken]?.ltp ?? "-"} | OI:{" "}
-                      {quoteMap[row.CE.symboltoken]?.oi ?? "-"}
-                    </Typography>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      sx={{ mt: 1 }}
-                      disabled={!manualOrdersEnabled || !isAdmin || !tradingLive}
-                      onClick={() => handleSelect(row.CE!)}
-                    >
-                      BUY CE
-                    </Button>
-                  </>
-                ) : (
-                  "-"
-                )}
-              </TableCell>
-
-              <TableCell align="center">
-                {row.PE ? (
-                  <>
-                    <Typography variant="body2">
-                      {row.PE.tradingsymbol}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        display: "block",
-                        color:
-                          quoteMap[row.PE.symboltoken]?.dir === "up"
-                            ? "success.main"
-                            : quoteMap[row.PE.symboltoken]?.dir === "down"
-                            ? "error.main"
-                            : "text.secondary",
-                        backgroundColor:
-                          quoteMap[row.PE.symboltoken]?.dir === "up"
-                            ? "rgba(76, 175, 80, 0.12)"
-                            : quoteMap[row.PE.symboltoken]?.dir === "down"
-                            ? "rgba(244, 67, 54, 0.12)"
-                            : "transparent",
-                        borderRadius: 1,
-                        px: 0.5,
-                        py: 0.25,
-                        mt: 0.5,
-                      }}
-                    >
-                      LTP: {quoteMap[row.PE.symboltoken]?.ltp ?? "-"} | OI:{" "}
-                      {quoteMap[row.PE.symboltoken]?.oi ?? "-"}
-                    </Typography>
-                    <Button
-                      size="small"
-                      color="error"
-                      variant="contained"
-                      sx={{ mt: 1 }}
-                      disabled={!manualOrdersEnabled || !isAdmin || !tradingLive}
-                      onClick={() => handleSelect(row.PE!)}
-                    >
-                      BUY PE
-                    </Button>
-                  </>
-                ) : (
-                  "-"
-                )}
-              </TableCell>
+  if (loading) {
+    content = (
+      <Box textAlign="center" py={4}>
+        <CircularProgress />
+      </Box>
+    );
+  } else if (marketData.length === 0) {
+    content = <Typography>No option chain data</Typography>;
+  } else {
+    content = (
+      <TableContainer component={Paper}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Strike</TableCell>
+              <TableCell align="center">CALL (CE)</TableCell>
+              <TableCell align="center">PUT (PE)</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-}
+          </TableHead>
+
+          <TableBody>
+            {marketData.map((row) => (
+              <TableRow key={row.strikePrice}>
+                <TableCell>{row.strikePrice}</TableCell>
+
+                <TableCell align="center">
+                  {row.CE ? (
+                    <>
+                      <Typography variant="body2">
+                        {row.CE.tradingsymbol}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          display: "block",
+                          color:
+                            quoteMap[row.CE.symboltoken]?.dir === "up"
+                              ? "success.main"
+                              : quoteMap[row.CE.symboltoken]?.dir === "down"
+                                ? "error.main"
+                                : "text.secondary",
+                          backgroundColor:
+                            quoteMap[row.CE.symboltoken]?.dir === "up"
+                              ? "rgba(76, 175, 80, 0.12)"
+                              : quoteMap[row.CE.symboltoken]?.dir === "down"
+                                ? "rgba(244, 67, 54, 0.12)"
+                                : "transparent",
+                          borderRadius: 1,
+                          px: 0.5,
+                          py: 0.25,
+                          mt: 0.5,
+                        }}
+                      >
+                        LTP: {quoteMap[row.CE.symboltoken]?.ltp ?? "-"} | OI:{" "}
+                        {quoteMap[row.CE.symboltoken]?.oi ?? "-"}
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant={isOptionSelected(row.CE) ? "contained" : "outlined"}
+                        color={isOptionSelected(row.CE) ? "success" : "primary"}
+                        sx={{ mt: 1 }}
+                        disabled={!isAdmin}
+                        onClick={() => handleSelectOption(row.CE!)}
+                      >
+                        {isOptionSelected(row.CE) ? "✓ SELECTED" : "SELECT CE"}
+                      </Button>
+                    </>
+                  ) : (
+                    "-"
+                  )}
+                </TableCell>
+
+                <TableCell align="center">
+                  {row.PE ? (
+                    <>
+                      <Typography variant="body2">
+                        {row.PE.tradingsymbol}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          display: "block",
+                          color:
+                            quoteMap[row.PE.symboltoken]?.dir === "up"
+                              ? "success.main"
+                              : quoteMap[row.PE.symboltoken]?.dir === "down"
+                                ? "error.main"
+                                : "text.secondary",
+                          backgroundColor:
+                            quoteMap[row.PE.symboltoken]?.dir === "up"
+                              ? "rgba(76, 175, 80, 0.12)"
+                              : quoteMap[row.PE.symboltoken]?.dir === "down"
+                                ? "rgba(244, 67, 54, 0.12)"
+                                : "transparent",
+                          borderRadius: 1,
+                          px: 0.5,
+                          py: 0.25,
+                          mt: 0.5,
+                        }}
+                      >
+                        LTP: {quoteMap[row.PE.symboltoken]?.ltp ?? "-"} | OI:{" "}
+                        {quoteMap[row.PE.symboltoken]?.oi ?? "-"}
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant={isOptionSelected(row.PE) ? "contained" : "outlined"}
+                        color={isOptionSelected(row.PE) ? "success" : "error"}
+                        sx={{ mt: 1 }}
+                        disabled={!isAdmin}
+                        onClick={() => handleSelectOption(row.PE!)}
+                      >
+                        {isOptionSelected(row.PE) ? "✓ SELECTED" : "SELECT PE"}
+                      </Button>
+                    </>
+                  ) : (
+                    "-"
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  }
 
   return (
     <Container maxWidth="xl" sx={{ mt: 3 }}>
@@ -623,40 +553,43 @@ if (loading) {
           </Typography>
           {isAdmin && (
             <Stack direction="row" spacing={2} alignItems="center">
-              {algoStatus ? (
-                <Chip color="success" label="Algo Running" />
-              ) : (
-                <Chip color="default" label="Algo Stopped" />
-              )}
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={tradingLive}
-                    onChange={(_, checked) => setTradingLive(checked)}
-                    color="success"
-                  />
-                }
-                label={tradingLive ? "Live Trading: ON" : "Live Trading: OFF"}
+              <Chip
+                color={selectedOptions.length > 0 ? "primary" : "default"}
+                label={`Selected: ${selectedOptions.length}`}
               />
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Quantity</InputLabel>
+                <Select
+                  value={orderQuantity}
+                  label="Quantity"
+                  onChange={(e) => setOrderQuantity(Number(e.target.value))}
+                >
+                  <MenuItem value={1}>1 Lot</MenuItem>
+                  <MenuItem value={2}>2 Lots</MenuItem>
+                  <MenuItem value={3}>3 Lots</MenuItem>
+                  <MenuItem value={5}>5 Lots</MenuItem>
+                  <MenuItem value={10}>10 Lots</MenuItem>
+                </Select>
+              </FormControl>
             </Stack>
           )}
         </Box>
         <Box mb={2} maxWidth={220}>
-  <FormControl fullWidth size="small">
-    <InputLabel>Symbol</InputLabel>
-    <Select
-      label="Symbol"
-      value={symbol}
-      onChange={(e) =>
-        setSymbol(e.target.value as "NIFTY" | "BANKNIFTY" | "FINNIFTY")
-      }
-    >
-      <MenuItem value="NIFTY">NIFTY 50</MenuItem>
-      <MenuItem value="BANKNIFTY">BANK NIFTY</MenuItem>
-      <MenuItem value="FINNIFTY">FIN NIFTY</MenuItem>
-    </Select>
-  </FormControl>
-</Box>
+          <FormControl fullWidth size="small">
+            <InputLabel>Symbol</InputLabel>
+            <Select
+              label="Symbol"
+              value={symbol}
+              onChange={(e) =>
+                setSymbol(e.target.value as "NIFTY" | "BANKNIFTY" | "FINNIFTY")
+              }
+            >
+              <MenuItem value="NIFTY">NIFTY 50</MenuItem>
+              <MenuItem value="BANKNIFTY">BANK NIFTY</MenuItem>
+              <MenuItem value="FINNIFTY">FIN NIFTY</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
 
 
         {/* Expiry Selector */}
@@ -698,16 +631,25 @@ if (loading) {
         )}
 
         {isAdmin && (
-          <Box mb={3} display="flex" gap={2} flexWrap="wrap">
-            <Button variant="contained" color="success" onClick={startAlgo}>
-              Start Algo
+          <Box mb={3} display="flex" gap={2} flexWrap="wrap" alignItems="center">
+            <Button
+              variant="contained"
+              color="primary"
+              size="large"
+              disabled={selectedOptions.length === 0}
+              onClick={executeSelectedOrders}
+            >
+              🚀 Execute Selected ({selectedOptions.length})
             </Button>
-            <Button variant="contained" disabled={!selectedOption} onClick={startAlgo}>
-              Execute Selected
-            </Button>
-            <Button variant="outlined" color="error" onClick={stopAlgo}>
-              Stop Algo
-            </Button>
+            {selectedOptions.length > 0 && (
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => setSelectedOptions([])}
+              >
+                Clear Selection
+              </Button>
+            )}
           </Box>
         )}
 
@@ -718,89 +660,6 @@ if (loading) {
         )}
         {content}
       </Card>
-
-      {isAdmin && (
-        <Card sx={{ p: 3, mt: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Algo Runs (Recent)
-          </Typography>
-          {runHistory.length === 0 ? (
-            <Typography variant="body2">No runs yet</Typography>
-          ) : (
-            <TableContainer component={Paper}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Symbol</TableCell>
-                    <TableCell>Strategy</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Started</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {runHistory.map((r) => (
-                    <TableRow key={r._id}>
-                      <TableCell>{r.symbol}</TableCell>
-                      <TableCell>{r.strategy}</TableCell>
-                      <TableCell>{r.status}</TableCell>
-                      <TableCell>{new Date(r.startedAt).toLocaleString()}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </Card>
-      )}
-
-      {isAdmin && summary && (
-        <Card sx={{ p: 3, mt: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Daily Summary
-          </Typography>
-          <Typography variant="body2">Date: {summary.date}</Typography>
-          <Typography variant="body2">Total Trades: {summary.totalTrades}</Typography>
-          <Typography variant="body2">Success: {summary.success}</Typography>
-          <Typography variant="body2">Failed: {summary.failed}</Typography>
-          <Typography variant="body2">Open Positions: {summary.openPositions}</Typography>
-          <Typography variant="body2">Closed Positions: {summary.closedPositions}</Typography>
-          <Typography variant="body2">P&L: {summary.pnl}</Typography>
-        </Card>
-      )}
-
-      {isAdmin && algoStatus && (
-        <Card sx={{ p: 3, mt: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Recent Trades (Current Run)
-          </Typography>
-          {recentTrades.length === 0 ? (
-            <Typography variant="body2">No trades yet</Typography>
-          ) : (
-            <TableContainer component={Paper}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Client</TableCell>
-                    <TableCell>Symbol</TableCell>
-                    <TableCell>Type</TableCell>
-                    <TableCell>Status</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {recentTrades.map((t) => (
-                    <TableRow key={t._id}>
-                      <TableCell>{t.clientcode}</TableCell>
-                      <TableCell>{t.tradingsymbol}</TableCell>
-                      <TableCell>{t.optiontype}</TableCell>
-                      <TableCell>{t.status}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </Card>
-      )}
     </Container>
   );
 }

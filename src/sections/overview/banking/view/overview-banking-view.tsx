@@ -154,6 +154,7 @@ export default function AllSignalsView() {
       localStorage.setItem('angel_jwt', result.data.jwtToken);
       localStorage.setItem('angel_refresh', result.data.refreshToken);
       localStorage.setItem('angel_feed', result.data.feedToken);
+      localStorage.setItem('angel_clientcode', form.clientcode); // 🔥 SAVE CLIENTCODE
 
       if (accessToken) {
         await fetch(`${API_BASE}/api/instruments/sync`, {
@@ -222,7 +223,7 @@ export default function AllSignalsView() {
                   link.click();
                   window.URL.revokeObjectURL(objectUrl);
                 })
-                .catch(() => {});
+                .catch(() => { });
             } else {
               link.click();
             }
