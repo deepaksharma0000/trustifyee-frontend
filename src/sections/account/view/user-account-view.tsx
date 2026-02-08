@@ -54,25 +54,30 @@ export default function OpenPositionView() {
   const OPEN_POSITIONS_DATA = positions;
 
 
- const fetchOpenPositions = useCallback(async () => {
-  try {
-    setLoading(true);
-    const res = await fetch(
-      `${API_BASE}/api/positions/open/ANBG1133`
-    );
-    const json = await res.json();
-    if (json.ok) setPositions(json.data);
-  } finally {
-    setLoading(false);
-  }
-}, [API_BASE]);
+  const [angelClientcode, setAngelClientcode] = useState<string | null>(null);
 
- useEffect(() => {
-  fetchOpenPositions();
-  const interval = setInterval(fetchOpenPositions, 5000); // auto refresh
-  return () => clearInterval(interval);
-}, [fetchOpenPositions]);
+  useEffect(() => {
+    const code = localStorage.getItem('angel_clientcode');
+    setAngelClientcode(code);
+  }, []);
 
+  const fetchOpenPositions = useCallback(async () => {
+    if (!angelClientcode) return;
+
+    try {
+      setLoading(true);
+      const res = await fetch(
+        `${API_BASE}/api/positions/open/${angelClientcode}`
+      );
+      const json = await res.json();
+      if (json.ok) setPositions(json.data);
+    } catch (e) {
+      console.error(e);
+      setError("Failed to fetch positions");
+    } finally {
+      setLoading(false);
+    }
+  }, [API_BASE, angelClientcode]);
 
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
@@ -82,69 +87,85 @@ export default function OpenPositionView() {
     console.log('Update price for position:', id);
   };
 
-const handleSquareOff = async (orderid: string) => {
-  try {
-    await fetch(`${API_BASE}/api/positions/close`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        clientcode: "ANBG1133",
-        orderid,
-      }),
-    });
+  const handleSquareOff = async (orderid: string) => {
+    if (!angelClientcode) {
+      alert("Broker not connected");
+      return;
+    }
 
-    alert("Position exited");
-    fetchOpenPositions();
-  } catch {
-    alert("Exit failed");
-  }
-};
+    try {
+      const res = await fetch(`${API_BASE}/api/positions/close`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
+        body: JSON.stringify({
+          clientcode: angelClientcode,
+          orderid,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (json.ok) {
+        alert("Position exited");
+        fetchOpenPositions();
+      } else {
+        alert(json.message || "Exit failed");
+      }
+    } catch {
+      alert("Exit failed");
+    }
+  };
 
   // Calculate total P&L for each position
   const calculateTotal = (position: any) => {
     if (position.exitPrice) {
-      const priceDifference = position.tradeType === 'BUY' 
+      const priceDifference = position.side === 'BUY'
         ? position.exitPrice - position.entryPrice
         : position.entryPrice - position.exitPrice;
-      return (priceDifference * position.entryQty).toFixed(2);
+      return (priceDifference * position.quantity).toFixed(2);
     }
 
-    const priceDifference = position.tradeType === 'BUY' 
-      ? position.livePrice - position.entryPrice
-      : position.entryPrice - position.livePrice;
-    return (priceDifference * position.entryQty).toFixed(2);
+    const priceDifference = position.side === 'BUY'
+      ? (position.ltp || position.livePrice || 0) - position.entryPrice
+      : position.entryPrice - (position.ltp || position.livePrice || 0);
+    return (priceDifference * position.quantity).toFixed(2); // Note: quantity was entryQty in mock, but schema uses quantity
   };
 
   // Calculate progress towards target
-const calculateProgress = (position: any) => {
-  if (position.tradeType === 'BUY') {
-    const totalRange = position.targetPrice - position.stopLossPrice;
-    const currentProgress = position.livePrice - position.stopLossPrice;
+  const calculateProgress = (position: any) => {
+    // If no target/SL, return 0 progress
+    if (!position.targetPrice || !position.stopLossPrice) return 0;
+
+    if (position.side === 'BUY') { // Using 'side' instead of 'tradeType' per earlier fix
+      const totalRange = position.targetPrice - position.stopLossPrice;
+      if (totalRange === 0) return 0;
+      const currentProgress = (position.ltp || position.livePrice || position.entryPrice) - position.stopLossPrice;
+      return Math.min(100, Math.max(0, (currentProgress / totalRange) * 100));
+    }
+
+    const totalRange = position.stopLossPrice - position.targetPrice;
+    if (totalRange === 0) return 0;
+    const currentProgress = position.stopLossPrice - (position.ltp || position.livePrice || position.entryPrice);
     return Math.min(100, Math.max(0, (currentProgress / totalRange) * 100));
-  }
+  };
 
-  const totalRange = position.stopLossPrice - position.targetPrice;
-  const currentProgress = position.stopLossPrice - position.livePrice;
-  return Math.min(100, Math.max(0, (currentProgress / totalRange) * 100));
-};
+  const fetchOrderStatus = async (
+    clientcode: string,
+    orderid: string
+  ) => {
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/orders/status/${clientcode}/${orderid}`
+      );
 
-const fetchOrderStatus = async (
-  clientcode: string,
-  orderid: string
-) => {
-  try {
-    const res = await fetch(
-      `${API_BASE}/api/orders/status/${clientcode}/${orderid}`
-    );
+      const json = await res.json();
 
-    const json = await res.json();
-
-    // backend true return kar raha hai
-    return json === true;
-  } catch (err) {
-    return false;
-  }
-};
+      // backend true return kar raha hai
+      return json === true;
+    } catch (err) {
+      return false;
+    }
+  };
 
 
 
@@ -161,16 +182,16 @@ const fetchOrderStatus = async (
         <Stack spacing={1.5}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Stack direction="row" alignItems="center" spacing={1}>
-              <Avatar 
-                sx={{ 
-                  bgcolor: row.side  === 'BUY' ? 'success.main' : 'error.main',
-                  width: 32, 
-                  height: 32 
+              <Avatar
+                sx={{
+                  bgcolor: row.side === 'BUY' ? 'success.main' : 'error.main',
+                  width: 32,
+                  height: 32
                 }}
               >
-                <Iconify 
-                  icon={row.side  === 'BUY' ? 'eva:trending-up-fill' : 'eva:trending-down-fill'} 
-                  width={18} 
+                <Iconify
+                  icon={row.side === 'BUY' ? 'eva:trending-up-fill' : 'eva:trending-down-fill'}
+                  width={18}
                 />
               </Avatar>
               <Box>
@@ -199,22 +220,22 @@ const fetchOrderStatus = async (
               Live Price
             </Typography>
             <Typography variant="body2" fontWeight="bold">
-              {row.status}
+              {row.ltp || row.livePrice || row.status || '-'}
             </Typography>
           </Box>
 
           <Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
               <Typography variant="caption" color="error.main">
-                SL: {row.stopLossPrice}
+                SL: {row.stopLossPrice || '-'}
               </Typography>
               <Typography variant="caption" color="success.main">
-                Target: {row.targetPrice}
+                Target: {row.targetPrice || '-'}
               </Typography>
             </Box>
-            <LinearProgress 
-              variant="determinate" 
-              value={progress} 
+            <LinearProgress
+              variant="determinate"
+              value={progress}
               color={progress > 50 ? 'success' : 'primary'}
               sx={{ height: 6, borderRadius: 3 }}
             />
@@ -224,8 +245,8 @@ const fetchOrderStatus = async (
             <Typography variant="caption" color="text.secondary">
               P&L
             </Typography>
-            <Typography 
-              variant="subtitle2" 
+            <Typography
+              variant="subtitle2"
               color={isProfit ? 'success.main' : 'error.main'}
               fontWeight="bold"
             >
@@ -285,23 +306,23 @@ const fetchOrderStatus = async (
               positions.map((row) => {
                 const total = calculateTotal(row);
                 const isProfit = parseFloat(total) >= 0;
-                
+
                 return (
                   <TableRow key={row.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                     <TableCell>
                       <Chip
-                        icon={<Iconify icon={row.side  === 'BUY' ? 'eva:trending-up-fill' : 'eva:trending-down-fill'} />}
-                        label={row.side }
+                        icon={<Iconify icon={row.side === 'BUY' ? 'eva:trending-up-fill' : 'eva:trending-down-fill'} />}
+                        label={row.side}
                         size="small"
-                        color={row.side  === 'BUY' ? 'success' : 'error'}
+                        color={row.side === 'BUY' ? 'success' : 'error'}
                       />
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
-                        {new Date(row.signalsTime).toLocaleDateString()}
+                        {row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-'}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {new Date(row.signalsTime).toLocaleTimeString()}
+                        {row.createdAt ? new Date(row.createdAt).toLocaleTimeString() : '-'}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -324,7 +345,7 @@ const fetchOrderStatus = async (
                     <TableCell align="right">
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                         <Typography variant="body2">{row.quantity}</Typography>
-                        {row.exitQty > 0 && (
+                        {(row.exitQty || 0) > 0 && (
                           <Typography variant="caption" color="text.secondary">
                             Exited: {row.exitQty}
                           </Typography>
@@ -333,18 +354,18 @@ const fetchOrderStatus = async (
                     </TableCell>
                     <TableCell align="right">
                       <Typography variant="body2" fontWeight="bold">
-                        {row.status}
+                        {row.ltp || row.status || '-'}
                       </Typography>
                     </TableCell>
                     <TableCell align="right">{row.entryPrice}</TableCell>
                     <TableCell align="right">
                       <Typography variant="body2" color="error.main" fontWeight="bold">
-                        {row.stopLossPrice}
+                        {row.stopLossPrice || '-'}
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
                       <Typography variant="body2" color="success.main" fontWeight="bold">
-                        {row.targetPrice}
+                        {row.targetPrice || '-'}
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
@@ -361,7 +382,7 @@ const fetchOrderStatus = async (
                           <IconButton
                             size="small"
                             onClick={() => handleUpdatePrice(row.id)}
-                            sx={{ 
+                            sx={{
                               border: `1px solid ${theme.palette.primary.main}`,
                               borderRadius: 1,
                               color: theme.palette.primary.main
@@ -374,7 +395,7 @@ const fetchOrderStatus = async (
                           <IconButton
                             size="small"
                             onClick={() => handleSquareOff(row.orderid)}
-                            sx={{ 
+                            sx={{
                               bgcolor: isProfit ? theme.palette.success.main : theme.palette.error.main,
                               color: 'white',
                               '&:hover': {
@@ -419,26 +440,26 @@ const fetchOrderStatus = async (
         sx={{
           mb: { xs: 3, md: 5 },
         }}
-        // action={
-        //   <Button
-        //     variant="contained"
-        //     startIcon={<Iconify icon="eva:plus-fill" />}
-        //     sx={{ ml: 2 }}
-        //   >
-        //     New Position
-        //   </Button>
-        // }
+      // action={
+      //   <Button
+      //     variant="contained"
+      //     startIcon={<Iconify icon="eva:plus-fill" />}
+      //     sx={{ ml: 2 }}
+      //   >
+      //     New Position
+      //   </Button>
+      // }
       />
 
-      <Card sx={{ 
-        borderRadius: 2, 
+      <Card sx={{
+        borderRadius: 2,
         boxShadow: theme.shadows[5],
         overflow: 'visible'
       }}>
-        <Stack 
-          direction={{ xs: 'column', sm: 'row' }} 
-          alignItems="center" 
-          spacing={2} 
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          alignItems="center"
+          spacing={2}
           sx={{ p: 2.5 }}
         >
           <TextField
@@ -456,7 +477,7 @@ const fetchOrderStatus = async (
             }}
             sx={{ maxWidth: 400 }}
           />
-          
+
           <Stack direction="row" spacing={1} sx={{ ml: 'auto' }}>
             <Button
               variant={isMobile ? "contained" : "outlined"}
