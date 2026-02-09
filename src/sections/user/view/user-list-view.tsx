@@ -32,6 +32,7 @@ import Iconify from 'src/components/iconify';
 import Scrollbar from 'src/components/scrollbar';
 import { ConfirmDialog } from 'src/components/custom-dialog';
 import { useSettingsContext } from 'src/components/settings';
+import { HOST_API } from 'src/config-global';
 import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
 import {
   useTable,
@@ -85,6 +86,7 @@ export default function UserListView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState(defaultFilters);
+  const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || '';
 
   // ✅ API Call
   const fetchExpiredUsers = useCallback(async () => {
@@ -93,7 +95,7 @@ export default function UserListView() {
       setError(null);
 
       const currentDate = format(new Date(), 'yyyy-MM-dd');
-      const apiUrl = `http://localhost:3000/api/users/by-enddate?filter=custom&date=${currentDate}`;
+      const apiUrl = `${API_BASE}/api/users/by-enddate?filter=custom&date=${currentDate}`;
 
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -154,7 +156,7 @@ export default function UserListView() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [API_BASE]);
 
   useEffect(() => {
     fetchExpiredUsers();

@@ -59,9 +59,9 @@ const getUserRole = (): "admin" | "subadmin" | "user" => {
 
 export function useNavData() {
   const { t } = useLocales();
-  const role = getUserRole(); 
+  const role = getUserRole();
   const isBrokerConnected =
-  localStorage.getItem("angel_jwt") !== null;
+    localStorage.getItem("angel_jwt") !== null;
   const data = useMemo(
     () => [
       {
@@ -70,15 +70,15 @@ export function useNavData() {
           {
             title: t("Dashboard"),
             path: paths.dashboard.root,
-            icon: ICONS.dashboard,
-            show: true, 
+            icon: <Iconify icon="solar:widget-5-bold-duotone" width={24} />,
+            show: true,
           },
           {
             title: t("Clients"),
             path: paths.dashboard.general.ecommerce,
-            icon: <Iconify icon="carbon:3d-cursor-alt" width={20} />,
-            show: role !== "user", 
-            
+            icon: <Iconify icon="solar:users-group-rounded-bold-duotone" width={24} />,
+            show: role !== "user",
+
             children: [
               { title: "Clients", path: paths.dashboard.general.ecommerce },
               { title: t("Expired Clients"), path: paths.dashboard.user.list },
@@ -89,20 +89,20 @@ export function useNavData() {
           {
             title: t("Sub Admin"),
             path: paths.dashboard.general.analytics,
-            icon: ICONS.analytics,
+            icon: <Iconify icon="solar:shield-user-bold-duotone" width={24} />,
             show: role === "admin" || role === "subadmin",
           },
           {
             title: t("Trade Details"),
             path: paths.dashboard.general.banking,
-            icon: ICONS.banking,
-            show: role !== "user", 
+            icon: <Iconify icon="solar:bill-list-bold-duotone" width={24} />,
+            show: role !== "user",
           },
           {
             title: t("Script Management"),
             path: paths.dashboard.product.root,
-            icon: ICONS.product,
-            show: role !== "user", 
+            icon: <Iconify icon="solar:code-square-bold-duotone" width={24} />,
+            show: role !== "user",
             children: [
               { title: t("All Services"), path: paths.dashboard.product.root },
               { title: t("Group Services"), path: paths.dashboard.product.demo.details },
@@ -112,8 +112,8 @@ export function useNavData() {
           {
             title: t("Open Position"),
             path: paths.dashboard.order.root,
-            icon: ICONS.order,
-            show: role === "user", // ✅ sirf admin/subadmin
+            icon: <Iconify icon="solar:chart-2-bold-duotone" width={24} />,
+            show: true,
             children: [
               { title: t("Option Chain"), path: paths.dashboard.order.root },
               { title: t("Open Position"), path: paths.dashboard.user.account },
@@ -122,7 +122,7 @@ export function useNavData() {
           {
             title: t("Licence"),
             path: paths.dashboard.tour.root,
-            icon: ICONS.tour,
+            icon: <Iconify icon="solar:key-minimalistic-square-bold-duotone" width={24} />,
             show: role !== "user", // ✅ user ke liye nahi
             children: [
               { title: t("Transaction License"), path: paths.dashboard.tour.root },
@@ -132,19 +132,19 @@ export function useNavData() {
           {
             title: t("More"),
             path: paths.dashboard.general.file,
-            icon: ICONS.file,
+            icon: <Iconify icon="solar:menu-dots-bold-duotone" width={24} />,
             show: role === "admin", // ✅ sirf admin ke liye
           },
-        {
-          title: t("Connect Broker"),
-          path: paths.dashboard.brokerConnect,
-          show: role === "user" && !isBrokerConnected,
-        },
+          {
+            title: t("Connect Broker"),
+            path: paths.dashboard.brokerConnect,
+            show: role === "user" && !isBrokerConnected,
+          },
 
         ],
       },
     ],
-    [t, role,isBrokerConnected]
+    [t, role, isBrokerConnected]
   );
 
   // ✅ Filter items based on show condition
@@ -155,3 +155,4 @@ export function useNavData() {
 
   return filteredData;
 }
+

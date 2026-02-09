@@ -48,10 +48,9 @@ export default function HeaderSimple() {
           }),
         }}
       >
-        <Logo />
+        <Logo single={false} sx={{ height: 40, width: 'auto' }} />
 
         <Stack direction="row" alignItems="center" spacing={1}>
-          <SettingsButton />
 
           <Link
             href={paths.faqs}

@@ -89,23 +89,51 @@ export function AuthProvider({ children }: Props) {
       if (accessToken && isValidToken(accessToken)) {
         setSession(accessToken);
 
-        const res = await axios.get(endpoints.auth.me);
+        try {
+          const res = await axios.get(endpoints.auth.me);
+          const { user } = res.data;
 
-        const { user } = res.data;
-
-        dispatch({
-          type: Types.INITIAL,
-          payload: {
-            user,
-          },
-        });
+          dispatch({
+            type: Types.INITIAL,
+            payload: {
+              user,
+            },
+          });
+        } catch (error) {
+          // If /me endpoint fails, try to recover from localStorage
+          const localUser = localStorage.getItem('authUser');
+          if (localUser) {
+            dispatch({
+              type: Types.INITIAL,
+              payload: {
+                user: JSON.parse(localUser),
+              },
+            });
+          } else {
+            throw error;
+          }
+        }
       } else {
-        dispatch({
-          type: Types.INITIAL,
-          payload: {
-            user: null,
-          },
-        });
+        // Fallback: Check localStorage if sessionStorage is empty
+        const localToken = localStorage.getItem('authToken');
+        const localUser = localStorage.getItem('authUser');
+
+        if (localToken && isValidToken(localToken)) {
+          setSession(localToken);
+          dispatch({
+            type: Types.INITIAL,
+            payload: {
+              user: localUser ? JSON.parse(localUser) : null,
+            },
+          });
+        } else {
+          dispatch({
+            type: Types.INITIAL,
+            payload: {
+              user: null,
+            },
+          });
+        }
       }
     } catch (error) {
       console.error(error);
@@ -171,11 +199,29 @@ export function AuthProvider({ children }: Props) {
 
   // LOGOUT
   const logout = useCallback(async () => {
+    try {
+      const user = state.user || (localStorage.getItem('authUser') ? JSON.parse(localStorage.getItem('authUser')!) : null);
+
+      if (user) {
+        if (user.role === 'admin' || user.role === 'sub-admin') {
+          await axios.post(endpoints.auth.adminLogout);
+        } else {
+          await axios.post(endpoints.auth.userLogout);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+    }
+
+    // Clear both session and local storage
     setSession(null);
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authUser');
+
     dispatch({
       type: Types.LOGOUT,
     });
-  }, []);
+  }, [state.user]);
 
   // ----------------------------------------------------------------------
 
