@@ -2,6 +2,8 @@ import * as Yup from 'yup';
 import { useForm } from 'react-hook-form';
 import { useState } from 'react';
 import { yupResolver } from '@hookform/resolvers/yup';
+import { m } from 'framer-motion';
+
 // @mui
 import LoadingButton from '@mui/lab/LoadingButton';
 import Link from '@mui/material/Link';
@@ -10,6 +12,9 @@ import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import InputAdornment from '@mui/material/InputAdornment';
+import Box from '@mui/material/Box';
+import { alpha, useTheme } from '@mui/material/styles';
+
 // hooks
 import { useBoolean } from 'src/hooks/use-boolean';
 // routes
@@ -23,20 +28,17 @@ import { useAuthContext } from 'src/auth/hooks';
 // components
 import Iconify from 'src/components/iconify';
 import FormProvider, { RHFTextField } from 'src/components/hook-form';
+import { varFade } from 'src/components/animate';
 
 // ----------------------------------------------------------------------
 
 export default function JwtRegisterView() {
+  const theme = useTheme();
   const { register } = useAuthContext();
-
   const router = useRouter();
-
   const [errorMsg, setErrorMsg] = useState('');
-
   const searchParams = useSearchParams();
-
   const returnTo = searchParams.get('returnTo');
-
   const password = useBoolean();
 
   const RegisterSchema = Yup.object().shape({
@@ -67,7 +69,6 @@ export default function JwtRegisterView() {
   const onSubmit = handleSubmit(async (data) => {
     try {
       await register?.(data.email, data.password, data.firstName, data.lastName);
-
       router.push(returnTo || PATH_AFTER_LOGIN);
     } catch (error) {
       console.error(error);
@@ -78,57 +79,85 @@ export default function JwtRegisterView() {
 
   const renderHead = (
     <Stack spacing={2} sx={{ mb: 5, position: 'relative' }}>
-      <Typography variant="h4">Get started absolutely free</Typography>
+      <m.div variants={varFade().inDown}>
+        <Typography variant="h3" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
+          Create Account
+        </Typography>
+      </m.div>
 
-      <Stack direction="row" spacing={0.5}>
-        <Typography variant="body2"> Already have an account? </Typography>
-
-        <Link href={paths.auth.jwt.login} component={RouterLink} variant="subtitle2">
-          Sign in
-        </Link>
-      </Stack>
+      <m.div variants={varFade().inDown}>
+        <Stack direction="row" spacing={0.5}>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>Already have an account?</Typography>
+          <Link component={RouterLink} href={paths.auth.jwt.login} variant="subtitle2" sx={{ color: '#00cc70' }}>
+            Sign in
+          </Link>
+        </Stack>
+      </m.div>
     </Stack>
   );
 
   const renderTerms = (
-    <Typography
-      component="div"
-      sx={{
-        color: 'text.secondary',
-        mt: 2.5,
-        typography: 'caption',
-        textAlign: 'center',
-      }}
-    >
-      {'By signing up, I agree to '}
-      <Link underline="always" color="text.primary">
-        Terms of Service
-      </Link>
-      {' and '}
-      <Link underline="always" color="text.primary">
-        Privacy Policy
-      </Link>
-      .
-    </Typography>
+    <m.div variants={varFade().inUp}>
+      <Typography
+        component="div"
+        sx={{
+          color: 'text.secondary',
+          mt: 2.5,
+          typography: 'caption',
+          textAlign: 'center',
+        }}
+      >
+        {'By signing up, I agree to '}
+        <Link underline="always" color="inherit">
+          Terms of Service
+        </Link>
+        {' and '}
+        <Link underline="always" color="inherit">
+          Privacy Policy
+        </Link>
+        .
+      </Typography>
+    </m.div>
   );
 
   const renderForm = (
-    <FormProvider methods={methods} onSubmit={onSubmit}>
-      <Stack spacing={2.5}>
-        {!!errorMsg && <Alert severity="error">{errorMsg}</Alert>}
+    <Stack spacing={2.5}>
+      {!!errorMsg && <Alert severity="error">{errorMsg}</Alert>}
 
+      <m.div variants={varFade().inUp}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-          <RHFTextField name="firstName" label="First name" />
-          <RHFTextField name="lastName" label="Last name" />
+          <RHFTextField name="firstName" label="First name" sx={{ '& .MuiOutlinedInput-root': { bgcolor: alpha(theme.palette.grey[500], 0.04) } }} />
+          <RHFTextField name="lastName" label="Last name" sx={{ '& .MuiOutlinedInput-root': { bgcolor: alpha(theme.palette.grey[500], 0.04) } }} />
         </Stack>
+      </m.div>
 
-        <RHFTextField name="email" label="Email address" />
+      <m.div variants={varFade().inUp}>
+        <RHFTextField
+          name="email"
+          label="Email address"
+          sx={{ '& .MuiOutlinedInput-root': { bgcolor: alpha(theme.palette.grey[500], 0.04) } }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Iconify icon="solar:letter-bold-duotone" width={24} sx={{ color: 'text.disabled' }} />
+              </InputAdornment>
+            ),
+          }}
+        />
+      </m.div>
 
+      <m.div variants={varFade().inUp}>
         <RHFTextField
           name="password"
           label="Password"
           type={password.value ? 'text' : 'password'}
+          sx={{ '& .MuiOutlinedInput-root': { bgcolor: alpha(theme.palette.grey[500], 0.04) } }}
           InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Iconify icon="solar:lock-password-bold-duotone" width={24} sx={{ color: 'text.disabled' }} />
+              </InputAdornment>
+            ),
             endAdornment: (
               <InputAdornment position="end">
                 <IconButton onClick={password.onToggle} edge="end">
@@ -138,28 +167,52 @@ export default function JwtRegisterView() {
             ),
           }}
         />
+      </m.div>
 
+      <m.div variants={varFade().inUp}>
         <LoadingButton
           fullWidth
-          color="inherit"
           size="large"
           type="submit"
           variant="contained"
           loading={isSubmitting}
+          sx={{
+            py: 1.5,
+            fontSize: 16,
+            fontWeight: 700,
+            borderRadius: 1.5,
+            bgcolor: '#00a76f',
+            color: '#fff',
+            '&:hover': {
+              bgcolor: '#008b5c',
+              boxShadow: `0 8px 16px ${alpha('#00a76f', 0.24)}`,
+            }
+          }}
         >
-          Create account
+          Initialize Account
         </LoadingButton>
-      </Stack>
-    </FormProvider>
+      </m.div>
+    </Stack>
   );
 
   return (
-    <>
-      {renderHead}
-
-      {renderForm}
-
-      {renderTerms}
-    </>
+    <FormProvider methods={methods} onSubmit={onSubmit}>
+      <Box
+        component={m.div}
+        initial="initial"
+        animate="animate"
+        variants={{
+          animate: {
+            transition: {
+              staggerChildren: 0.1
+            }
+          }
+        }}
+      >
+        {renderHead}
+        {renderForm}
+        {renderTerms}
+      </Box>
+    </FormProvider>
   );
 }
