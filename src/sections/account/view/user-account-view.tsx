@@ -79,6 +79,24 @@ export default function OpenPositionView() {
     }
   }, [API_BASE, angelClientcode]);
 
+  // 🔥 Fetch positions on mount and when angelClientcode changes
+  useEffect(() => {
+    if (angelClientcode) {
+      fetchOpenPositions();
+    }
+  }, [angelClientcode, fetchOpenPositions]);
+
+  // 🔥 Auto-refresh positions every 5 seconds
+  useEffect(() => {
+    if (!angelClientcode) return;
+
+    const interval = setInterval(() => {
+      fetchOpenPositions();
+    }, 5000); // Refresh every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [angelClientcode, fetchOpenPositions]);
+
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
   };
@@ -480,6 +498,15 @@ export default function OpenPositionView() {
 
           <Stack direction="row" spacing={1} sx={{ ml: 'auto' }}>
             <Button
+              variant="outlined"
+              size="small"
+              onClick={fetchOpenPositions}
+              disabled={loading}
+              startIcon={<Iconify icon="eva:refresh-fill" />}
+            >
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </Button>
+            <Button
               variant={isMobile ? "contained" : "outlined"}
               size="small"
               startIcon={<Iconify icon="eva:filter-fill" />}
@@ -495,6 +522,22 @@ export default function OpenPositionView() {
             </Button>
           </Stack>
         </Stack>
+
+        {loading && positions.length === 0 && (
+          <Box sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              Loading positions...
+            </Typography>
+          </Box>
+        )}
+
+        {error && (
+          <Box sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="body2" color="error">
+              {error}
+            </Typography>
+          </Box>
+        )}
 
         {isMobile ? (
           <Box sx={{ p: 2 }}>

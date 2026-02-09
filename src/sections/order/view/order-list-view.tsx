@@ -22,6 +22,7 @@ import {
   Paper,
   CircularProgress,
   Alert,
+  TextField,
 } from "@mui/material";
 import { HOST_API } from "src/config-global";
 
@@ -59,12 +60,15 @@ export default function OptionChainPage() {
   const [strategy, setStrategy] = useState<string>("Gamma");
   const [selectedOptions, setSelectedOptions] = useState<OptionItem[]>([]);
   const [orderQuantity, setOrderQuantity] = useState<number>(1);
+  const [stopLoss, setStopLoss] = useState<string>("");
+  const [target, setTarget] = useState<string>("");
   const [quoteMap, setQuoteMap] = useState<
     Record<
       string,
       { ltp: number; oi: number | null; dir?: "up" | "down" }
     >
   >({});
+  const [autoSelecting, setAutoSelecting] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const blinkTimers = useRef<Record<string, number>>({});
 
@@ -73,10 +77,10 @@ export default function OptionChainPage() {
   const isAdmin = authUser?.role === "admin";
   const token = localStorage.getItem("authToken");
   const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || "";
-  const WS_URL = (API_BASE
+  const wsBase = API_BASE
     ? API_BASE.replace(/^http/, "ws")
-    : window.location.origin.replace(/^http/, "ws")
-  ) + "/ws/market";
+    : window.location.origin.replace(/^http/, "ws");
+  const WS_URL = `${wsBase}/ws/market`;
 
 
 
@@ -99,6 +103,18 @@ export default function OptionChainPage() {
       }),
     []
   );
+
+  const getDirectionColor = (dir?: "up" | "down") => {
+    if (dir === "up") return "success.main";
+    if (dir === "down") return "error.main";
+    return "text.secondary";
+  };
+
+  const getDirectionBgColor = (dir?: "up" | "down") => {
+    if (dir === "up") return "rgba(76, 175, 80, 0.12)";
+    if (dir === "down") return "rgba(244, 67, 54, 0.12)";
+    return "transparent";
+  };
 
   const extractExpiryList = useCallback((options: OptionItem[]): ExpiryDateItem[] => {
     const map = new Map<string, ExpiryDateItem>();
@@ -203,32 +219,32 @@ export default function OptionChainPage() {
 
         setQuoteMap((prev) => {
           const next = { ...prev };
-          for (const item of msg.items) {
-            const token = item.symboltoken;
+          msg.items.forEach((item: any) => {
+            const symbolToken = item.symboltoken;
             const ltp = Number(item.ltp || 0);
             const oi =
               item.oi === null || item.oi === undefined ? null : Number(item.oi);
-            const prevLtp = prev[token]?.ltp;
-            const dir =
-              prevLtp !== undefined && ltp !== prevLtp
-                ? ltp > prevLtp
-                  ? "up"
-                  : "down"
-                : undefined;
-            next[token] = { ltp, oi, dir };
+            const prevLtp = prev[symbolToken]?.ltp;
+
+            let dir: "up" | "down" | undefined;
+            if (prevLtp !== undefined && ltp !== prevLtp) {
+              dir = ltp > prevLtp ? "up" : "down";
+            }
+
+            next[symbolToken] = { ltp, oi, dir };
 
             if (dir) {
-              if (blinkTimers.current[token]) {
-                window.clearTimeout(blinkTimers.current[token]);
+              if (blinkTimers.current[symbolToken]) {
+                window.clearTimeout(blinkTimers.current[symbolToken]);
               }
-              blinkTimers.current[token] = window.setTimeout(() => {
+              blinkTimers.current[symbolToken] = window.setTimeout(() => {
                 setQuoteMap((p) => {
-                  if (!p[token]) return p;
-                  return { ...p, [token]: { ...p[token], dir: undefined } };
+                  if (!p[symbolToken]) return p;
+                  return { ...p, [symbolToken]: { ...p[symbolToken], dir: undefined } };
                 });
               }, 350);
             }
-          }
+          });
           return next;
         });
       } catch {
@@ -339,13 +355,79 @@ export default function OptionChainPage() {
     });
   };
 
-  const isOptionSelected = (opt: OptionItem) => {
-    return selectedOptions.some((o) => o.symboltoken === opt.symboltoken);
+  const isOptionSelected = (opt: OptionItem) =>
+    selectedOptions.some((o) => o.symboltoken === opt.symboltoken);
+
+  // 🔥 NEW: Auto-select strikes based on strategy
+  const handleAutoSelectStrategy = async () => {
+    if (!selectedExpiry) {
+      alert("Please select an expiry date first");
+      return;
+    }
+
+    if (!strategy) {
+      alert("Please select a strategy");
+      return;
+    }
+
+    setAutoSelecting(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/strategy/auto-select`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify({
+          symbol,
+          expiry: selectedExpiry,
+          strategy,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!json.ok) {
+        alert(`Auto-select failed: ${json.error || "Unknown error"}`);
+        return;
+      }
+
+      // Set the selected options from strategy
+      setSelectedOptions(json.selectedOptions);
+      alert(`✅ ${json.message}\n\nReview the selected options and click Execute when ready.`);
+    } catch (err: any) {
+      alert(`Error: ${err.message || "Failed to auto-select"}`);
+    } finally {
+      setAutoSelecting(false);
+    }
   };
 
   const executeSelectedOrders = async () => {
     if (selectedOptions.length === 0) {
       alert("Please select at least one option (CE or PE) to trade");
+      return;
+    }
+
+    // Optional: Force SL/Target for safety (Uncomment if mandatory)
+    // if (!stopLoss || !target) {
+    //    alert("Safety: Please provide Stop Loss and Target price to protect your capital.");
+    //    return;
+    // }
+
+    const now = new Date();
+    // Use UTC+5:30 (IST) manually or simple generic local time check if user is in India
+    // 9 * 60 + 15 = 555 mins
+    // 15 * 60 + 30 = 930 mins
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Check if weekend
+    const isWeekend = now.getDay() === 0 || now.getDay() === 6;
+
+    // Simple IST check (Assuming user system is IST or close enough)
+    // NOTE: For stricter check, this logic should be on backend.
+    // NOTE: For stricter check, this logic should be on backend.
+    if (isWeekend || currentMinutes < 555 || currentMinutes > 930) {
+      alert("⛔ Market Closed! (9:15 AM - 3:30 PM)\n\nWe do NOT support AMO (After Market Orders) to protect you from Option Gap Risks.\nPlease come back at 9:15 AM.");
       return;
     }
 
@@ -361,14 +443,14 @@ export default function OptionChainPage() {
       return;
     }
 
-    const confirmMsg = `Place ${selectedOptions.length} order(s) with quantity ${orderQuantity} lots?\n\nClient: ${angelClientcode}`;
+    let confirmMsg = `Place ${selectedOptions.length} order(s) with quantity ${orderQuantity} lots?\n\nClient: ${angelClientcode}`;
+
+    if (stopLoss) confirmMsg += `\n🛑 SL: ${stopLoss}`;
+    if (target) confirmMsg += `\n🎯 Target: ${target}`;
+
     if (!window.confirm(confirmMsg)) return;
 
-    let successCount = 0;
-    let failCount = 0;
-    const errors: string[] = [];
-
-    for (const opt of selectedOptions) {
+    const orderPromises = selectedOptions.map(async (opt) => {
       try {
         const res = await fetch(`${API_BASE}/api/orders/place`, {
           method: "POST",
@@ -385,31 +467,36 @@ export default function OptionChainPage() {
             quantity: orderQuantity,
             ordertype: "MARKET",
             symboltoken: opt.symboltoken,
+            stopLossPrice: stopLoss ? Number(stopLoss) : undefined,
+            targetPrice: target ? Number(target) : undefined,
+            strategy,
           }),
         });
 
         const json = await res.json();
 
         if (!json.ok) {
-          failCount++;
-          errors.push(`${opt.tradingsymbol}: ${json.error || "Order failed"}`);
-        } else {
-          successCount++;
+          return { success: false, error: `${opt.tradingsymbol}: ${json.error || "Order failed"}` };
         }
+        return { success: true };
       } catch (err: any) {
-        failCount++;
-        errors.push(`${opt.tradingsymbol}: ${err.message || "Network error"}`);
+        return { success: false, error: `${opt.tradingsymbol}: ${err.message || "Network error"}` };
       }
-    }
+    });
+
+    const results = await Promise.all(orderPromises);
+    const successCount = results.filter((r) => r.success).length;
+    const failCount = results.filter((r) => !r.success).length;
+    const errors = results.filter((r) => !r.success).map((r) => r.error || "Unknown error");
 
     // Clear selection after execution
     setSelectedOptions([]);
+    setStopLoss("");
+    setTarget("");
 
     // Show results
-    let resultMsg = `✅ Success: ${successCount}\n❌ Failed: ${failCount}`;
-    if (errors.length > 0) {
-      resultMsg += "\n\nErrors:\n" + errors.join("\n");
-    }
+    const resultMsg = `✅ Success: ${successCount}\n❌ Failed: ${failCount}${errors.length > 0 ? `\n\nErrors:\n${errors.join("\n")}` : ""
+      }`;
     alert(resultMsg);
   };
 
@@ -453,18 +540,8 @@ export default function OptionChainPage() {
                         variant="caption"
                         sx={{
                           display: "block",
-                          color:
-                            quoteMap[row.CE.symboltoken]?.dir === "up"
-                              ? "success.main"
-                              : quoteMap[row.CE.symboltoken]?.dir === "down"
-                                ? "error.main"
-                                : "text.secondary",
-                          backgroundColor:
-                            quoteMap[row.CE.symboltoken]?.dir === "up"
-                              ? "rgba(76, 175, 80, 0.12)"
-                              : quoteMap[row.CE.symboltoken]?.dir === "down"
-                                ? "rgba(244, 67, 54, 0.12)"
-                                : "transparent",
+                          color: getDirectionColor(quoteMap[row.CE.symboltoken]?.dir),
+                          backgroundColor: getDirectionBgColor(quoteMap[row.CE.symboltoken]?.dir),
                           borderRadius: 1,
                           px: 0.5,
                           py: 0.25,
@@ -500,18 +577,8 @@ export default function OptionChainPage() {
                         variant="caption"
                         sx={{
                           display: "block",
-                          color:
-                            quoteMap[row.PE.symboltoken]?.dir === "up"
-                              ? "success.main"
-                              : quoteMap[row.PE.symboltoken]?.dir === "down"
-                                ? "error.main"
-                                : "text.secondary",
-                          backgroundColor:
-                            quoteMap[row.PE.symboltoken]?.dir === "up"
-                              ? "rgba(76, 175, 80, 0.12)"
-                              : quoteMap[row.PE.symboltoken]?.dir === "down"
-                                ? "rgba(244, 67, 54, 0.12)"
-                                : "transparent",
+                          color: getDirectionColor(quoteMap[row.PE.symboltoken]?.dir),
+                          backgroundColor: getDirectionBgColor(quoteMap[row.PE.symboltoken]?.dir),
                           borderRadius: 1,
                           px: 0.5,
                           py: 0.25,
@@ -571,6 +638,25 @@ export default function OptionChainPage() {
                   <MenuItem value={10}>10 Lots</MenuItem>
                 </Select>
               </FormControl>
+
+              <TextField
+                label="Stop Loss"
+                size="small"
+                type="number"
+                value={stopLoss}
+                onChange={(e) => setStopLoss(e.target.value)}
+                sx={{ width: 100 }}
+                placeholder="Ex. 150"
+              />
+              <TextField
+                label="Target"
+                size="small"
+                type="number"
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                sx={{ width: 100 }}
+                placeholder="Ex. 250"
+              />
             </Stack>
           )}
         </Box>
@@ -613,20 +699,36 @@ export default function OptionChainPage() {
         </Box>
 
         {isAdmin && (
-          <Box mb={3} maxWidth={240}>
-            <FormControl fullWidth size="small">
+          <Box mb={3} display="flex" gap={2} alignItems="center" flexWrap="wrap">
+            <FormControl size="small" sx={{ minWidth: 200 }}>
               <InputLabel>Strategy</InputLabel>
               <Select
                 label="Strategy"
                 value={strategy}
                 onChange={(e) => setStrategy(e.target.value)}
               >
-                <MenuItem value="Gamma">Gamma</MenuItem>
-                <MenuItem value="Alpha">Alpha</MenuItem>
-                <MenuItem value="Delta">Delta</MenuItem>
-                <MenuItem value="Beta">Beta</MenuItem>
+                <MenuItem value="Alpha">Alpha - ATM Straddle (Buy)</MenuItem>
+                <MenuItem value="Beta">Beta - OTM Strangle (Buy)</MenuItem>
+                <MenuItem value="Gamma">Gamma - ATM Straddle (Sell)</MenuItem>
+                <MenuItem value="Delta">Delta - Bull Call Spread</MenuItem>
+                <MenuItem value="Straddle">Straddle - Classic ATM</MenuItem>
+                <MenuItem value="Strangle">Strangle - OTM</MenuItem>
+                <MenuItem value="IronCondor">Iron Condor - 4 Leg</MenuItem>
+                <MenuItem value="BullCallSpread">Bull Call Spread</MenuItem>
+                <MenuItem value="BearPutSpread">Bear Put Spread</MenuItem>
               </Select>
             </FormControl>
+
+            <Button
+              variant="outlined"
+              color="secondary"
+              size="medium"
+              onClick={handleAutoSelectStrategy}
+              disabled={autoSelecting || !selectedExpiry}
+              startIcon={autoSelecting ? <CircularProgress size={20} /> : null}
+            >
+              {autoSelecting ? "Auto-Selecting..." : "🎯 Auto-Select Strategy"}
+            </Button>
           </Box>
         )}
 
@@ -645,7 +747,7 @@ export default function OptionChainPage() {
               <Button
                 variant="outlined"
                 color="error"
-                onClick={() => setSelectedOptions([])}
+                onClick={() => { setSelectedOptions([]); setStopLoss(""); setTarget(""); }}
               >
                 Clear Selection
               </Button>
