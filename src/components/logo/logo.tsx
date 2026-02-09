@@ -10,38 +10,25 @@ import { RouterLink } from 'src/routes/components';
 
 export interface LogoProps extends BoxProps {
   disabledLink?: boolean;
+  single?: boolean;
 }
 
 const Logo = forwardRef<HTMLDivElement, LogoProps>(
-  ({ disabledLink = false, sx, ...other }, ref) => {
+  ({ disabledLink = false, single = true, sx, ...other }, ref) => {
     const theme = useTheme();
-
-    const PRIMARY_LIGHT = theme.palette.primary.light;
-
-    const PRIMARY_MAIN = theme.palette.primary.main;
-
-    const PRIMARY_DARK = theme.palette.primary.dark;
-
-    // OR using local (public folder)
-    // -------------------------------------------------------
-    // const logo = (
-    //   <Box
-    //     component="img"
-    //     src="/logo/logo_single.svg" => your path
-    //     sx={{ width: 40, height: 40, cursor: 'pointer', ...sx }}
-    //   />
-    // );
 
     const logo = (
       <Box
         ref={ref}
         component="img"
-        src="/favicon/android-chrome-192x192.png"
+        src={single ? '/favicon/android-chrome-192x192.png' : '/logo/logo_full.png'}
         sx={{
-          width: 40,
+          width: single ? 40 : 120,
           height: 40,
+          display: 'inline-flex',
           cursor: 'pointer',
-          borderRadius: 1, // Optional: slightly rounded corners if it's square
+          borderRadius: 0.5,
+          objectFit: 'contain',
           ...sx,
         }}
         {...other}

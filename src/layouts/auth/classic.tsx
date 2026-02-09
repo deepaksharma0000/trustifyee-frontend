@@ -38,13 +38,14 @@ export default function AuthClassicLayout({ children, image, title }: Props) {
 
   const renderLogo = (
     <Logo
+      single={false}
       sx={{
         zIndex: 10,
         position: 'absolute',
         top: { xs: 24, md: 40 },
         left: { xs: 24, md: 40 },
-        width: { xs: 32, md: 48 },
-        height: { xs: 32, md: 48 },
+        height: { xs: 32, md: 40 },
+        width: 'auto',
       }}
     />
   );
