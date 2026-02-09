@@ -88,13 +88,17 @@ export default function OpenPositionView() {
 
   // 🔥 Auto-refresh positions every 5 seconds
   useEffect(() => {
-    if (!angelClientcode) return;
+    let interval: any;
 
-    const interval = setInterval(() => {
-      fetchOpenPositions();
-    }, 5000); // Refresh every 5 seconds
+    if (angelClientcode) {
+      interval = setInterval(() => {
+        fetchOpenPositions();
+      }, 5000);
+    }
 
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [angelClientcode, fetchOpenPositions]);
 
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
