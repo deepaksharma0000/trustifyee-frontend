@@ -292,12 +292,55 @@ export default function OptionChainPage() {
     }
   }, [marketData]);
 
-  const isBrokerConnected =
-    localStorage.getItem("angel_jwt") !== null;
-  const isTradingEnabled =
-    localStorage.getItem("trading_enabled") === "true";
+  /* ---------------- EXPIRY CHECK ---------------- */
+  const isBrokerConnected = localStorage.getItem("angel_jwt") !== null;
+  const isTradingEnabled = localStorage.getItem("trading_enabled") === "true";
 
-  if (!isBrokerConnected) {
+  const isDemo = authUser?.licence === "Demo";
+  const endDate = authUser?.end_date ? new Date(authUser.end_date) : null;
+  const isExpired = isDemo && endDate && new Date() > endDate;
+
+  /* ---------------- CONDITIONAL RENDERING ---------------- */
+
+  // 1. Check for Expired Demo
+  if (isExpired) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 6 }}>
+        <Card sx={{ p: 4, textAlign: "center", border: '2px solid', borderColor: 'error.main' }}>
+          <Typography variant="h4" color="error" gutterBottom>
+            ⚠️ Demo Expired
+          </Typography>
+
+          <Typography variant="body1" sx={{ mb: 3 }}>
+            Aapka 2 din ka demo period khatam ho chuka hai.
+            Aage ki services continue karne ke liye please subscription lein.
+          </Typography>
+
+          <Stack direction="row" spacing={2} justifyContent="center">
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => { window.location.href = "https://wa.me/91XXXXXXXXXX?text=Hi, I want to subscribe to Trustifye" }}
+            >
+              Contact for Subscription
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => { window.location.href = "/dashboard" }}
+            >
+              Go to Dashboard
+            </Button>
+          </Stack>
+        </Card>
+      </Container>
+    );
+  }
+
+  // 2. Check for Broker Connection (Only for LIVE Users)
+  // Demo and Admin should see the chain directly
+  const needsBroker = !isDemo && !isAdmin && !isBrokerConnected;
+
+  if (needsBroker) {
     return (
       <Container maxWidth="md" sx={{ mt: 6 }}>
         <Card sx={{ p: 4, textAlign: "center" }}>
@@ -319,7 +362,11 @@ export default function OptionChainPage() {
       </Container>
     );
   }
-  if (!isTradingEnabled) {
+
+  // 3. Check for Trading Enabled (Only for LIVE Users)
+  const needsTradingEnabled = !isDemo && !isAdmin && !isTradingEnabled;
+
+  if (needsTradingEnabled) {
     return (
       <Container maxWidth="md" sx={{ mt: 6 }}>
         <Card sx={{ p: 4, textAlign: "center" }}>

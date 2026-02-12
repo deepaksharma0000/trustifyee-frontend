@@ -16,7 +16,7 @@ import {
   TableRow,
   CircularProgress,
 } from '@mui/material';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useSettingsContext } from 'src/components/settings';
 import { HOST_API } from 'src/config-global';
@@ -46,25 +46,24 @@ export default function ClientsView() {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  // ---------------- Fetch API ----------------
-  const fetchClients = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const response = await axios.get(`${API_BASE}/api/admin/star-client`);
-      setClients(response.data.data || []);
-    } catch (err: any) {
-      console.error(err);
-      setError('Failed to fetch clients');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Fetch on component mount
   useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const response = await axios.get(`${API_BASE}/api/admin/star-client`);
+        setClients(response.data.data || []);
+      } catch (err: any) {
+        console.error(err);
+        setError('Failed to fetch clients');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchClients();
-  }, []);
+  }, [API_BASE]);
 
   return (
     <Container maxWidth={settings.themeStretch ? false : 'xl'}>
@@ -150,7 +149,7 @@ export default function ClientsView() {
             <MenuItem value="6891845ec7e63475f6490083">SIGMA</MenuItem>
             <MenuItem value="6891847bc7e63475f6490088">sigma</MenuItem>
           </TextField>
-{/* 
+          {/* 
           <TextField
             label="Search"
             value={filters.search}
@@ -167,72 +166,72 @@ export default function ClientsView() {
 
       {/* ---------------- Table ---------------- */}
       <Paper sx={{ borderRadius: 2, p: 2 }}>
-       {(() => {
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" p={3}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+        {(() => {
+          if (loading) {
+            return (
+              <Box display="flex" justifyContent="center" alignItems="center" p={3}>
+                <CircularProgress />
+              </Box>
+            );
+          }
 
-  if (error) {
-    return (
-      <Typography color="error" sx={{ p: 2 }}>
-        {error}
-      </Typography>
-    );
-  }
+          if (error) {
+            return (
+              <Typography color="error" sx={{ p: 2 }}>
+                {error}
+              </Typography>
+            );
+          }
 
-  return (
-    <TableContainer
-      sx={{
-        maxWidth: '100%',
-        overflowX: 'auto', // Enable horizontal scroll on small screens
-      }}
-    >
-      <Table
-        sx={{
-          minWidth: 650,
-          '& .MuiTableCell-root': {
-            py: 1,
-            fontSize: { xs: '0.75rem', sm: '0.875rem' },
-            whiteSpace: 'nowrap',
-          },
-        }}
-      >
-        <TableHead sx={{ bgcolor: 'grey.100' }}>
-          <TableRow>
-            <TableCell sx={{ color: 'black', fontWeight: 'bold' }}>SR. No.</TableCell>
-            <TableCell sx={{ color: 'black', fontWeight: 'bold' }}>User Name</TableCell>
-            <TableCell sx={{ color: 'black', fontWeight: 'bold' }}>Email</TableCell>
-            <TableCell sx={{ color: 'black', fontWeight: 'bold' }}>User ID</TableCell>
-            <TableCell sx={{ color: 'black', fontWeight: 'bold' }}>Created At</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {clients.length > 0 ? (
-            clients.map((row, index) => (
-              <TableRow key={row.id}>
-                <TableCell>{index + 1}</TableCell>
-                <TableCell>{row.user_name || '-'}</TableCell>
-                <TableCell>{row.email || '-'}</TableCell>
-                <TableCell>{row.user_id || '-'}</TableCell>
-                <TableCell>{new Date(row.created_at).toLocaleString()}</TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={5} align="center">
-                No clients found
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-})()}
+          return (
+            <TableContainer
+              sx={{
+                maxWidth: '100%',
+                overflowX: 'auto', // Enable horizontal scroll on small screens
+              }}
+            >
+              <Table
+                sx={{
+                  minWidth: 650,
+                  '& .MuiTableCell-root': {
+                    py: 1,
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    whiteSpace: 'nowrap',
+                  },
+                }}
+              >
+                <TableHead sx={{ bgcolor: 'grey.100' }}>
+                  <TableRow>
+                    <TableCell sx={{ color: 'black', fontWeight: 'bold' }}>SR. No.</TableCell>
+                    <TableCell sx={{ color: 'black', fontWeight: 'bold' }}>User Name</TableCell>
+                    <TableCell sx={{ color: 'black', fontWeight: 'bold' }}>Email</TableCell>
+                    <TableCell sx={{ color: 'black', fontWeight: 'bold' }}>User ID</TableCell>
+                    <TableCell sx={{ color: 'black', fontWeight: 'bold' }}>Created At</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {clients.length > 0 ? (
+                    clients.map((row, index) => (
+                      <TableRow key={row.id}>
+                        <TableCell>{index + 1}</TableCell>
+                        <TableCell>{row.user_name || '-'}</TableCell>
+                        <TableCell>{row.email || '-'}</TableCell>
+                        <TableCell>{row.user_id || '-'}</TableCell>
+                        <TableCell>{new Date(row.created_at).toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center">
+                        No clients found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          );
+        })()}
       </Paper>
     </Container>
   );

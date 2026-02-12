@@ -63,6 +63,7 @@ const KanbanPage = lazy(() => import('src/pages/dashboard/kanban'));
 const PermissionDeniedPage = lazy(() => import('src/pages/dashboard/permission'));
 // BLANK PAGE
 const BlankPage = lazy(() => import('src/pages/dashboard/blank'));
+const HelpCenterPage = lazy(() => import('src/pages/dashboard/help-center'));
 const BrokerConnectPage = lazy(() => import('src/pages/profile/broker-connect'));
 
 
@@ -88,7 +89,7 @@ export const dashboardRoutes = [
       { path: 'booking', element: <OverviewBookingPage /> },
       { path: 'file', element: <OverviewFilePage /> },
       {
-        path: 'broker-connect',element: <BrokerConnectPage />,
+        path: 'broker-connect', element: <BrokerConnectPage />,
       },
       {
         path: 'user',
@@ -166,6 +167,7 @@ export const dashboardRoutes = [
       { path: 'calendar', element: <CalendarPage /> },
       { path: 'kanban', element: <KanbanPage /> },
       { path: 'permission', element: <PermissionDeniedPage /> },
+      { path: 'help-center', element: <HelpCenterPage /> },
       { path: 'blank', element: <BlankPage /> },
     ],
   },

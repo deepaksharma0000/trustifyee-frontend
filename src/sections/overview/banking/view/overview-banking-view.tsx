@@ -1,5 +1,5 @@
 // @mui
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Container,
   Stack,
@@ -101,6 +101,9 @@ const tableData = [
 
 // ----------------------------------------------------------------------
 
+// ... imports
+import DemoTradeDetailsView from 'src/sections/overview/app/view/demo-trade-details-view';
+
 export default function AllSignalsView() {
   const navigate = useNavigate();
   const [tradingEnabled, setTradingEnabled] = useState(
@@ -136,6 +139,39 @@ export default function AllSignalsView() {
     localStorage.setItem('trading_enabled', 'false');
     setTradingEnabled(false);
   };
+
+  // ✅ Check Broker Session Validity on Mount
+  useEffect(() => {
+    const checkSession = async () => {
+      const isBrokerConnected = localStorage.getItem('angel_jwt') !== null;
+      const clientCode = localStorage.getItem('angel_clientcode');
+
+      if (tradingEnabled && isBrokerConnected && clientCode) {
+        try {
+          const res = await fetch(`${API_BASE}/api/auth/validate-session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientcode: clientCode }),
+          });
+          const json = await res.json();
+
+          if (!json.ok) {
+            // ❌ Session Expired
+            handleDisable();
+            setLoginOpen(true); // Open login dialog automatically
+            setError('Your broker session has expired. Please login again to continue trading.');
+          } else if (json.refreshed) {
+            // If refreshed, update local storage if needed (though backend handles DB)
+            console.log("Broker session refreshed successfully");
+          }
+        } catch (err) {
+          console.error("Session check failed", err);
+        }
+      }
+    };
+
+    checkSession();
+  }, [tradingEnabled, API_BASE]);
 
   const handleBrokerLogin = async () => {
     try {
@@ -173,6 +209,31 @@ export default function AllSignalsView() {
       setLoading(false);
     }
   };
+
+  // ✅ Check if Demo User
+  const getUserLicence = (): string => {
+    try {
+      const userData = localStorage.getItem("authUser");
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        return parsed.licence || "";
+      }
+      return "";
+    } catch {
+      return "";
+    }
+  };
+  const isDemo = getUserLicence() === 'Demo';
+
+  // ✅ Render Demo View if User is Demo
+  if (isDemo) {
+    return (
+      <Container maxWidth="xl">
+        <Typography variant="h4" sx={{ mb: 3 }}>Trade Details</Typography>
+        <DemoTradeDetailsView />
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="xl">
