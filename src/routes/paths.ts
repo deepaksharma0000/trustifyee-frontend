@@ -101,6 +101,9 @@ export const paths = {
     calendar: `${ROOTS.DASHBOARD}/calendar`,
     fileManager: `${ROOTS.DASHBOARD}/file-manager`,
     permission: `${ROOTS.DASHBOARD}/permission`,
+    helpCenter: `${ROOTS.DASHBOARD}/help-center`,
+    faq: `${ROOTS.DASHBOARD}/faq`, // [NEW]
+    apiCreate: `${ROOTS.DASHBOARD}/api-create`, // [NEW]
     brokerConnect: `${ROOTS.DASHBOARD}/broker-connect`,
     general: {
       app: `${ROOTS.DASHBOARD}/app`,

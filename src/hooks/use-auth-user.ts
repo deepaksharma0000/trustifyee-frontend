@@ -12,6 +12,8 @@ export type AuthUser = {
   licence?: 'Live' | 'Demo';
   broker?: string;
   trading_status?: 'enabled' | 'disabled';
+  start_date?: string | Date;
+  end_date?: string | Date;
 
   // optional (future)
   broker_connected?: boolean;

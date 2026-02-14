@@ -62,6 +62,22 @@ export function useNavData() {
   const role = getUserRole();
   const isBrokerConnected =
     localStorage.getItem("angel_jwt") !== null;
+  // ✅ Utility function to get current licence
+  const getUserLicence = (): string => {
+    try {
+      const userData = localStorage.getItem("authUser");
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        return parsed.licence || "";
+      }
+      return "";
+    } catch {
+      return "";
+    }
+  };
+
+  const licence = getUserLicence();
+
   const data = useMemo(
     () => [
       {
@@ -78,7 +94,6 @@ export function useNavData() {
             path: paths.dashboard.general.ecommerce,
             icon: <Iconify icon="solar:users-group-rounded-bold-duotone" width={24} />,
             show: role !== "user",
-
             children: [
               { title: "Clients", path: paths.dashboard.general.ecommerce },
               { title: t("Expired Clients"), path: paths.dashboard.user.list },
@@ -96,7 +111,7 @@ export function useNavData() {
             title: t("Trade Details"),
             path: paths.dashboard.general.banking,
             icon: <Iconify icon="solar:bill-list-bold-duotone" width={24} />,
-            show: role !== "user",
+            show: role !== "user" || licence === "Demo", // ✅ Allow Demo Users
           },
           {
             title: t("Script Management"),
@@ -113,7 +128,7 @@ export function useNavData() {
             title: t("Open Position"),
             path: paths.dashboard.order.root,
             icon: <Iconify icon="solar:chart-2-bold-duotone" width={24} />,
-            show: true,
+            show: licence !== "Demo", // 🔥 Hide for Demo Users
             children: [
               { title: t("Option Chain"), path: paths.dashboard.order.root },
               { title: t("Open Position"), path: paths.dashboard.user.account },
@@ -123,7 +138,7 @@ export function useNavData() {
             title: t("Licence"),
             path: paths.dashboard.tour.root,
             icon: <Iconify icon="solar:key-minimalistic-square-bold-duotone" width={24} />,
-            show: role !== "user", // ✅ user ke liye nahi
+            show: role !== "user",
             children: [
               { title: t("Transaction License"), path: paths.dashboard.tour.root },
               { title: t("Expired License"), path: paths.dashboard.invoice.root },
@@ -133,18 +148,35 @@ export function useNavData() {
             title: t("More"),
             path: paths.dashboard.general.file,
             icon: <Iconify icon="solar:menu-dots-bold-duotone" width={24} />,
-            show: role === "admin", // ✅ sirf admin ke liye
+            show: role === "admin",
+          },
+          {
+            title: t("Help Center"),
+            path: paths.dashboard.helpCenter,
+            icon: <Iconify icon="solar:help-bold-duotone" width={24} />,
+            show: licence === "Demo", // ✅ Only for Demo Users
           },
           {
             title: t("Connect Broker"),
             path: paths.dashboard.brokerConnect,
-            show: role === "user" && !isBrokerConnected,
+            show: role === "user" && !isBrokerConnected && licence === "Live",
           },
-
+          {
+            title: t("FAQ"),
+            path: paths.dashboard.faq,
+            icon: <Iconify icon="solar:question-circle-bold-duotone" width={24} />,
+            show: licence === "Demo", // [NEW] Only for Demo Users
+          },
+          {
+            title: t("API Create Info"),
+            path: paths.dashboard.apiCreate,
+            icon: <Iconify icon="solar:code-circle-bold-duotone" width={24} />,
+            show: licence === "Demo", // [NEW] Only for Demo Users
+          },
         ],
       },
     ],
-    [t, role, isBrokerConnected]
+    [t, role, isBrokerConnected, licence]
   );
 
   // ✅ Filter items based on show condition

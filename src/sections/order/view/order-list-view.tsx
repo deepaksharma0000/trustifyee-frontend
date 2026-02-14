@@ -70,6 +70,14 @@ export default function OptionChainPage() {
   >({});
   const [autoSelecting, setAutoSelecting] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  /* ---------------- AUTO SQUARE OFF STATE ---------------- */
+  const [autoSquareOffEnabled, setAutoSquareOffEnabled] = useState(false);
+  const [exitTime, setExitTime] = useState("");
+
+
+  /* ---------------- MARKET STATUS STATE ---------------- */
+  const [marketStatus, setMarketStatus] = useState<{ isOpen: boolean, message: string } | null>(null);
+
   const blinkTimers = useRef<Record<string, number>>({});
 
   const authUserRaw = localStorage.getItem("authUser");
@@ -206,7 +214,15 @@ export default function OptionChainPage() {
 
   useEffect(() => {
     fetchOptionChainFromLTP();
-  }, [fetchOptionChainFromLTP]);
+
+    // Check Market Status
+    fetch(`${API_BASE}/api/market/status`)
+      .then(res => res.json())
+      .then(json => {
+        if (json.ok) setMarketStatus(json.data);
+      })
+      .catch(err => console.error("Market status check failed", err));
+  }, [fetchOptionChainFromLTP, API_BASE]);
 
   useEffect(() => {
     const ws = new WebSocket(WS_URL);
@@ -292,12 +308,55 @@ export default function OptionChainPage() {
     }
   }, [marketData]);
 
-  const isBrokerConnected =
-    localStorage.getItem("angel_jwt") !== null;
-  const isTradingEnabled =
-    localStorage.getItem("trading_enabled") === "true";
+  /* ---------------- EXPIRY CHECK ---------------- */
+  const isBrokerConnected = localStorage.getItem("angel_jwt") !== null;
+  const isTradingEnabled = localStorage.getItem("trading_enabled") === "true";
 
-  if (!isBrokerConnected) {
+  const isDemo = authUser?.licence === "Demo";
+  const endDate = authUser?.end_date ? new Date(authUser.end_date) : null;
+  const isExpired = isDemo && endDate && new Date() > endDate;
+
+  /* ---------------- CONDITIONAL RENDERING ---------------- */
+
+  // 1. Check for Expired Demo
+  if (isExpired) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 6 }}>
+        <Card sx={{ p: 4, textAlign: "center", border: '2px solid', borderColor: 'error.main' }}>
+          <Typography variant="h4" color="error" gutterBottom>
+            ⚠️ Demo Expired
+          </Typography>
+
+          <Typography variant="body1" sx={{ mb: 3 }}>
+            Aapka 2 din ka demo period khatam ho chuka hai.
+            Aage ki services continue karne ke liye please subscription lein.
+          </Typography>
+
+          <Stack direction="row" spacing={2} justifyContent="center">
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => { window.location.href = "https://wa.me/91XXXXXXXXXX?text=Hi, I want to subscribe to Trustifye" }}
+            >
+              Contact for Subscription
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => { window.location.href = "/dashboard" }}
+            >
+              Go to Dashboard
+            </Button>
+          </Stack>
+        </Card>
+      </Container>
+    );
+  }
+
+  // 2. Check for Broker Connection (Only for LIVE Users)
+  // Demo and Admin should see the chain directly
+  const needsBroker = !isDemo && !isAdmin && !isBrokerConnected;
+
+  if (needsBroker) {
     return (
       <Container maxWidth="md" sx={{ mt: 6 }}>
         <Card sx={{ p: 4, textAlign: "center" }}>
@@ -319,7 +378,11 @@ export default function OptionChainPage() {
       </Container>
     );
   }
-  if (!isTradingEnabled) {
+
+  // 3. Check for Trading Enabled (Only for LIVE Users)
+  const needsTradingEnabled = !isDemo && !isAdmin && !isTradingEnabled;
+
+  if (needsTradingEnabled) {
     return (
       <Container maxWidth="md" sx={{ mt: 6 }}>
         <Card sx={{ p: 4, textAlign: "center" }}>
@@ -403,6 +466,12 @@ export default function OptionChainPage() {
   };
 
   const executeSelectedOrders = async () => {
+    // [NEW] Check Market Status First
+    if (marketStatus && !marketStatus.isOpen) {
+      alert(`${marketStatus.message}. Orders will be rejected.`);
+      return;
+    }
+
     if (selectedOptions.length === 0) {
       alert("Please select at least one option (CE or PE) to trade");
       return;
@@ -470,6 +539,8 @@ export default function OptionChainPage() {
             stopLossPrice: stopLoss ? Number(stopLoss) : undefined,
             targetPrice: target ? Number(target) : undefined,
             strategy,
+            autoSquareOffEnabled,
+            autoSquareOffTime: autoSquareOffEnabled && exitTime ? new Date(exitTime).toISOString() : undefined,
           }),
         });
 
@@ -618,6 +689,12 @@ export default function OptionChainPage() {
           <Typography variant="h4">
             📊 {symbol} Option Chain
           </Typography>
+
+          {marketStatus && !marketStatus.isOpen && (
+            <Alert severity="warning" sx={{ width: '100%', mb: 2 }}>
+              ⛔ {marketStatus.message}. Orders will be rejected.
+            </Alert>
+          )}
           {isAdmin && (
             <Stack direction="row" spacing={2} alignItems="center">
               <Chip
@@ -657,6 +734,29 @@ export default function OptionChainPage() {
                 sx={{ width: 100 }}
                 placeholder="Ex. 250"
               />
+
+              <Box sx={{ border: '1px dashed grey', p: 1, borderRadius: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={autoSquareOffEnabled}
+                      onChange={(e) => setAutoSquareOffEnabled(e.target.checked)}
+                      size="small"
+                    />
+                  }
+                  label="Auto Exit"
+                />
+                {autoSquareOffEnabled && (
+                  <TextField
+                    type="datetime-local"
+                    size="small"
+                    value={exitTime}
+                    onChange={(e) => setExitTime(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    label="Exit Time"
+                  />
+                )}
+              </Box>
             </Stack>
           )}
         </Box>

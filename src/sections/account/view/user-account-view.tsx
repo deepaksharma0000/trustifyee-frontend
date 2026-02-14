@@ -32,17 +32,19 @@ import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
 // routes
 import { paths } from 'src/routes/paths';
 import { HOST_API } from 'src/config-global';
+import { useAuthUser } from 'src/hooks/use-auth-user';
 
 // ----------------------------------------------------------------------
 
-// Mock data for open positions
 
+interface OpenPositionViewProps {
+  embed?: boolean;
+}
 
-// ----------------------------------------------------------------------
-
-export default function OpenPositionView() {
+export default function OpenPositionView({ embed = false }: OpenPositionViewProps) {
   const settings = useSettingsContext();
   const theme = useTheme();
+  const { user } = useAuthUser();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [searchQuery, setSearchQuery] = useState('');
   const [positions, setPositions] = useState<any[]>([]);
@@ -50,24 +52,32 @@ export default function OpenPositionView() {
   const [error, setError] = useState<string | null>(null);
   const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || '';
 
-
   const OPEN_POSITIONS_DATA = positions;
-
 
   const [angelClientcode, setAngelClientcode] = useState<string | null>(null);
 
   useEffect(() => {
-    const code = localStorage.getItem('angel_clientcode');
-    setAngelClientcode(code);
-  }, []);
+    if (user?.licence === 'Demo') {
+      setAngelClientcode('ADMIN_DEMO');
+    } else {
+      const code = localStorage.getItem('angel_clientcode');
+      setAngelClientcode(code);
+    }
+  }, [user]);
 
   const fetchOpenPositions = useCallback(async () => {
     if (!angelClientcode) return;
 
     try {
       setLoading(true);
+      const authToken = localStorage.getItem('authToken');
       const res = await fetch(
-        `${API_BASE}/api/positions/open/${angelClientcode}`
+        `${API_BASE}/api/positions/open/${angelClientcode}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        }
       );
       const json = await res.json();
       if (json.ok) setPositions(json.data);
@@ -277,25 +287,34 @@ export default function OpenPositionView() {
           </Box>
 
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              fullWidth
-              onClick={() => handleUpdatePrice(row.id)}
-              startIcon={<Iconify icon="eva:refresh-fill" width={16} />}
-            >
-              Update
-            </Button>
-            <Button
-              variant="contained"
-              size="small"
-              fullWidth
-              onClick={() => handleSquareOff(row.orderid)}
-              startIcon={<Iconify icon="eva:close-fill" width={16} />}
-              color={isProfit ? 'success' : 'error'}
-            >
-              Square Off
-            </Button>
+            {user?.licence !== 'Demo' && (
+              <>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  onClick={() => handleUpdatePrice(row.id)}
+                  startIcon={<Iconify icon="eva:refresh-fill" width={16} />}
+                >
+                  Update
+                </Button>
+                <Button
+                  variant="contained"
+                  size="small"
+                  fullWidth
+                  onClick={() => handleSquareOff(row.orderid)}
+                  startIcon={<Iconify icon="eva:close-fill" width={16} />}
+                  color={isProfit ? 'success' : 'error'}
+                >
+                  Square Off
+                </Button>
+              </>
+            )}
+            {user?.licence === 'Demo' && (
+              <Button variant="outlined" size="small" fullWidth disabled>
+                View Only (Demo)
+              </Button>
+            )}
           </Stack>
         </Stack>
       </Paper>
@@ -399,36 +418,40 @@ export default function OpenPositionView() {
                       />
                     </TableCell>
                     <TableCell align="center">
-                      <Stack direction="row" spacing={1} justifyContent="center">
-                        <Tooltip title="Update Price" arrow>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleUpdatePrice(row.id)}
-                            sx={{
-                              border: `1px solid ${theme.palette.primary.main}`,
-                              borderRadius: 1,
-                              color: theme.palette.primary.main
-                            }}
-                          >
-                            <Iconify icon="eva:refresh-fill" width={16} />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Square Off" arrow>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleSquareOff(row.orderid)}
-                            sx={{
-                              bgcolor: isProfit ? theme.palette.success.main : theme.palette.error.main,
-                              color: 'white',
-                              '&:hover': {
-                                bgcolor: isProfit ? theme.palette.success.dark : theme.palette.error.dark,
-                              }
-                            }}
-                          >
-                            <Iconify icon="eva:close-fill" width={16} />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
+                      {user?.licence !== 'Demo' ? (
+                        <Stack direction="row" spacing={1} justifyContent="center">
+                          <Tooltip title="Update Price" arrow>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleUpdatePrice(row.id)}
+                              sx={{
+                                border: `1px solid ${theme.palette.primary.main}`,
+                                borderRadius: 1,
+                                color: theme.palette.primary.main
+                              }}
+                            >
+                              <Iconify icon="eva:refresh-fill" width={16} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Square Off" arrow>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleSquareOff(row.orderid)}
+                              sx={{
+                                bgcolor: isProfit ? theme.palette.success.main : theme.palette.error.main,
+                                color: 'white',
+                                '&:hover': {
+                                  bgcolor: isProfit ? theme.palette.success.dark : theme.palette.error.dark,
+                                }
+                              }}
+                            >
+                              <Iconify icon="eva:close-fill" width={16} />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      ) : (
+                        <Chip label="Read Only" size="small" variant="outlined" />
+                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -451,6 +474,90 @@ export default function OpenPositionView() {
     </TableContainer>
   );
 
+  const content = (
+    <Card sx={{
+      borderRadius: 2,
+      boxShadow: theme.shadows[5],
+      overflow: 'visible',
+      mt: embed ? 3 : 0
+    }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        alignItems="center"
+        spacing={2}
+        sx={{ p: 2.5 }}
+      >
+        <TextField
+          fullWidth
+          placeholder="Search positions..."
+          value={searchQuery}
+          onChange={handleSearch}
+          size="small"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Iconify icon="eva:search-fill" sx={{ color: 'text.disabled' }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ maxWidth: 400 }}
+        />
+
+        <Stack direction="row" spacing={1} sx={{ ml: 'auto' }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={fetchOpenPositions}
+            disabled={loading}
+            startIcon={<Iconify icon="eva:refresh-fill" />}
+          >
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </Button>
+          <Button
+            variant={isMobile ? "contained" : "outlined"}
+            size="small"
+            startIcon={<Iconify icon="eva:filter-fill" />}
+          >
+            Filters
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<Iconify icon="eva:download-fill" />}
+          >
+            Export
+          </Button>
+        </Stack>
+      </Stack>
+
+      {loading && positions.length === 0 && (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="body2" color="text.secondary">
+            Loading positions...
+          </Typography>
+        </Box>
+      )}
+
+      {error && (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="body2" color="error">
+            {error}
+          </Typography>
+        </Box>
+      )}
+
+      {isMobile ? (
+        <Box sx={{ p: 2 }}>
+          {positions.map(renderMobileCard)}
+        </Box>
+      ) : (
+        renderDesktopTable()
+      )}
+    </Card>
+  );
+
+  if (embed) return content;
+
   return (
     <Container maxWidth={settings.themeStretch ? false : 'xl'}>
       <CustomBreadcrumbs
@@ -462,95 +569,8 @@ export default function OpenPositionView() {
         sx={{
           mb: { xs: 3, md: 5 },
         }}
-      // action={
-      //   <Button
-      //     variant="contained"
-      //     startIcon={<Iconify icon="eva:plus-fill" />}
-      //     sx={{ ml: 2 }}
-      //   >
-      //     New Position
-      //   </Button>
-      // }
       />
-
-      <Card sx={{
-        borderRadius: 2,
-        boxShadow: theme.shadows[5],
-        overflow: 'visible'
-      }}>
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          alignItems="center"
-          spacing={2}
-          sx={{ p: 2.5 }}
-        >
-          <TextField
-            fullWidth
-            placeholder="Search positions..."
-            value={searchQuery}
-            onChange={handleSearch}
-            size="small"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Iconify icon="eva:search-fill" sx={{ color: 'text.disabled' }} />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ maxWidth: 400 }}
-          />
-
-          <Stack direction="row" spacing={1} sx={{ ml: 'auto' }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={fetchOpenPositions}
-              disabled={loading}
-              startIcon={<Iconify icon="eva:refresh-fill" />}
-            >
-              {loading ? 'Refreshing...' : 'Refresh'}
-            </Button>
-            <Button
-              variant={isMobile ? "contained" : "outlined"}
-              size="small"
-              startIcon={<Iconify icon="eva:filter-fill" />}
-            >
-              Filters
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<Iconify icon="eva:download-fill" />}
-            >
-              Export
-            </Button>
-          </Stack>
-        </Stack>
-
-        {loading && positions.length === 0 && (
-          <Box sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              Loading positions...
-            </Typography>
-          </Box>
-        )}
-
-        {error && (
-          <Box sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="body2" color="error">
-              {error}
-            </Typography>
-          </Box>
-        )}
-
-        {isMobile ? (
-          <Box sx={{ p: 2 }}>
-            {positions.map(renderMobileCard)}
-          </Box>
-        ) : (
-          renderDesktopTable()
-        )}
-      </Card>
+      {content}
     </Container>
   );
 }
