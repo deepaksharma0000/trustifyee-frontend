@@ -73,6 +73,10 @@ interface ClientData {
   client_key: string;
   phone_number: string;
   broker: string;
+  licence: string;  // Added
+  sub_admin: string; // Added
+  group_service: string; // Added
+  strategies: string[]; // Added
   to_month: string;
   status: string;
   trading_status: string;
@@ -181,6 +185,19 @@ const getColumns = (handleEdit: (client: ClientData) => void, handleOpenDeleteDi
         size="small"
         variant="outlined"
         color={params.value === 'Zerodha' ? 'primary' : 'default'}
+      />
+    )
+  },
+  {
+    field: 'licence',
+    headerName: 'Licence',
+    width: 100,
+    renderCell: (params) => (
+      <Chip
+        label={params.value}
+        size="small"
+        color={params.value === 'Live' ? 'success' : 'warning'}
+        variant="filled"
       />
     )
   },
@@ -514,6 +531,10 @@ const apiService = {
         client_key: client.client_key || '',
         phone_number: client.phone_number || '',
         broker: client.broker || '',
+        licence: client.licence || 'Demo', // Ensure licence is mapped, default to Demo if missing? Or Live? User said issue default to Live.
+        sub_admin: client.sub_admin || '',
+        group_service: client.group_service || '',
+        strategies: client.strategies || [],
         to_month: client.to_month || '',
         status: client.status || 'inactive',
         trading_status: client.trading_status || 'disabled',

@@ -64,6 +64,8 @@ const PermissionDeniedPage = lazy(() => import('src/pages/dashboard/permission')
 // BLANK PAGE
 const BlankPage = lazy(() => import('src/pages/dashboard/blank'));
 const HelpCenterPage = lazy(() => import('src/pages/dashboard/help-center'));
+const FaqPage = lazy(() => import('src/pages/dashboard/faq')); // [NEW]
+const ApiCreatePage = lazy(() => import('src/pages/dashboard/api-create')); // [NEW]
 const BrokerConnectPage = lazy(() => import('src/pages/profile/broker-connect'));
 
 
@@ -168,6 +170,8 @@ export const dashboardRoutes = [
       { path: 'kanban', element: <KanbanPage /> },
       { path: 'permission', element: <PermissionDeniedPage /> },
       { path: 'help-center', element: <HelpCenterPage /> },
+      { path: 'faq', element: <FaqPage /> }, // [NEW]
+      { path: 'api-create', element: <ApiCreatePage /> }, // [NEW]
       { path: 'blank', element: <BlankPage /> },
     ],
   },

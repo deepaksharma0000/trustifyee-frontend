@@ -161,6 +161,18 @@ export function useNavData() {
             path: paths.dashboard.brokerConnect,
             show: role === "user" && !isBrokerConnected && licence === "Live",
           },
+          {
+            title: t("FAQ"),
+            path: paths.dashboard.faq,
+            icon: <Iconify icon="solar:question-circle-bold-duotone" width={24} />,
+            show: licence === "Demo", // [NEW] Only for Demo Users
+          },
+          {
+            title: t("API Create Info"),
+            path: paths.dashboard.apiCreate,
+            icon: <Iconify icon="solar:code-circle-bold-duotone" width={24} />,
+            show: licence === "Demo", // [NEW] Only for Demo Users
+          },
         ],
       },
     ],
