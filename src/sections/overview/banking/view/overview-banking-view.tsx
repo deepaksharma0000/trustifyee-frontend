@@ -27,6 +27,7 @@ import {
 import Grid from '@mui/material/Unstable_Grid2';
 import { useNavigate } from 'react-router-dom';
 import { HOST_API } from 'src/config-global';
+import DemoTradeDetailsView from 'src/sections/overview/app/view/demo-trade-details-view';
 
 // ----------------------------------------------------------------------
 
@@ -100,9 +101,6 @@ const tableData = [
 ];
 
 // ----------------------------------------------------------------------
-
-// ... imports
-import DemoTradeDetailsView from 'src/sections/overview/app/view/demo-trade-details-view';
 
 export default function AllSignalsView() {
   const navigate = useNavigate();

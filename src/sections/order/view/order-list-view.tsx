@@ -70,6 +70,14 @@ export default function OptionChainPage() {
   >({});
   const [autoSelecting, setAutoSelecting] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  /* ---------------- AUTO SQUARE OFF STATE ---------------- */
+  const [autoSquareOffEnabled, setAutoSquareOffEnabled] = useState(false);
+  const [exitTime, setExitTime] = useState("");
+
+
+  /* ---------------- MARKET STATUS STATE ---------------- */
+  const [marketStatus, setMarketStatus] = useState<{ isOpen: boolean, message: string } | null>(null);
+
   const blinkTimers = useRef<Record<string, number>>({});
 
   const authUserRaw = localStorage.getItem("authUser");
@@ -206,7 +214,15 @@ export default function OptionChainPage() {
 
   useEffect(() => {
     fetchOptionChainFromLTP();
-  }, [fetchOptionChainFromLTP]);
+
+    // Check Market Status
+    fetch(`${API_BASE}/api/market/status`)
+      .then(res => res.json())
+      .then(json => {
+        if (json.ok) setMarketStatus(json.data);
+      })
+      .catch(err => console.error("Market status check failed", err));
+  }, [fetchOptionChainFromLTP, API_BASE]);
 
   useEffect(() => {
     const ws = new WebSocket(WS_URL);
@@ -450,6 +466,12 @@ export default function OptionChainPage() {
   };
 
   const executeSelectedOrders = async () => {
+    // [NEW] Check Market Status First
+    if (marketStatus && !marketStatus.isOpen) {
+      alert(`${marketStatus.message}. Orders will be rejected.`);
+      return;
+    }
+
     if (selectedOptions.length === 0) {
       alert("Please select at least one option (CE or PE) to trade");
       return;
@@ -517,6 +539,8 @@ export default function OptionChainPage() {
             stopLossPrice: stopLoss ? Number(stopLoss) : undefined,
             targetPrice: target ? Number(target) : undefined,
             strategy,
+            autoSquareOffEnabled,
+            autoSquareOffTime: autoSquareOffEnabled && exitTime ? new Date(exitTime).toISOString() : undefined,
           }),
         });
 
@@ -665,6 +689,12 @@ export default function OptionChainPage() {
           <Typography variant="h4">
             📊 {symbol} Option Chain
           </Typography>
+
+          {marketStatus && !marketStatus.isOpen && (
+            <Alert severity="warning" sx={{ width: '100%', mb: 2 }}>
+              ⛔ {marketStatus.message}. Orders will be rejected.
+            </Alert>
+          )}
           {isAdmin && (
             <Stack direction="row" spacing={2} alignItems="center">
               <Chip
@@ -704,6 +734,29 @@ export default function OptionChainPage() {
                 sx={{ width: 100 }}
                 placeholder="Ex. 250"
               />
+
+              <Box sx={{ border: '1px dashed grey', p: 1, borderRadius: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={autoSquareOffEnabled}
+                      onChange={(e) => setAutoSquareOffEnabled(e.target.checked)}
+                      size="small"
+                    />
+                  }
+                  label="Auto Exit"
+                />
+                {autoSquareOffEnabled && (
+                  <TextField
+                    type="datetime-local"
+                    size="small"
+                    value={exitTime}
+                    onChange={(e) => setExitTime(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    label="Exit Time"
+                  />
+                )}
+              </Box>
             </Stack>
           )}
         </Box>
