@@ -1,7 +1,6 @@
 // utils
 import { paramCase } from 'src/utils/change-case';
 import { _id, _postTitles } from 'src/_mock/assets';
-import BrokerConnect from 'src/pages/profile/broker-connect';
 
 // ----------------------------------------------------------------------
 

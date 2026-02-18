@@ -93,6 +93,8 @@ export function AuthProvider({ children }: Props) {
           const res = await axios.get(endpoints.auth.me);
           const { user } = res.data;
 
+          localStorage.setItem('authUser', JSON.stringify(user));
+
           dispatch({
             type: Types.INITIAL,
             payload: {
@@ -162,6 +164,7 @@ export function AuthProvider({ children }: Props) {
     const { accessToken, user } = res.data;
 
     setSession(accessToken);
+    localStorage.setItem('authUser', JSON.stringify(user));
 
     dispatch({
       type: Types.LOGIN,
@@ -217,6 +220,9 @@ export function AuthProvider({ children }: Props) {
     setSession(null);
     localStorage.removeItem('authToken');
     localStorage.removeItem('authUser');
+    localStorage.removeItem('angel_jwt');
+    localStorage.removeItem('angel_clientcode');
+    localStorage.removeItem('trading_enabled');
 
     dispatch({
       type: Types.LOGOUT,

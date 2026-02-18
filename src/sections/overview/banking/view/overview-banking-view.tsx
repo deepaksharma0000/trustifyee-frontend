@@ -26,8 +26,12 @@ import {
 } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useNavigate } from 'react-router-dom';
+import { paths } from 'src/routes/paths';
 import { HOST_API } from 'src/config-global';
 import DemoTradeDetailsView from 'src/sections/overview/app/view/demo-trade-details-view';
+
+// hooks
+import { useAuthUser } from 'src/hooks/use-auth-user';
 
 // ----------------------------------------------------------------------
 
@@ -103,6 +107,7 @@ const tableData = [
 // ----------------------------------------------------------------------
 
 export default function AllSignalsView() {
+  const { user } = useAuthUser();
   const navigate = useNavigate();
   const [tradingEnabled, setTradingEnabled] = useState(
     localStorage.getItem('trading_enabled') === 'true'
@@ -122,15 +127,7 @@ export default function AllSignalsView() {
   const authToken = localStorage.getItem('authToken');
 
   const handleEnable = () => {
-    const isBrokerConnected = localStorage.getItem('angel_jwt') !== null;
-    if (!isBrokerConnected) {
-      setLoginOpen(true);
-      return;
-    }
-
-    localStorage.setItem('trading_enabled', 'true');
-    setTradingEnabled(true);
-    navigate('/dashboard/order');
+    navigate(paths.dashboard.brokerConnect);
   };
 
   const handleDisable = () => {
@@ -154,16 +151,11 @@ export default function AllSignalsView() {
           const json = await res.json();
 
           if (!json.ok) {
-            // ❌ Session Expired
             handleDisable();
-            setLoginOpen(true); // Open login dialog automatically
-            setError('Your broker session has expired. Please login again to continue trading.');
-          } else if (json.refreshed) {
-            // If refreshed, update local storage if needed (though backend handles DB)
-            console.log("Broker session refreshed successfully");
+            setError('Your broker session has expired. Please connect again.');
           }
         } catch (err) {
-          console.error("Session check failed", err);
+          console.error('Session check failed', err);
         }
       }
     };
@@ -171,57 +163,9 @@ export default function AllSignalsView() {
     checkSession();
   }, [tradingEnabled, API_BASE]);
 
-  const handleBrokerLogin = async () => {
-    try {
-      setLoading(true);
-      setError('');
+  // handleBrokerLogin removed as we use OAuth redirect now
 
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-
-      const result = await res.json();
-      if (!result.ok) throw new Error('AngelOne login failed');
-
-      localStorage.setItem('angel_jwt', result.data.jwtToken);
-      localStorage.setItem('angel_refresh', result.data.refreshToken);
-      localStorage.setItem('angel_feed', result.data.feedToken);
-      localStorage.setItem('angel_clientcode', form.clientcode); // 🔥 SAVE CLIENTCODE
-
-      if (accessToken) {
-        await fetch(`${API_BASE}/api/instruments/sync`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-      }
-
-      localStorage.setItem('trading_enabled', 'true');
-      setTradingEnabled(true);
-      setLoginOpen(false);
-      navigate('/dashboard/order');
-    } catch (err: any) {
-      setError(err.message || 'Failed to connect AngelOne');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ✅ Check if Demo User
-  const getUserLicence = (): string => {
-    try {
-      const userData = localStorage.getItem("authUser");
-      if (userData) {
-        const parsed = JSON.parse(userData);
-        return parsed.licence || "";
-      }
-      return "";
-    } catch {
-      return "";
-    }
-  };
-  const isDemo = getUserLicence() === 'Demo';
+  const isDemo = user?.licence === 'Demo';
 
   // ✅ Render Demo View if User is Demo
   if (isDemo) {
@@ -240,18 +184,27 @@ export default function AllSignalsView() {
           Trading Details
         </Typography>
         <Typography variant="body2" sx={{ mb: 2 }}>
-          Enable trading to open Option Chain. If token expired, login again.
+          Manual session generation (SmartAPI Login) is required to enable trading.
         </Typography>
-        <FormControlLabel
-          control={
-            <Switch
-              checked={tradingEnabled}
-              onChange={(_, checked) => (checked ? handleEnable() : handleDisable())}
-              color="success"
-            />
-          }
-          label={tradingEnabled ? 'Enabled' : 'Disabled'}
-        />
+
+        {error && <Alert severity="warning" sx={{ mb: 2 }}>{error}</Alert>}
+
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Button
+            variant="contained"
+            color={tradingEnabled ? "success" : "primary"}
+            onClick={handleEnable}
+            disabled={tradingEnabled}
+          >
+            {tradingEnabled ? "Trading Active" : "Connect AngelOne"}
+          </Button>
+
+          {tradingEnabled && (
+            <Button variant="outlined" color="error" onClick={handleDisable}>
+              Disconnect
+            </Button>
+          )}
+        </Stack>
       </Card>
 
       {/* Header */}
@@ -266,13 +219,13 @@ export default function AllSignalsView() {
           variant="contained"
           color="primary"
           onClick={() => {
-            const url = `${API_BASE}/api/algo/trades/export`;
+            const exportUrl = `${API_BASE}/api/algo/trades/export`;
             const link = document.createElement('a');
-            link.href = url;
+            link.href = exportUrl;
             link.download = 'algo-trades.csv';
             link.target = '_blank';
             if (authToken) {
-              fetch(url, {
+              fetch(exportUrl, {
                 headers: { Authorization: `Bearer ${authToken}` },
               })
                 .then((r) => r.blob())
@@ -339,49 +292,6 @@ export default function AllSignalsView() {
           </TableBody>
         </Table>
       </TableContainer>
-
-      <Dialog open={loginOpen} onClose={() => setLoginOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>AngelOne Login</DialogTitle>
-        <DialogContent>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          <Box sx={{ mt: 1 }}>
-            <TextField
-              fullWidth
-              label="Client Code"
-              margin="normal"
-              value={form.clientcode}
-              onChange={(e) => setForm({ ...form, clientcode: e.target.value })}
-            />
-            <TextField
-              fullWidth
-              label="Password"
-              type="password"
-              margin="normal"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-            />
-            <TextField
-              fullWidth
-              label="TOTP"
-              margin="normal"
-              value={form.totp}
-              onChange={(e) => setForm({ ...form, totp: e.target.value })}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setLoginOpen(false)} disabled={loading}>
-            Cancel
-          </Button>
-          <Button variant="contained" onClick={handleBrokerLogin} disabled={loading}>
-            {loading ? 'Connecting...' : 'Connect'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Container>
   );
 }

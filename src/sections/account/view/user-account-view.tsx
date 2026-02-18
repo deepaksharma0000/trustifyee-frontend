@@ -57,7 +57,9 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
   const [angelClientcode, setAngelClientcode] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user?.licence === 'Demo') {
+    if (user?.role === 'admin' || user?.role === 'sub-admin') {
+      setAngelClientcode('ADMIN_ALL');
+    } else if (user?.licence === 'Demo') {
       setAngelClientcode('ADMIN_DEMO');
     } else {
       const code = localStorage.getItem('angel_clientcode');

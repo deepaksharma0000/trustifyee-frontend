@@ -104,6 +104,7 @@ export default function ClassicLoginView() {
       const userData = userResult.data;
       localStorage.setItem('authToken', userResult.access.token);
       localStorage.setItem('authUser', JSON.stringify({
+        _id: userData._id,
         role: 'user',
         full_name: userData.full_name,
         user_name: userData.user_name,
@@ -111,7 +112,9 @@ export default function ClassicLoginView() {
         licence: userData.licence,
         broker: userData.broker || '',
         trading_status: userData.trading_status,
-        broker_connected: false
+        client_key: userData.client_key || '',
+        api_key: userData.api_key || '',
+        broker_connected: !!(userData.client_key && userData.client_key.length > 0)
       }));
 
       navigate('/dashboard');

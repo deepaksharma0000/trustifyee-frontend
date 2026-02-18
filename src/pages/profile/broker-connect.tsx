@@ -1,148 +1,148 @@
+import * as React from 'react';
 import { useState } from 'react';
-import {
-  Card,
-  TextField,
-  Button,
-  Alert,
-  Typography,
-  Box,
-} from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { Alert, Card, Typography, Box, Link, TextField } from '@mui/material';
+import { LoadingButton } from '@mui/lab';
 import { useAuthUser } from 'src/hooks/use-auth-user';
+import { HOST_API } from 'src/config-global';
+import Iconify from 'src/components/iconify';
+import axios from 'src/utils/axios';
 
 export default function BrokerConnect() {
   const { user } = useAuthUser();
-  const navigate = useNavigate();
-
-  const [form, setForm] = useState({
-    clientcode: '',
-    password: '',
-    totp: '',
-  });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const API_BASE = process.env.REACT_APP_HOST_API || process.env.REACT_APP_API_BASE_URL || '';
+  const [success, setSuccess] = useState('');
+  const [formData, setFormData] = useState({
+    client_code: '',
+    password: '',
+    totp: ''
+  });
 
   if (!user) {
     return <Alert severity="error">Session expired. Please login again.</Alert>;
   }
 
-  if (user.licence !== 'Live') {
-    return <Alert severity="info">Demo users cannot connect broker.</Alert>;
+  const isAdmin = user?.role === 'admin' || user?.role === 'sub-admin';
+
+  if (!isAdmin && user.licence !== 'Live') {
+    return (
+      <Alert severity="info" sx={{ mt: 3 }}>
+        Demo users cannot connect broker. Please upgrade to Live license.
+      </Alert>
+    );
   }
 
-  const handleConnect = async () => {
+  // Check if broker is connected for today
+  const isConnected = user.broker_connected;
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
     try {
-      setLoading(true);
-      setError('');
+      const res = await axios.post('/api/angelone/auth/generate-session', formData);
 
-      // 1️⃣ ANGEL LOGIN
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
+      if (res.data.status) {
+        setSuccess('Broker connected successfully! Redirecting...');
+        // Save clientcode locally for session checks
+        localStorage.setItem('angel_clientcode', res.data.clientcode);
+        localStorage.setItem('angel_jwt', 'connected_manually');
 
-      const result = await res.json();
-
-      if (!result.ok) {
-        throw new Error('AngelOne login failed');
+        setTimeout(() => {
+          window.location.href = '/dashboard/banking';
+        }, 1500);
+      } else {
+        throw new Error(res.data.error || 'Login failed');
       }
-
-      // 2️⃣ SAVE ANGEL SESSION (🔥 MOST IMPORTANT)
-      localStorage.setItem('angel_jwt', result.data.jwtToken);
-      localStorage.setItem('angel_refresh', result.data.refreshToken);
-      localStorage.setItem('angel_feed', result.data.feedToken);
-      localStorage.setItem('angel_clientcode', form.clientcode); // 🔥 SAVE CLIENTCODE
-
-      // 3️⃣ INSTRUMENT SYNC (🔥 REQUIRED BEFORE OPTION CHAIN)
-      const accessToken =
-        localStorage.getItem('accessToken') ||
-        sessionStorage.getItem('accessToken');
-
-      await fetch(`${API_BASE}/api/instruments/sync`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      // 4️⃣ UPDATE AUTH USER (UI PURPOSE)
-      const updatedUser = {
-        ...user,
-        broker_connected: true,
-        broker: 'AngelOne',
-      };
-
-      localStorage.setItem('authUser', JSON.stringify(updatedUser));
-
-      // 5️⃣ REDIRECT → DASHBOARD
-      navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Failed to connect AngelOne');
+      setError(err.response?.data?.error || err.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Card sx={{ p: 3, maxWidth: 500 }}>
-      <Typography variant="h6" gutterBottom>
-        Connect AngelOne Account
-      </Typography>
+    <Box sx={{ maxWidth: 600, mx: 'auto', mt: 5 }}>
+      <Card sx={{ p: 4 }}>
+        <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', mb: 1, textAlign: 'center' }}>
+          Connect AngelOne
+        </Typography>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, textAlign: 'center' }}>
+          SmartAPI v2 Manual Login (Password + TOTP)
+        </Typography>
 
-      <Alert severity="info" sx={{ mb: 2 }}>
-        Enter your AngelOne credentials to connect your live trading account.
-      </Alert>
+        {isConnected && (
+          <Alert severity="success" sx={{ mb: 3 }} icon={<Iconify icon="eva:checkmark-circle-2-fill" />}>
+            Your broker is already connected and active for today!
+          </Alert>
+        )}
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+        {success && <Alert severity="success" sx={{ mb: 3 }}>{success}</Alert>}
 
-      <TextField
-        fullWidth
-        label="Client Code"
-        margin="normal"
-        value={form.clientcode}
-        onChange={(e) =>
-          setForm({ ...form, clientcode: e.target.value })
-        }
-      />
+        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
+          <TextField
+            fullWidth
+            label="Angel Client Code"
+            placeholder="e.g. A123456"
+            value={formData.client_code}
+            onChange={(e) => setFormData({ ...formData, client_code: e.target.value })}
+            sx={{ mb: 2 }}
+            required
+            disabled={loading}
+          />
+          <TextField
+            fullWidth
+            label="Trading Password"
+            type="password"
+            value={formData.password}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            sx={{ mb: 2 }}
+            required
+            disabled={loading}
+          />
+          <TextField
+            fullWidth
+            label="TOTP Code"
+            placeholder="Enter code from Authenticator App"
+            value={formData.totp}
+            onChange={(e) => setFormData({ ...formData, totp: e.target.value })}
+            sx={{ mb: 3 }}
+            required
+            disabled={loading}
+            inputProps={{ maxLength: 6 }}
+          />
 
-      <TextField
-        fullWidth
-        label="Password"
-        type="password"
-        margin="normal"
-        value={form.password}
-        onChange={(e) =>
-          setForm({ ...form, password: e.target.value })
-        }
-      />
+          <LoadingButton
+            fullWidth
+            variant="contained"
+            type="submit"
+            loading={loading}
+            color="primary"
+            size="large"
+            sx={{ py: 1.5, fontWeight: 'bold' }}
+            startIcon={<Iconify icon="eva:flash-fill" />}
+          >
+            {isConnected ? 'Re-Connect Session' : 'Generate Session'}
+          </LoadingButton>
+        </Box>
 
-      <TextField
-        fullWidth
-        label="TOTP"
-        margin="normal"
-        value={form.totp}
-        onChange={(e) =>
-          setForm({ ...form, totp: e.target.value })
-        }
-      />
-
-      <Box mt={2}>
-        <Button
-          fullWidth
-          variant="contained"
-          disabled={loading}
-          onClick={handleConnect}
-        >
-          {loading ? 'Connecting...' : 'Connect AngelOne'}
-        </Button>
-      </Box>
-    </Card>
+        <Box sx={{ mt: 4, p: 2, bgcolor: 'background.neutral', borderRadius: 1 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Iconify icon="eva:info-fill" sx={{ color: 'info.main' }} />
+            Security Note:
+          </Typography>
+          <Typography variant="caption" color="text.secondary" display="block">
+            • Your Password and TOTP are used only for authentication and are <strong>NEVER</strong> stored in our database.
+          </Typography>
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+            • We only store the encrypted Access Token provided by the broker to execute your trades.
+          </Typography>
+        </Box>
+      </Card>
+    </Box>
   );
 }

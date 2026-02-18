@@ -21,7 +21,7 @@ import { countries } from 'src/assets/data';
 // components
 import Iconify from 'src/components/iconify';
 import { useSnackbar } from 'src/components/snackbar';
-import FormProvider, { RHFSelect, RHFTextField, RHFAutocomplete } from 'src/components/hook-form';
+import FormProvider, { RHFSelect, RHFTextField, RHFAutocomplete, RHFSwitch } from 'src/components/hook-form';
 
 // ----------------------------------------------------------------------
 
@@ -59,6 +59,8 @@ export default function UserQuickEditForm({ currentUser, open, onClose }: Props)
       status: currentUser?.status,
       company: currentUser?.company || '',
       role: currentUser?.role || '',
+      licence: currentUser?.licence || 'Demo',
+      brokerVerified: currentUser?.brokerVerified || false,
     }),
     [currentUser]
   );
@@ -161,6 +163,13 @@ export default function UserQuickEditForm({ currentUser, open, onClose }: Props)
             <RHFTextField name="zipCode" label="Zip/Code" />
             <RHFTextField name="company" label="Company" />
             <RHFTextField name="role" label="Role" />
+
+            <RHFSelect name="licence" label="Licence">
+              <MenuItem value="Live">Live</MenuItem>
+              <MenuItem value="Demo">Demo</MenuItem>
+            </RHFSelect>
+
+            <RHFSwitch name="brokerVerified" label="Ready for Trading" />
           </Box>
         </DialogContent>
 

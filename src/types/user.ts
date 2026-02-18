@@ -117,6 +117,9 @@ export interface IUserItem {
   avatarUrl?: string;
   company?: string;
   isVerified?: boolean;
+  isOnline?: boolean;
+  brokerVerified?: boolean;
+  licence?: 'Live' | 'Demo';
 }
 
 

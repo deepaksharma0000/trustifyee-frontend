@@ -60,8 +60,7 @@ const getUserRole = (): "admin" | "subadmin" | "user" => {
 export function useNavData() {
   const { t } = useLocales();
   const role = getUserRole();
-  const isBrokerConnected =
-    localStorage.getItem("angel_jwt") !== null;
+
   // ✅ Utility function to get current licence
   const getUserLicence = (): string => {
     try {
@@ -76,7 +75,23 @@ export function useNavData() {
     }
   };
 
+  // ✅ Check if broker is connected
+  const isBrokerConnected = (): boolean => {
+    try {
+      const userData = localStorage.getItem("authUser");
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        // Check if user has client_key (encrypted broker connection)
+        return !!(parsed.client_key && parsed.client_key.length > 0);
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
   const licence = getUserLicence();
+  const brokerConnected = isBrokerConnected();
 
   const data = useMemo(
     () => [
@@ -159,7 +174,8 @@ export function useNavData() {
           {
             title: t("Connect Broker"),
             path: paths.dashboard.brokerConnect,
-            show: role === "user" && !isBrokerConnected && licence === "Live",
+            icon: <Iconify icon="solar:link-circle-bold-duotone" width={24} />,
+            show: role === "user" && !brokerConnected && licence === "Live",
           },
           {
             title: t("FAQ"),
@@ -176,7 +192,7 @@ export function useNavData() {
         ],
       },
     ],
-    [t, role, isBrokerConnected, licence]
+    [t, role, brokerConnected, licence]
   );
 
   // ✅ Filter items based on show condition

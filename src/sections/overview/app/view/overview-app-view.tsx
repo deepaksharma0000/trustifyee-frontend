@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import Grid from '@mui/material/Unstable_Grid2';
+import { paths } from 'src/routes/paths';
 import { HOST_API } from 'src/config-global';
 
 // hooks
@@ -30,6 +31,7 @@ import { SeoIllustration } from 'src/assets/illustrations';
 // components
 import Iconify from 'src/components/iconify';
 import OpenPositionView from 'src/sections/account/view/user-account-view';
+import LiveTradingControl from 'src/sections/overview/e-commerce/view/LiveTradingControl';
 
 // ----------------------------------------------------------------------
 
@@ -50,6 +52,9 @@ export default function OverviewAppView() {
   const settings = useSettingsContext();
   const navigate = useNavigate();
   const { user } = useAuthUser();
+  const isAdmin = user?.role === 'admin' || user?.role === 'sub-admin';
+  const isBrokerConnected = !!user?.broker_connected || localStorage.getItem('angel_jwt') !== null;
+  const canViewDashboard = isAdmin || isBrokerConnected;
 
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -193,36 +198,9 @@ export default function OverviewAppView() {
     );
   }
 
-  // 🟨 LIVE USER NO BROKER GUARD
-  if (user.licence === 'Live' && !user.broker) {
-    return (
-      <Container maxWidth="xl">
-        <Box sx={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Card sx={{
-            maxWidth: 600, width: '100%',
-            background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.08)} 0%, ${alpha(theme.palette.warning.dark, 0.08)} 100%)`,
-            border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`
-          }}>
-            <CardContent sx={{ p: 4, textAlign: 'center' }}>
-              <Box sx={{
-                width: 80, height: 80, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                bgcolor: alpha(theme.palette.warning.main, 0.12), margin: '0 auto', mb: 3
-              }}>
-                <Iconify icon="mdi:alert-circle-outline" width={48} sx={{ color: theme.palette.warning.main }} />
-              </Box>
-              <Typography variant="h4" gutterBottom fontWeight={700}>Broker Not Assigned</Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>Your account requires broker assignment to access trading features. Please contact your administrator to complete the setup.</Typography>
-              <Chip label="Action Required" color="warning" icon={<Iconify icon="mdi:alert" width={18} />} />
-            </CardContent>
-          </Card>
-        </Box>
-      </Container>
-    );
-  }
-
   // 🟧 LIVE USER NOT CONNECTED GUARD
-  const isBrokerConnected = localStorage.getItem('angel_jwt') !== null;
-  if (user.licence === 'Live' && user.broker && !isBrokerConnected) {
+  // If keys are assigned by Admin, allow viewing the dashboard, but maybe show a session warning inside
+  if (user.licence === 'Live' && !canViewDashboard) {
     return (
       <Container maxWidth="xl">
         <Box sx={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -239,8 +217,19 @@ export default function OverviewAppView() {
                 <Iconify icon="mdi:link-variant-off" width={48} sx={{ color: theme.palette.warning.main }} />
               </Box>
               <Typography variant="h4" gutterBottom fontWeight={700}>Connect Your Broker</Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>Broker <strong>{user.broker}</strong> is selected but API connection is not established. Connect now to start trading.</Typography>
-              <Button variant="contained" size="large" startIcon={<Iconify icon="mdi:link-variant" />} onClick={() => navigate('/dashboard/profile')} sx={{ background: `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`, px: 4, py: 1.5, fontWeight: 600 }}>Connect Broker API</Button>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                {user.broker ? `Broker ${user.broker} is selected but API connection is not established.` : 'No broker assigned to your account.'}
+                Connect now to start trading.
+              </Typography>
+              <Button
+                variant="contained"
+                size="large"
+                startIcon={<Iconify icon="mdi:link-variant" />}
+                onClick={() => navigate(paths.dashboard.brokerConnect)}
+                sx={{ background: `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`, px: 4, py: 1.5, fontWeight: 600 }}
+              >
+                Connect Broker API
+              </Button>
             </CardContent>
           </Card>
         </Box>
@@ -266,6 +255,24 @@ export default function OverviewAppView() {
           </Button>
         </Stack>
         {loading && <LinearProgress />}
+
+        {user.licence === 'Live' && !isBrokerConnected && (
+          <Alert
+            severity="warning"
+            sx={{ mt: 2, mb: 2 }}
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => navigate(paths.dashboard.brokerConnect)}
+              >
+                Connect Now
+              </Button>
+            }
+          >
+            <strong>Broker Session Inactive:</strong> Your API keys are assigned, but you need to log in to your broker account to authorize trading operations for today.
+          </Alert>
+        )}
       </Box>
 
       <Grid container spacing={3}>
@@ -328,6 +335,12 @@ export default function OverviewAppView() {
             </Card>
           </Grid>
         ))}
+
+        {user.licence === 'Live' && (
+          <Grid xs={12}>
+            <LiveTradingControl user={user} />
+          </Grid>
+        )}
       </Grid>
     </Container>
   );

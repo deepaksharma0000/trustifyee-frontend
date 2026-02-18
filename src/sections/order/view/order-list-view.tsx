@@ -24,7 +24,11 @@ import {
   Alert,
   TextField,
 } from "@mui/material";
+import { Link as RouterLink } from 'react-router-dom';
+import { paths } from 'src/routes/paths';
 import { HOST_API } from "src/config-global";
+import Iconify from 'src/components/iconify';
+import { useAuthUser } from "src/hooks/use-auth-user";
 
 /* ---------------- TYPES ---------------- */
 
@@ -80,8 +84,7 @@ export default function OptionChainPage() {
 
   const blinkTimers = useRef<Record<string, number>>({});
 
-  const authUserRaw = localStorage.getItem("authUser");
-  const authUser = authUserRaw ? JSON.parse(authUserRaw) : null;
+  const { user: authUser } = useAuthUser();
   const isAdmin = authUser?.role === "admin";
   const token = localStorage.getItem("authToken");
   const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || "";
@@ -89,8 +92,6 @@ export default function OptionChainPage() {
     ? API_BASE.replace(/^http/, "ws")
     : window.location.origin.replace(/^http/, "ws");
   const WS_URL = `${wsBase}/ws/market`;
-
-
 
   /* ---------------- HELPERS ---------------- */
 
@@ -149,9 +150,6 @@ export default function OptionChainPage() {
       setLoading(true);
       setApiError(null);
 
-      // const res = await fetch(
-      //   "http://localhost:4000/api/nifty/option-chain?ltp=25000"
-      // );
       const baseUrl = `${API_BASE}/api/nifty/option-chain?symbol=${symbol}&range=5`;
       const apiUrlWithExpiry = selectedExpiry
         ? `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}expiry=${selectedExpiry}`
@@ -309,8 +307,7 @@ export default function OptionChainPage() {
   }, [marketData]);
 
   /* ---------------- EXPIRY CHECK ---------------- */
-  const isBrokerConnected = localStorage.getItem("angel_jwt") !== null;
-  const isTradingEnabled = localStorage.getItem("trading_enabled") === "true";
+  const isBrokerConnected = !!authUser?.broker_connected || localStorage.getItem('angel_jwt') !== null;
 
   const isDemo = authUser?.licence === "Demo";
   const endDate = authUser?.end_date ? new Date(authUser.end_date) : null;
@@ -352,27 +349,28 @@ export default function OptionChainPage() {
     );
   }
 
-  // 2. Check for Broker Connection (Only for LIVE Users)
-  // Demo and Admin should see the chain directly
-  const needsBroker = !isDemo && !isAdmin && !isBrokerConnected;
-
-  if (needsBroker) {
+  // 2. Check for Broker Connection (Strict requirement for LIVE Users)
+  const canViewChain = isDemo || isAdmin || isBrokerConnected;
+  if (!canViewChain) {
     return (
       <Container maxWidth="md" sx={{ mt: 6 }}>
-        <Card sx={{ p: 4, textAlign: "center" }}>
+        <Card sx={{ p: 4, textAlign: "center", border: '2px dashed', borderColor: 'warning.main', bgcolor: 'warning.lighter' }}>
+          <Iconify icon="eva:alert-triangle-fill" width={60} sx={{ color: 'warning.main', mb: 2 }} />
           <Typography variant="h5" gutterBottom>
-            🔒 Broker not connected
+            📊 Option Chain Locked
           </Typography>
 
-          <Typography variant="body2" sx={{ mb: 3 }}>
-            Option Chain access ke liye pehle broker connect karein
+          <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
+            Your broker session is not active or not connected. Please login to your broker account to unlock trading tools.
           </Typography>
 
           <Button
             variant="contained"
-            onClick={() => { window.location.href = "/dashboard/profile" }}
+            color="warning"
+            component={RouterLink}
+            to={paths.dashboard.brokerConnect}
           >
-            Connect Broker
+            Go to Broker Connect
           </Button>
         </Card>
       </Container>
@@ -380,6 +378,7 @@ export default function OptionChainPage() {
   }
 
   // 3. Check for Trading Enabled (Only for LIVE Users)
+  const isTradingEnabled = authUser?.trading_status === 'enabled';
   const needsTradingEnabled = !isDemo && !isAdmin && !isTradingEnabled;
 
   if (needsTradingEnabled) {
@@ -477,24 +476,10 @@ export default function OptionChainPage() {
       return;
     }
 
-    // Optional: Force SL/Target for safety (Uncomment if mandatory)
-    // if (!stopLoss || !target) {
-    //    alert("Safety: Please provide Stop Loss and Target price to protect your capital.");
-    //    return;
-    // }
-
     const now = new Date();
-    // Use UTC+5:30 (IST) manually or simple generic local time check if user is in India
-    // 9 * 60 + 15 = 555 mins
-    // 15 * 60 + 30 = 930 mins
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-    // Check if weekend
     const isWeekend = now.getDay() === 0 || now.getDay() === 6;
 
-    // Simple IST check (Assuming user system is IST or close enough)
-    // NOTE: For stricter check, this logic should be on backend.
-    // NOTE: For stricter check, this logic should be on backend.
     if (isWeekend || currentMinutes < 555 || currentMinutes > 930) {
       alert("⛔ Market Closed! (9:15 AM - 3:30 PM)\n\nWe do NOT support AMO (After Market Orders) to protect you from Option Gap Risks.\nPlease come back at 9:15 AM.");
       return;
@@ -512,7 +497,7 @@ export default function OptionChainPage() {
       return;
     }
 
-    let confirmMsg = `Place ${selectedOptions.length} order(s) with quantity ${orderQuantity} lots?\n\nClient: ${angelClientcode}`;
+    let confirmMsg = `BROADCAST: Place ${selectedOptions.length} order(s) for ALL active users?\n\nEach user will receive ${orderQuantity} lots.`;
 
     if (stopLoss) confirmMsg += `\n🛑 SL: ${stopLoss}`;
     if (target) confirmMsg += `\n🎯 Target: ${target}`;
@@ -521,14 +506,13 @@ export default function OptionChainPage() {
 
     const orderPromises = selectedOptions.map(async (opt) => {
       try {
-        const res = await fetch(`${API_BASE}/api/orders/place`, {
+        const res = await fetch(`${API_BASE}/api/orders/place-all`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: token ? `Bearer ${token}` : "",
           },
           body: JSON.stringify({
-            clientcode: angelClientcode, // 🔥 USE ANGEL CLIENTCODE
             exchange: "NFO",
             tradingsymbol: opt.tradingsymbol,
             side: "BUY",
@@ -536,20 +520,16 @@ export default function OptionChainPage() {
             quantity: orderQuantity,
             ordertype: "MARKET",
             symboltoken: opt.symboltoken,
-            stopLossPrice: stopLoss ? Number(stopLoss) : undefined,
-            targetPrice: target ? Number(target) : undefined,
             strategy,
-            autoSquareOffEnabled,
-            autoSquareOffTime: autoSquareOffEnabled && exitTime ? new Date(exitTime).toISOString() : undefined,
           }),
         });
 
         const json = await res.json();
 
         if (!json.ok) {
-          return { success: false, error: `${opt.tradingsymbol}: ${json.error || "Order failed"}` };
+          return { success: false, error: `${opt.tradingsymbol}: ${json.error || "Broadcast failed"}` };
         }
-        return { success: true };
+        return { success: true, totalUsers: json.totalUsers };
       } catch (err: any) {
         return { success: false, error: `${opt.tradingsymbol}: ${err.message || "Network error"}` };
       }
@@ -558,6 +538,7 @@ export default function OptionChainPage() {
     const results = await Promise.all(orderPromises);
     const successCount = results.filter((r) => r.success).length;
     const failCount = results.filter((r) => !r.success).length;
+    const totalTargeted = results[0]?.success ? results[0].totalUsers : 0;
     const errors = results.filter((r) => !r.success).map((r) => r.error || "Unknown error");
 
     // Clear selection after execution
@@ -566,7 +547,7 @@ export default function OptionChainPage() {
     setTarget("");
 
     // Show results
-    const resultMsg = `✅ Success: ${successCount}\n❌ Failed: ${failCount}${errors.length > 0 ? `\n\nErrors:\n${errors.join("\n")}` : ""
+    const resultMsg = `✅ Broadcast Success: ${successCount} symbols\n👥 Total Users Processed: ${totalTargeted}\n❌ Failed Symbols: ${failCount}${errors.length > 0 ? `\n\nErrors:\n${errors.join("\n")}` : ""
       }`;
     alert(resultMsg);
   };
@@ -798,8 +779,9 @@ export default function OptionChainPage() {
           </FormControl>
         </Box>
 
+        {/* Strategy Auto-Select */}
         {isAdmin && (
-          <Box mb={3} display="flex" gap={2} alignItems="center" flexWrap="wrap">
+          <Box mb={3} display="flex" gap={2} alignItems="center">
             <FormControl size="small" sx={{ minWidth: 200 }}>
               <InputLabel>Strategy</InputLabel>
               <Select
@@ -807,71 +789,64 @@ export default function OptionChainPage() {
                 value={strategy}
                 onChange={(e) => setStrategy(e.target.value)}
               >
-                <MenuItem value="Alpha">Alpha - ATM Straddle (Buy)</MenuItem>
-                <MenuItem value="Beta">Beta - OTM Strangle (Buy)</MenuItem>
-                <MenuItem value="Gamma">Gamma - ATM Straddle (Sell)</MenuItem>
-                <MenuItem value="Delta">Delta - Bull Call Spread</MenuItem>
-                <MenuItem value="Straddle">Straddle - Classic ATM</MenuItem>
-                <MenuItem value="Strangle">Strangle - OTM</MenuItem>
-                <MenuItem value="IronCondor">Iron Condor - 4 Leg</MenuItem>
-                <MenuItem value="BullCallSpread">Bull Call Spread</MenuItem>
-                <MenuItem value="BearPutSpread">Bear Put Spread</MenuItem>
+                <MenuItem value="Gamma">Gamma (Scalping)</MenuItem>
+                <MenuItem value="Alpha">Alpha (Momentum)</MenuItem>
+                <MenuItem value="Beta">Beta (Aggressive)</MenuItem>
+                <MenuItem value="Delta">Delta (Neutral)</MenuItem>
+                <MenuItem value="SIGMA">SIGMA (Premium)</MenuItem>
+                <MenuItem value="ZETA">ZETA (Experimental)</MenuItem>
+                <MenuItem value="DELTA">DELTA (High Vol)</MenuItem>
+                <MenuItem value="GAMA">GAMA (Low Vol)</MenuItem>
+                <MenuItem value="ALPHA">ALPHA (Trend)</MenuItem>
               </Select>
             </FormControl>
-
             <Button
               variant="outlined"
               color="secondary"
-              size="medium"
               onClick={handleAutoSelectStrategy}
               disabled={autoSelecting || !selectedExpiry}
-              startIcon={autoSelecting ? <CircularProgress size={20} /> : null}
+              startIcon={autoSelecting ? <CircularProgress size={20} /> : <Iconify icon="eva:magic-fill" />}
             >
-              {autoSelecting ? "Auto-Selecting..." : "🎯 Auto-Select Strategy"}
+              Auto-Select Strikes
             </Button>
           </Box>
         )}
 
-        {isAdmin && (
-          <Box mb={3} display="flex" gap={2} flexWrap="wrap" alignItems="center">
+        <Box sx={{ position: "relative" }}>
+          <Button
+            variant="contained"
+            color="primary"
+            fullWidth
+            size="large"
+            disabled={selectedOptions.length === 0 || !isAdmin}
+            onClick={executeSelectedOrders}
+            sx={{ mb: 2, height: 56, fontSize: '1.1rem', fontWeight: 'bold' }}
+          >
+            {selectedOptions.length > 0
+              ? `EXECUTE ${selectedOptions.length} TRADES NOW`
+              : "SELECT STRIKES TO TRADE"}
+          </Button>
+
+          {selectedOptions.length > 0 && isAdmin && (
             <Button
-              variant="contained"
-              color="primary"
-              size="large"
-              disabled={selectedOptions.length === 0}
-              onClick={executeSelectedOrders}
+              variant="text"
+              color="inherit"
+              onClick={() => { setSelectedOptions([]); setStopLoss(""); setTarget(""); }}
+              sx={{ position: 'absolute', right: 0, top: -45 }}
             >
-              🚀 Execute Selected ({selectedOptions.length})
+              Clear All
             </Button>
-            {selectedOptions.length > 0 && (
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={() => { setSelectedOptions([]); setStopLoss(""); setTarget(""); }}
-              >
-                Clear Selection
-              </Button>
-            )}
-          </Box>
-        )}
+          )}
+        </Box>
+
+        {content}
 
         {apiError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity="error" sx={{ mt: 2 }}>
             {apiError}
           </Alert>
         )}
-        {content}
       </Card>
     </Container>
   );
 }
-
-
-
-
-
-
-
-
-
-

@@ -68,21 +68,37 @@ export default function UserTableRow({
 
         <TableCell sx={{ whiteSpace: 'nowrap' }}>{phoneNumber}</TableCell>
 
-        <TableCell sx={{ whiteSpace: 'nowrap' }}>{company}</TableCell>
+        <TableCell sx={{ whiteSpace: 'nowrap' }}>
+          <Label
+            variant="soft"
+            color={row.isOnline ? 'success' : 'default'}
+            sx={{ textTransform: 'capitalize' }}
+          >
+            {row.isOnline ? 'Online' : 'Offline'}
+          </Label>
+        </TableCell>
 
-        <TableCell sx={{ whiteSpace: 'nowrap' }}>{role}</TableCell>
+        <TableCell sx={{ whiteSpace: 'nowrap' }}>
+          <Iconify
+            icon={row.brokerVerified ? 'eva:checkmark-circle-2-fill' : 'eva:close-circle-fill'}
+            sx={{ color: row.brokerVerified ? 'success.main' : 'error.main', width: 24, height: 24 }}
+          />
+        </TableCell>
+
+        <TableCell sx={{ whiteSpace: 'nowrap' }}>
+          <Label variant="soft" color={row.licence === 'Live' ? 'info' : 'warning'}>
+            {row.licence || 'Demo'}
+          </Label>
+        </TableCell>
 
         <TableCell>
           <Label
             variant="soft"
             color={
-              (status === 'active' && 'success') ||
-              (status === 'pending' && 'warning') ||
-              (status === 'banned' && 'error') ||
-              'default'
+              (row.brokerVerified && row.tradingStatus === 'active' && 'success') || 'error'
             }
           >
-            {status}
+            {row.brokerVerified && row.tradingStatus === 'active' ? 'Ready' : 'Not Ready'}
           </Label>
         </TableCell>
 

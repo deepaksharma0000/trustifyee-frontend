@@ -4,8 +4,8 @@ import { paths } from 'src/routes/paths';
 // API
 // ----------------------------------------------------------------------
 
-export const HOST_API = process.env.REACT_APP_HOST_API;
-export const ASSETS_API = process.env.REACT_APP_ASSETS_API;
+export const HOST_API = process.env.REACT_APP_HOST_API || 'http://localhost:4000';
+export const ASSETS_API = process.env.REACT_APP_ASSETS_API || 'http://localhost:4000';
 
 export const FIREBASE_API = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,

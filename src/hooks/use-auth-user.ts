@@ -1,35 +1,6 @@
-import { useEffect, useState } from 'react';
-
-export type AuthUser = {
-  role?: 'admin' | 'user';
-
-  // basic
-  full_name?: string;
-  user_name?: string;
-  email?: string;
-
-  // 🔥 algo trading control
-  licence?: 'Live' | 'Demo';
-  broker?: string;
-  trading_status?: 'enabled' | 'disabled';
-  start_date?: string | Date;
-  end_date?: string | Date;
-
-  // optional (future)
-  broker_connected?: boolean;
-};
-
+import { useAuthContext } from 'src/auth/hooks/use-auth-context';
 
 export function useAuthUser() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('authUser');
-
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
-
+  const { user } = useAuthContext();
   return { user };
 }
