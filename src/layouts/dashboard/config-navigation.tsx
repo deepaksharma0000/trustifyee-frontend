@@ -189,6 +189,12 @@ export function useNavData() {
             icon: <Iconify icon="solar:code-circle-bold-duotone" width={24} />,
             show: licence === "Demo", // [NEW] Only for Demo Users
           },
+          {
+            title: t("Api Info"),
+            path: paths.dashboard.apiInfo,
+            icon: <Iconify icon="solar:info-circle-bold-duotone" width={24} />,
+            show: role === "admin" || role === "subadmin",
+          },
         ],
       },
     ],
