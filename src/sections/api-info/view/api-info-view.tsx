@@ -85,6 +85,43 @@ export default function ApiInfoView() {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+    // ✅ Get User Data from LocalStorage (Consistent with Navigation)
+    const userData = useMemo(() => {
+        try {
+            const data = localStorage.getItem('authUser');
+            return data ? JSON.parse(data) : null;
+        } catch {
+            return null;
+        }
+    }, []);
+
+    const role = userData?.role || 'user';
+    const licence = userData?.licence || '';
+    const connectedBroker = userData?.broker || userData?.vendor || '';
+
+    // ✅ Filter BROKERS based on role and licence
+    const filteredBrokers = useMemo(() => {
+        if (role === 'admin' || role === 'subadmin') {
+            return BROKERS;
+        }
+        if (licence === 'Demo') {
+            return BROKERS; // Show all for demo if needed, or specific ones. 
+            // User said "Demo se hai to usko demo show hona chahiye"
+        }
+        // For Live users, show only their connected broker
+        if (licence === 'Live' && connectedBroker) {
+            return BROKERS.filter(b => b.name.toLowerCase() === connectedBroker.toLowerCase());
+        }
+        return BROKERS;
+    }, [role, licence, connectedBroker]);
+
+    // ✅ Dynamic Heading
+    const pageHeading = useMemo(() => {
+        if (role === 'admin' || role === 'subadmin') return "Broker Integration";
+        if (licence === 'Demo') return "Demo Account Info";
+        return connectedBroker ? `${connectedBroker} Integration` : "Broker Integration";
+    }, [role, licence, connectedBroker]);
+
     const [selectedBroker, setSelectedBroker] = useState<any>(null);
     const [currentStep, setCurrentStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -171,12 +208,14 @@ export default function ApiInfoView() {
     return (
         <Container maxWidth={settings.themeStretch ? false : 'xl'}>
             <Box sx={{ mb: { xs: 5, md: 8 }, textAlign: 'center' }}>
-                <Typography variant="h2" sx={{ fontWeight: 900, mb: 1 }}>Broker Integration</Typography>
-                <Typography variant="body1" color="text.secondary">Securely connect your broker account in simple steps</Typography>
+                <Typography variant="h2" sx={{ fontWeight: 900, mb: 1 }}>{pageHeading}</Typography>
+                <Typography variant="body1" color="text.secondary">
+                    {licence === 'Demo' ? 'Explore our features in demo mode' : 'Securely connect your broker account in simple steps'}
+                </Typography>
             </Box>
 
             <Grid container spacing={4}>
-                {BROKERS.map((broker) => (
+                {filteredBrokers.map((broker) => (
                     <Grid key={broker.name} item xs={12} sm={6} md={4}>
                         <Card
                             sx={{

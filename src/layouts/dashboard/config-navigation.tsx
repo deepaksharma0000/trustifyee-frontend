@@ -61,7 +61,6 @@ export function useNavData() {
   const { t } = useLocales();
   const role = getUserRole();
 
-  // ✅ Utility function to get current licence
   const getUserLicence = (): string => {
     try {
       const userData = localStorage.getItem("authUser");
@@ -75,13 +74,27 @@ export function useNavData() {
     }
   };
 
+  // ✅ Get connected Broker Name
+  const getBrokerName = (): string => {
+    try {
+      const userData = localStorage.getItem("authUser");
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        // Try to get from 'broker' or 'vendor' field, fallback to 'Broker'
+        return parsed.broker || parsed.vendor || "Broker Info";
+      }
+      return "Broker Info";
+    } catch {
+      return "Broker Info";
+    }
+  };
+
   // ✅ Check if broker is connected
   const isBrokerConnected = (): boolean => {
     try {
       const userData = localStorage.getItem("authUser");
       if (userData) {
         const parsed = JSON.parse(userData);
-        // Check if user has client_key (encrypted broker connection)
         return !!(parsed.client_key && parsed.client_key.length > 0);
       }
       return false;
@@ -91,6 +104,7 @@ export function useNavData() {
   };
 
   const licence = getUserLicence();
+  const brokerName = getBrokerName();
   const brokerConnected = isBrokerConnected();
 
   const data = useMemo(
@@ -126,7 +140,7 @@ export function useNavData() {
             title: t("Trade Details"),
             path: paths.dashboard.general.banking,
             icon: <Iconify icon="solar:bill-list-bold-duotone" width={24} />,
-            show: role !== "user" || licence === "Demo", // ✅ Allow Demo Users
+            show: true, // ✅ Enabled for All Users (Live + Demo + Admin)
           },
           {
             title: t("Script Management"),
@@ -169,7 +183,7 @@ export function useNavData() {
             title: t("Help Center"),
             path: paths.dashboard.helpCenter,
             icon: <Iconify icon="solar:help-bold-duotone" width={24} />,
-            show: licence === "Demo", // ✅ Only for Demo Users
+            show: true, // ✅ Enabled for All Users (Live + Demo)
           },
           {
             title: t("Connect Broker"),
@@ -187,19 +201,13 @@ export function useNavData() {
             title: t("FAQ"),
             path: paths.dashboard.faq,
             icon: <Iconify icon="solar:question-circle-bold-duotone" width={24} />,
-            show: licence === "Demo", // [NEW] Only for Demo Users
-          },
-          {
-            title: t("API Create Info"),
-            path: paths.dashboard.apiCreate,
-            icon: <Iconify icon="solar:code-circle-bold-duotone" width={24} />,
-            show: licence === "Demo", // [NEW] Only for Demo Users
+            show: true, // ✅ Enabled for All Users (Live + Demo)
           },
           {
             title: t("Api Info"),
             path: paths.dashboard.apiInfo,
             icon: <Iconify icon="solar:info-circle-bold-duotone" width={24} />,
-            show: role === "admin" || role === "subadmin",
+            show: true,
           },
         ],
       },
