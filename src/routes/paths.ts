@@ -105,6 +105,7 @@ export const paths = {
     apiCreate: `${ROOTS.DASHBOARD}/api-create`, // [NEW]
     apiInfo: `${ROOTS.DASHBOARD}/api-info`, // [NEW]
     brokerConnect: `${ROOTS.DASHBOARD}/broker-connect`,
+    brokerResponse: `${ROOTS.DASHBOARD}/broker-response`, // [NEW]
     general: {
       app: `${ROOTS.DASHBOARD}/app`,
       ecommerce: `${ROOTS.DASHBOARD}/ecommerce`,

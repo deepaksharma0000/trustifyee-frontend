@@ -71,4 +71,7 @@ export const endpoints = {
     details: '/api/product/details',
     search: '/api/product/search',
   },
+  orders: {
+    brokerResponses: '/api/orders/broker-responses',
+  },
 };

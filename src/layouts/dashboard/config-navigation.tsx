@@ -178,6 +178,12 @@ export function useNavData() {
             show: role === "user" && !brokerConnected && licence === "Live",
           },
           {
+            title: t("Broker Response"),
+            path: paths.dashboard.brokerResponse,
+            icon: <Iconify icon="solar:letter-opened-bold-duotone" width={24} />,
+            show: role === "user" && brokerConnected && licence === "Live",
+          },
+          {
             title: t("FAQ"),
             path: paths.dashboard.faq,
             icon: <Iconify icon="solar:question-circle-bold-duotone" width={24} />,

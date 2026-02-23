@@ -68,6 +68,7 @@ const FaqPage = lazy(() => import('src/pages/dashboard/faq')); // [NEW]
 const ApiCreatePage = lazy(() => import('src/pages/dashboard/api-create')); // [NEW]
 const BrokerConnectPage = lazy(() => import('src/pages/profile/broker-connect'));
 const ApiInfoPage = lazy(() => import('src/pages/dashboard/api-info'));
+const BrokerResponsePage = lazy(() => import('src/pages/dashboard/broker-response'));
 
 
 // ----------------------------------------------------------------------
@@ -174,6 +175,7 @@ export const dashboardRoutes = [
       { path: 'faq', element: <FaqPage /> }, // [NEW]
       { path: 'api-create', element: <ApiCreatePage /> }, // [NEW]
       { path: 'api-info', element: <ApiInfoPage /> }, // [NEW]
+      { path: 'broker-response', element: <BrokerResponsePage /> }, // [NEW]
       { path: 'blank', element: <BlankPage /> },
     ],
   },
