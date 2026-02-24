@@ -183,7 +183,19 @@ export function useNavData() {
             title: t("Help Center"),
             path: paths.dashboard.helpCenter,
             icon: <Iconify icon="solar:help-bold-duotone" width={24} />,
-            show: true, // ✅ Enabled for All Users (Live + Demo)
+            show: role === "user", // ✅ Only for Users
+          },
+          {
+            title: t("Message Center"),
+            path: paths.dashboard.messageCenter,
+            icon: <Iconify icon="solar:mailbox-bold-duotone" width={24} />,
+            show: role === "admin", // ✅ Only for Admins
+          },
+          {
+            title: t("Tickets"),
+            path: paths.dashboard.tickets,
+            icon: <Iconify icon="solar:ticket-bold-duotone" width={24} />,
+            show: role === "admin", // ✅ Only for Admins
           },
           {
             title: t("Connect Broker"),

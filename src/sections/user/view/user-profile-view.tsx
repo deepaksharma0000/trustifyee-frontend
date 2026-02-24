@@ -7,7 +7,7 @@ import Tabs, { tabsClasses } from '@mui/material/Tabs';
 // routes
 import { paths } from 'src/routes/paths';
 // hooks
-import { useAuthUser } from 'src/hooks/use-mocked-user';
+import { useAuthContext } from 'src/auth/hooks';
 // _mock
 import { _userAbout, _userFeeds, _userFriends, _userGallery, _userFollowers } from 'src/_mock';
 // components
@@ -51,7 +51,19 @@ const TABS = [
 export default function UserProfileView() {
   const settings = useSettingsContext();
 
-  const { user } = useAuthUser();
+  const { user } = useAuthContext();
+
+  const userFullName = user?.full_name || user?.displayName || user?.user_name || '';
+
+  const userRole = user?.role || user?.licence || '';
+
+  const userAbout = {
+    ..._userAbout,
+    id: user?.id || user?._id || _userAbout.id,
+    role: userRole,
+    email: user?.email || _userAbout.email,
+    country: user?.country || _userAbout.country,
+  };
 
   const [searchFriends, setSearchFriends] = useState('');
 
@@ -72,7 +84,7 @@ export default function UserProfileView() {
         links={[
           { name: 'Dashboard', href: paths.dashboard.root },
           { name: 'User', href: paths.dashboard.user.root },
-          { name: user?.displayName },
+          { name: userFullName },
         ]}
         sx={{
           mb: { xs: 3, md: 5 },
@@ -86,9 +98,9 @@ export default function UserProfileView() {
         }}
       >
         <ProfileCover
-          role={_userAbout.role}
-          name={user?.displayName}
-          avatarUrl={user?.photoURL}
+          role={userRole}
+          name={userFullName}
+          avatarUrl={user?.photoURL || ''}
           coverUrl={_userAbout.coverUrl}
         />
 
@@ -116,7 +128,7 @@ export default function UserProfileView() {
         </Tabs>
       </Card>
 
-      {currentTab === 'profile' && <ProfileHome info={_userAbout} posts={_userFeeds} />}
+      {currentTab === 'profile' && <ProfileHome info={userAbout} posts={_userFeeds} />}
 
 
 

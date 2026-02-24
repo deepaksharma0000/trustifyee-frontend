@@ -8,7 +8,7 @@ export default function LoginPage() {
   return (
     <>
       <Helmet>
-        <title> Trustifyee: Login</title>
+        <title> Finvesta: Login</title>
       </Helmet>
 
       <JwtLoginView />

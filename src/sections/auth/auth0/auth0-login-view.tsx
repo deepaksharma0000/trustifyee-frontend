@@ -70,7 +70,7 @@ export default function Auth0LoginView() {
   return (
     <>
       <Typography variant="h4" sx={{ mb: 5 }}>
-        Sign in to Trustifyee
+        Sign in to Finvesta
       </Typography>
 
       <Stack spacing={2}>

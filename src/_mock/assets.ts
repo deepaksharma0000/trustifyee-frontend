@@ -240,7 +240,7 @@ export const _phoneNumbers = [
 
 export const _roles = [
   'HR Manager',
-  'Founder oF Trustifyee',
+  'Founder of Finvesta',
   'Legal Counsel',
   'UX/UI Designer',
   'Project Manager',
@@ -385,7 +385,7 @@ export const _jobTitles = [
 
 export const _companyNames = [
   'Lueilwitz and Sons',
-  'Trustifyee, the Future of Trading',
+  'Finvesta, the Future of Trading',
   'Nikolaus - Leuschke',
   'Hegmann, Kreiger and Bayer',
   'Grimes Inc',
@@ -471,7 +471,7 @@ export const _taskNames = [
 // ----------------------------------------------------------------------
 
 export const _sentences = [
-  ];
+];
 
 // ----------------------------------------------------------------------
 

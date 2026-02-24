@@ -101,6 +101,8 @@ export const paths = {
     fileManager: `${ROOTS.DASHBOARD}/file-manager`,
     permission: `${ROOTS.DASHBOARD}/permission`,
     helpCenter: `${ROOTS.DASHBOARD}/help-center`,
+    tickets: `${ROOTS.DASHBOARD}/tickets`,
+    messageCenter: `${ROOTS.DASHBOARD}/message-center`,
     faq: `${ROOTS.DASHBOARD}/faq`, // [NEW]
     apiCreate: `${ROOTS.DASHBOARD}/api-create`, // [NEW]
     apiInfo: `${ROOTS.DASHBOARD}/api-info`, // [NEW]

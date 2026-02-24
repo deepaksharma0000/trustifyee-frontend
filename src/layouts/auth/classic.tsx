@@ -201,7 +201,7 @@ export default function AuthClassicLayout({ children, image, title }: Props) {
         }}
       >
         <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#00a76f' }} />
-        <Typography variant="caption" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>NETWORK SECURE // TRUSTIFYEE_ALGO_V5</Typography>
+        <Typography variant="caption" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>NETWORK SECURE // FINVESTA_ALGO_V5</Typography>
       </Stack>
     </Stack>
   );
