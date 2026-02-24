@@ -122,6 +122,7 @@ export interface IUserItem {
   licence?: 'Live' | 'Demo';
   startdate?: Date | string;
   enddate?: Date | string;
+  createdAt?: Date | string;
 }
 
 
