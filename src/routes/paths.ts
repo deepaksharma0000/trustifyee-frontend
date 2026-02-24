@@ -106,6 +106,7 @@ export const paths = {
     faq: `${ROOTS.DASHBOARD}/faq`, // [NEW]
     apiCreate: `${ROOTS.DASHBOARD}/api-create`, // [NEW]
     apiInfo: `${ROOTS.DASHBOARD}/api-info`, // [NEW]
+    starClients: `${ROOTS.DASHBOARD}/user/star`, // [NEW]
     brokerConnect: `${ROOTS.DASHBOARD}/broker-connect`,
     brokerResponse: `${ROOTS.DASHBOARD}/broker-response`, // [NEW]
     general: {

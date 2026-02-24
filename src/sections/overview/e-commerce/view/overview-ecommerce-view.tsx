@@ -53,11 +53,13 @@ interface ClientFormData {
   api_key?: string;
   client_key?: string;
   broker_verified?: boolean;
+  is_star?: boolean;
 }
 
 interface ApiResponse {
   status: boolean;
   message?: string;
+  is_star?: boolean;
   error?: string;
   data?: any;
 }
@@ -85,6 +87,7 @@ interface ClientData {
   avatar_color?: string;
   is_login?: boolean;
   broker_verified?: boolean;
+  is_star: boolean;
 }
 
 type Props = {
@@ -151,94 +154,120 @@ const apiService = {
       headers: { 'x-access-token': token || '' },
     });
     return res.json();
+  },
+  toggleStarClient: async (id: string): Promise<ApiResponse> => {
+    const token = localStorage.getItem('authToken');
+    const res = await fetch(`${API_BASE_URL}/api/user/toggle-star-client/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-access-token': token || '' },
+    });
+    return res.json();
   }
 };
 
-const getColumns = (handleEdit: (c: ClientData) => void, handleDelete: (c: ClientData) => void): GridColDef[] => [
-  { field: 'srNo', headerName: 'SR.', width: 60, align: 'center' },
-  {
-    field: 'user_name',
-    headerName: 'Client',
-    flex: 1,
-    minWidth: 150,
-    renderCell: (params) => (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Avatar sx={{ bgcolor: params.row.avatar_color, width: 32, height: 32, fontSize: 14 }}>
-          {params.value.charAt(0).toUpperCase()}
-        </Avatar>
-        <Box>
-          <Typography variant="subtitle2" noWrap>{params.value}</Typography>
-          <Typography variant="caption" sx={{ color: 'text.secondary' }} noWrap>{params.row.email}</Typography>
-        </Box>
-      </Box>
-    )
-  },
-  {
-    field: 'client_key',
-    headerName: 'Platform ID',
-    width: 140,
-    renderCell: (params) => (
-      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-        <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{params.value?.substring(0, 8)}...</Typography>
-        <IconButton size="small" onClick={() => navigator.clipboard.writeText(params.value)}>
-          <Iconify icon="eva:copy-fill" width={14} />
+const getColumns = (
+  handleEdit: (c: ClientData) => void,
+  handleDelete: (c: ClientData) => void,
+  handleToggleStar: (id: string) => void
+): GridColDef[] => [
+    {
+      field: 'is_star',
+      headerName: '',
+      width: 50,
+      renderCell: (params) => (
+        <IconButton
+          size="small"
+          onClick={() => handleToggleStar(params.row.id)}
+          sx={{ color: params.value ? 'warning.main' : 'text.disabled' }}
+        >
+          <Iconify icon={params.value ? 'solar:star-bold' : 'solar:star-outline'} width={20} />
         </IconButton>
-      </Box>
-    )
-  },
-  {
-    field: 'licence',
-    headerName: 'Licence',
-    width: 100,
-    renderCell: (params) => (
-      <Label color={params.value === 'Live' ? 'success' : 'warning'} variant="soft">
-        {params.value}
-      </Label>
-    )
-  },
-  {
-    field: 'is_login',
-    headerName: 'Dashboard',
-    width: 100,
-    align: 'center',
-    renderCell: (params) => (
-      <Tooltip title={params.value ? 'Online' : 'Offline'}>
-        <Box sx={{
-          width: 12, height: 12, borderRadius: '50%',
-          bgcolor: params.value ? '#22c55e' : '#ff5630',
-          boxShadow: params.value ? '0 0 8px #22c55e' : 'none',
-          border: '2px solid white'
-        }} />
-      </Tooltip>
-    )
-  },
-  {
-    field: 'broker_verified',
-    headerName: 'Trading Status',
-    width: 140,
-    align: 'center',
-    renderCell: (params) => {
-      const isVerified = !!params.row.broker_verified;
-      const isLive = params.row.licence === 'Live';
-      if (!isLive) return <Label color="default">Demo/No-Broker</Label>;
-      return (
-        <Label color={isVerified ? 'success' : 'error'} variant="soft" startIcon={<Iconify icon={isVerified ? 'eva:checkmark-circle-2-fill' : 'eva:close-circle-fill'} />}>
-          {isVerified ? 'Ready' : 'Unverified'}
+      )
+    },
+    { field: 'srNo', headerName: 'SR.', width: 60, align: 'center' },
+    {
+      field: 'user_name',
+      headerName: 'Client',
+      flex: 1,
+      minWidth: 150,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Avatar sx={{ bgcolor: params.row.avatar_color, width: 32, height: 32, fontSize: 14 }}>
+            {params.value.charAt(0).toUpperCase()}
+          </Avatar>
+          <Box>
+            <Typography variant="subtitle2" noWrap>{params.value}</Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }} noWrap>{params.row.email}</Typography>
+          </Box>
+        </Box>
+      )
+    },
+    {
+      field: 'client_key',
+      headerName: 'Platform ID',
+      width: 140,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{params.value?.substring(0, 8)}...</Typography>
+          <IconButton size="small" onClick={() => navigator.clipboard.writeText(params.value)}>
+            <Iconify icon="eva:copy-fill" width={14} />
+          </IconButton>
+        </Box>
+      )
+    },
+    {
+      field: 'licence',
+      headerName: 'Licence',
+      width: 100,
+      renderCell: (params) => (
+        <Label color={params.value === 'Live' ? 'success' : 'warning'} variant="soft">
+          {params.value}
         </Label>
-      );
+      )
+    },
+    {
+      field: 'is_login',
+      headerName: 'Dashboard',
+      width: 100,
+      align: 'center',
+      renderCell: (params) => (
+        <Tooltip title={params.value ? 'Online' : 'Offline'}>
+          <Box sx={{
+            width: 12, height: 12, borderRadius: '50%',
+            bgcolor: params.value ? '#22c55e' : '#ff5630',
+            boxShadow: params.value ? '0 0 8px #22c55e' : 'none',
+            border: '2px solid white'
+          }} />
+        </Tooltip>
+      )
+    },
+    {
+      field: 'broker_verified',
+      headerName: 'Trading Status',
+      width: 140,
+      align: 'center',
+      renderCell: (params) => {
+        const isVerified = !!params.row.broker_verified;
+        const isLive = params.row.licence === 'Live';
+        if (!isLive) return <Label color="default">Demo/No-Broker</Label>;
+        return (
+          <Label color={isVerified ? 'success' : 'error'} variant="soft" startIcon={<Iconify icon={isVerified ? 'eva:checkmark-circle-2-fill' : 'eva:close-circle-fill'} />}>
+            {isVerified ? 'Ready' : 'Unverified'}
+          </Label>
+        );
+      }
+    },
+    {
+      field: 'actions',
+      type: 'actions',
+      headerName: 'Actions',
+      width: 80,
+      getActions: (params) => [
+        <GridActionsCellItem key="edit" icon={<Iconify icon="eva:edit-fill" />} label="Edit" onClick={() => handleEdit(params.row)} />,
+        <GridActionsCellItem key="delete" icon={<Iconify icon="eva:trash-2-outline" />} label="Delete" onClick={() => handleDelete(params.row)} sx={{ color: 'error.main' }} />,
+      ]
     }
-  },
-  {
-    field: 'actions',
-    type: 'actions',
-    headerName: 'Actions',
-    width: 80,
-    getActions: (params) => [
-      <GridActionsCellItem key="edit" icon={<Iconify icon="eva:edit-fill" />} label="Edit" onClick={() => handleEdit(params.row)} />,
-      <GridActionsCellItem key="delete" icon={<Iconify icon="eva:trash-2-outline" />} label="Delete" onClick={() => handleDelete(params.row)} sx={{ color: 'error.main' }} />,
-    ]
-  }
-];
+  ];
 
 export default function DataGridCustom({ data = [] }: Props) {
   const { user: authUser } = useAuthUser();
@@ -266,8 +295,20 @@ export default function DataGridCustom({ data = [] }: Props) {
   const fetchClients = useCallback(async () => {
     setFetchLoading(true);
     const d = await apiService.getLoggedInClients();
-    setClients(d);
+    setClients(d.map(c => ({ ...c, is_star: !!c.is_star })));
     setFetchLoading(false);
+  }, []);
+
+  const handleToggleStar = useCallback(async (id: string) => {
+    try {
+      const res = await apiService.toggleStarClient(id);
+      if (res.status) {
+        setClients(prev => prev.map(c => c.id === id ? { ...c, is_star: !!res.is_star } : c));
+        setSnackbar({ open: true, message: res.message || 'Updated Star Status', severity: 'success' });
+      }
+    } catch (e: any) {
+      setSnackbar({ open: true, message: e.message, severity: 'error' });
+    }
   }, []);
 
   useEffect(() => { if (isAdmin) fetchClients(); }, [isAdmin, fetchClients]);
@@ -328,7 +369,7 @@ export default function DataGridCustom({ data = [] }: Props) {
     }
   };
 
-  const columns = useMemo(() => getColumns(handleEdit, handleDelete), [handleEdit, handleDelete]);
+  const columns = useMemo(() => getColumns(handleEdit, handleDelete, handleToggleStar), [handleEdit, handleDelete, handleToggleStar]);
 
   return (
     <Box sx={{ p: 3 }}>

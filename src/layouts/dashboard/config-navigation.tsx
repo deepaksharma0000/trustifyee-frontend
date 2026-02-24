@@ -128,7 +128,7 @@ export function useNavData() {
               { title: "Clients", path: paths.dashboard.general.ecommerce },
               { title: t("Expired Clients"), path: paths.dashboard.user.list },
               { title: t("SignUp Clients"), path: paths.dashboard.permission },
-              { title: "Star Clients", path: paths.dashboard.blank },
+              { title: "Star Clients", path: paths.dashboard.starClients },
             ],
           },
           {
