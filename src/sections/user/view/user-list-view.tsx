@@ -18,13 +18,18 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import { alpha } from '@mui/material/styles';
 import Alert from '@mui/material/Alert';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import TablePagination from '@mui/material/TablePagination';
 
 // Internal imports
 import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
-import { _userList, _roles, USER_STATUS_OPTIONS } from 'src/_mock';
+import { _roles, USER_STATUS_OPTIONS } from 'src/_mock';
 import { useBoolean } from 'src/hooks/use-boolean';
 import { IUserItem, IUserTableFilters, IUserTableFilterValue } from 'src/types/user';
+import axiosInstance from 'src/utils/axios';
 
 // Components
 import Label from 'src/components/label';
@@ -32,16 +37,13 @@ import Iconify from 'src/components/iconify';
 import Scrollbar from 'src/components/scrollbar';
 import { ConfirmDialog } from 'src/components/custom-dialog';
 import { useSettingsContext } from 'src/components/settings';
-import { HOST_API } from 'src/config-global';
 import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
 import {
   useTable,
   getComparator,
   emptyRows,
-  TableNoData,
   TableEmptyRows,
   TableHeadCustom,
-  TableSelectedAction,
 } from 'src/components/table';
 
 // Relative imports
@@ -54,24 +56,25 @@ import UserTableFiltersResult from '../user-table-filters-result';
 const STATUS_OPTIONS = [{ value: 'all', label: 'All' }, ...USER_STATUS_OPTIONS];
 
 const TABLE_HEAD = [
+  { id: 'srno', label: 'Sr. No.', width: 60 },
   { id: 'name', label: 'User Name' },
   { id: 'email', label: 'Email' },
   { id: 'fullname', label: 'Full Name' },
-  { id: 'phoneNumber', label: 'Phone Number', width: 180 },
-  { id: 'broker', label: 'Broker', width: 220 },
+  { id: 'phoneNumber', label: 'Phone Number' },
+  { id: 'broker', label: 'Broker' },
   { id: 'month', label: 'Month' },
-  { id: 'gotodashboard', label: 'Go to Dashboard' },
-  { id: 'tradingStatus', label: 'Trading Status' },
+  { id: 'gotodashboard', label: 'Go to Dashboard', align: 'center' },
   { id: 'startdate', label: 'Start Date' },
   { id: 'enddate', label: 'End Date' },
-  { id: 'action', label: 'Actions' },
-  { id: '', width: 88 },
+  { id: 'action', label: 'Action', align: 'right' },
 ];
 
-const defaultFilters: IUserTableFilters = {
+const defaultFilters = {
   name: '',
-  role: [],
+  role: [] as string[],
   status: 'all',
+  clientType: 'All',
+  tradingType: 'All',
 };
 
 // ----------------------------------------------------------------------
@@ -86,77 +89,55 @@ export default function UserListView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState(defaultFilters);
-  const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || '';
 
-  // ✅ API Call
   const fetchExpiredUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const currentDate = format(new Date(), 'yyyy-MM-dd');
-      const apiUrl = `${API_BASE}/api/users/by-enddate?filter=custom&date=${currentDate}`;
+      const response = await axiosInstance.get(`/api/user/by-enddate?filter=expired`);
 
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      });
+      const responseData = response.data;
 
-      const contentType = response.headers.get('content-type');
-      if (!contentType?.includes('application/json')) {
-        const text = await response.text();
-        throw new Error(`Invalid response: ${text.slice(0, 100)}`);
-      }
+      // Backend returns { data: [...] }, but might also return an array directly
+      const usersList = Array.isArray(responseData) ? responseData : (responseData.data || responseData.results || []);
 
-      const data = await response.json();
-      console.log('API Response:', data);
-
-      if (!Array.isArray(data) || data.length === 0) {
+      if (usersList.length === 0) {
         setTableData([]);
-        setError('Data Not Found');
+        setError('Expired Clients Data Not Found');
         return;
       }
 
-  const transformedData: IUserItem[] = data.map((user: any, index: number) => ({
-  id: user.id || user._id || `temp-${index}`,
-  name: user.user_name || 'N/A',
-  email: user.email || 'N/A',
-  fullname: user.full_name || 'N/A',
-  phoneNumber: user.phone_number || 'N/A',
-  broker: user.broker || 'N/A',
-  status: user.status || 'N/A',
-  tradingStatus: user.trading_status || 'N/A',
-  month: user.month || 'N/A',
-  isVerified: user.isVerified ?? false,
-
-  // ✅ Required fields in IUserItem that might not come from API
-  city: user.city || 'N/A',
-  state: user.state || 'N/A',
-  address: user.address || 'N/A',
-  country: user.country || 'N/A',
-  zipCode: user.zipCode || 'N/A',
-  company: user.company || 'N/A',
-  avatarUrl: user.avatarUrl || '',
-
-  role: user.role || 'user',
-
-  // ✅ Dates converted properly
-  startdate: user.start_date ? new Date(user.start_date) : new Date(),
-  enddate: user.end_date ? new Date(user.end_date) : new Date(),
-}));
-
-
+      const transformedData: IUserItem[] = usersList.map((user: any, index: number) => ({
+        id: user.id || user._id || `temp-${index}`,
+        name: user.user_name || 'N/A',
+        email: user.email || 'N/A',
+        fullname: user.full_name || 'N/A',
+        phoneNumber: user.phone_number || 'N/A',
+        broker: user.broker || 'N/A',
+        status: user.status || 'N/A',
+        tradingStatus: user.trading_status || 'N/A',
+        month: user.month || 'N/A',
+        isVerified: user.isVerified ?? false,
+        city: user.city || 'N/A',
+        state: user.state || 'N/A',
+        avatarUrl: user.avatarUrl || '',
+        role: user.role || 'user',
+        licence: user.licence || 'Demo',
+        brokerVerified: user.brokerVerified ?? false,
+        startdate: user.start_date ? new Date(user.start_date) : new Date(),
+        enddate: user.end_date ? new Date(user.end_date) : new Date(),
+      }));
 
       setTableData(transformedData);
     } catch (err) {
       console.error('Error fetching expired users:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch expired users');
+      setError('Failed to fetch expired users');
       setTableData([]);
     } finally {
       setLoading(false);
     }
-  }, [API_BASE]);
+  }, []);
 
   useEffect(() => {
     fetchExpiredUsers();
@@ -168,14 +149,9 @@ export default function UserListView() {
     filters,
   });
 
-  const dataInPage = dataFiltered.slice(
-    table.page * table.rowsPerPage,
-    table.page * table.rowsPerPage + table.rowsPerPage
-  );
-
   const denseHeight = table.dense ? 52 : 72;
   const canReset = !isEqual(defaultFilters, filters);
-  const notFound = !loading && tableData.length === 0;
+  const notFound = !loading && dataFiltered.length === 0;
 
   const handleFilters = useCallback(
     (name: string, value: IUserTableFilterValue) => {
@@ -188,19 +164,19 @@ export default function UserListView() {
   const handleDeleteRow = useCallback(
     (id: string) => {
       setTableData((prev) => prev.filter((row) => row.id !== id));
-      table.onUpdatePageDeleteRow(dataInPage.length);
+      table.onUpdatePageDeleteRow(dataFiltered.length);
     },
-    [dataInPage.length, table]
+    [dataFiltered.length, table]
   );
 
   const handleDeleteRows = useCallback(() => {
     setTableData((prev) => prev.filter((row) => !table.selected.includes(row.id)));
     table.onUpdatePageDeleteRows({
       totalRows: tableData.length,
-      totalRowsInPage: dataInPage.length,
+      totalRowsInPage: dataFiltered.length,
       totalRowsFiltered: dataFiltered.length,
     });
-  }, [dataFiltered.length, dataInPage.length, table, tableData]);
+  }, [dataFiltered.length, table, tableData]);
 
   const handleEditRow = useCallback(
     (id: string) => router.push(paths.dashboard.user.edit(id)),
@@ -215,21 +191,32 @@ export default function UserListView() {
   const handleResetFilters = useCallback(() => setFilters(defaultFilters), []);
   const handleRefresh = useCallback(() => fetchExpiredUsers(), [fetchExpiredUsers]);
 
-  if (loading) {
-    return (
-      <Container maxWidth={settings.themeStretch ? false : 'lg'}>
-        <CustomBreadcrumbs
-          heading="Expired Clients"
-          links={[
-            { name: 'Dashboard', href: paths.dashboard.root },
-            { name: 'Expired Clients' },
-          ]}
-          sx={{ mb: { xs: 3, md: 5 } }}
-        />
-        <Card sx={{ p: 3, textAlign: 'center' }}>Loading expired clients...</Card>
-      </Container>
-    );
-  }
+  const handleExportExcel = () => {
+    const headers = TABLE_HEAD.filter(h => h.id !== 'action' && h.id !== 'gotodashboard')
+      .map(h => h.label)
+      .join(',');
+
+    const rows = dataFiltered.map((user, index) => [
+      index + 1,
+      user.name,
+      user.email,
+      user.fullname,
+      user.phoneNumber,
+      user.broker,
+      user.month,
+      user.startdate ? format(new Date(user.startdate), 'yyyy-MM-dd') : 'N/A',
+      user.enddate ? format(new Date(user.enddate), 'yyyy-MM-dd') : 'N/A',
+    ].join(',')).join('\n');
+
+    const csvContent = `data:text/csv;charset=utf-8,${headers}\n${rows}`;
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Expired_Clients_${format(new Date(), 'yyyyMMdd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <>
@@ -238,23 +225,34 @@ export default function UserListView() {
           heading="Expired Clients"
           links={[
             { name: 'Dashboard', href: paths.dashboard.root },
+            { name: 'User Management', href: paths.dashboard.user.root },
             { name: 'Expired Clients' },
           ]}
           action={
-            <Button
-              variant="contained"
-              startIcon={<Iconify icon="mdi:refresh" />}
-              onClick={handleRefresh}
-            >
-              Refresh
-            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<Iconify icon="solar:export-bold" />}
+                onClick={handleExportExcel}
+              >
+                Export Excel
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Iconify icon="mdi:refresh" />}
+                onClick={handleRefresh}
+              >
+                Refresh
+              </Button>
+            </Stack>
           }
           sx={{ mb: { xs: 3, md: 5 } }}
         />
 
-        {error && (
+        {error && !loading && (
           <Alert
-            severity="warning"
+            severity="info"
             sx={{ mb: 2 }}
             action={
               <Button color="inherit" size="small" onClick={handleRefresh}>
@@ -308,7 +306,12 @@ export default function UserListView() {
             ))}
           </Tabs>
 
-          <UserTableToolbar filters={filters} onFilters={handleFilters} roleOptions={_roles} />
+          <UserTableToolbar
+            filters={filters}
+            onFilters={handleFilters}
+            roleOptions={_roles}
+            onResetFilters={handleResetFilters}
+          />
 
           {canReset && (
             <UserTableFiltersResult
@@ -321,63 +324,54 @@ export default function UserListView() {
           )}
 
           <TableContainer sx={{ position: 'relative', overflow: 'unset' }}>
-            <TableSelectedAction
-              dense={table.dense}
-              numSelected={table.selected.length}
-              rowCount={tableData.length}
-              onSelectAllRows={(checked) =>
-                table.onSelectAllRows(
-                  checked,
-                  tableData.map((row) => row.id)
-                )
-              }
-              action={
-                <Tooltip title="Delete">
-                  <IconButton color="primary" onClick={confirm.onTrue}>
-                    <Iconify icon="solar:trash-bin-trash-bold" />
-                  </IconButton>
-                </Tooltip>
-              }
-            />
-
             <Scrollbar>
               <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>
                 <TableHeadCustom
                   order={table.order}
                   orderBy={table.orderBy}
                   headLabel={TABLE_HEAD}
-                  rowCount={tableData.length}
+                  rowCount={dataFiltered.length}
                   numSelected={table.selected.length}
                   onSort={table.onSort}
                   onSelectAllRows={(checked) =>
                     table.onSelectAllRows(
                       checked,
-                      tableData.map((row) => row.id)
+                      dataFiltered.map((row) => row.id)
                     )
                   }
                 />
 
                 <TableBody>
-                  {dataFiltered.map((row) => (
-                    <UserTableRow
-                      key={row.id}
-                      row={row}
-                      selected={table.selected.includes(row.id)}
-                      onSelectRow={() => table.onSelectRow(row.id)}
-                      onDeleteRow={() => handleDeleteRow(row.id)}
-                      onEditRow={() => handleEditRow(row.id)}
-                    />
-                  ))}
+                  {loading ? (
+                    <TableEmptyRows height={denseHeight} emptyRows={5} />
+                  ) : (
+                    dataFiltered
+                      .slice(table.page * table.rowsPerPage, table.page * table.rowsPerPage + table.rowsPerPage)
+                      .map((row, index) => (
+                        <UserTableRow
+                          key={row.id}
+                          row={row}
+                          index={table.page * table.rowsPerPage + index}
+                          selected={table.selected.includes(row.id)}
+                          onSelectRow={() => table.onSelectRow(row.id)}
+                          onDeleteRow={() => handleDeleteRow(row.id)}
+                          onEditRow={() => handleEditRow(row.id)}
+                        />
+                      ))
+                  )}
 
                   <TableEmptyRows
                     height={denseHeight}
-                    emptyRows={emptyRows(table.page, table.rowsPerPage, tableData.length)}
+                    emptyRows={emptyRows(table.page, table.rowsPerPage, dataFiltered.length)}
                   />
 
                   {notFound && (
                     <TableRow>
                       <TableCell align="center" colSpan={TABLE_HEAD.length}>
-                        <Alert severity="info">📭 Data Not Found</Alert>
+                        <Box sx={{ py: 5 }}>
+                          <Iconify icon="solar:user-block-bold-duotone" width={64} sx={{ color: 'text.disabled', mb: 2 }} />
+                          <Typography variant="h6" sx={{ color: 'text.disabled' }}>No Expired Clients Found</Typography>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   )}
@@ -385,7 +379,22 @@ export default function UserListView() {
               </Table>
             </Scrollbar>
           </TableContainer>
+
+          <TablePagination
+            component="div"
+            count={dataFiltered.length}
+            page={table.page}
+            onPageChange={table.onChangePage}
+            rowsPerPage={table.rowsPerPage}
+            onRowsPerPageChange={table.onChangeRowsPerPage}
+          />
         </Card>
+
+        <Box sx={{ mt: 5, py: 3, textAlign: 'center', borderTop: (theme) => `dashed 1px ${theme.palette.divider}` }}>
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            CopyRight Finvesta 2026 - 27 . All Rights Reserved
+          </Typography>
+        </Box>
       </Container>
 
       <ConfirmDialog
@@ -423,9 +432,9 @@ function applyFilter({
 }: {
   inputData: IUserItem[];
   comparator: (a: any, b: any) => number;
-  filters: IUserTableFilters & { tradingStatus?: string };
+  filters: any;
 }) {
-  const { name, status, role, tradingStatus } = filters;
+  const { name, status, clientType, tradingType } = filters;
 
   const stabilizedThis = inputData.map((el, index) => [el, index] as const);
 
@@ -438,27 +447,29 @@ function applyFilter({
   inputData = stabilizedThis.map((el) => el[0]);
 
   if (name) {
-  const search = name.toLowerCase();
-
-  inputData = inputData.filter(
-    (user) => (user.name ?? '').toLowerCase().includes(search)
-  );
-}
-
+    const search = name.toLowerCase();
+    inputData = inputData.filter(
+      (user) =>
+        (user.name ?? '').toLowerCase().includes(search) ||
+        (user.email ?? '').toLowerCase().includes(search) ||
+        (user.fullname ?? '').toLowerCase().includes(search)
+    );
+  }
 
   if (status !== 'all') {
     inputData = inputData.filter((user) => user.status === status);
   }
 
-  if (role.length) {
-    inputData = inputData.filter(
-      (user) => !!user.role && role.includes(user.role)
-    );
+  if (clientType !== 'All') {
+    if (clientType === 'Live') inputData = inputData.filter(u => u.licence === 'Live');
+    if (clientType === 'Paper Trading') inputData = inputData.filter(u => u.licence === 'Demo');
+    if (clientType === 'Live 2 Days Only') inputData = inputData.filter(u => u.licence === 'Live' && u.month === '2 Days');
   }
 
-
-  if (tradingStatus && tradingStatus !== 'all') {
-    inputData = inputData.filter((user) => user.tradingStatus === tradingStatus);
+  if (tradingType !== 'All') {
+    if (tradingType === 'Ready') inputData = inputData.filter(u => u.brokerVerified && u.tradingStatus === 'active');
+    if (tradingType === 'Demo/No-Broker') inputData = inputData.filter(u => !u.broker || u.broker === 'N/A');
+    if (tradingType === 'Unverified') inputData = inputData.filter(u => !u.isVerified);
   }
 
   return inputData;

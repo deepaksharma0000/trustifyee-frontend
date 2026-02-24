@@ -120,6 +120,8 @@ export interface IUserItem {
   isOnline?: boolean;
   brokerVerified?: boolean;
   licence?: 'Live' | 'Demo';
+  startdate?: Date | string;
+  enddate?: Date | string;
 }
 
 

@@ -59,20 +59,21 @@ const getUserRole = (): "admin" | "subadmin" | "user" => {
 
 export function useNavData() {
   const { t } = useLocales();
-  const role = getUserRole();
 
-  const getUserLicence = (): string => {
+  const getAuthUser = () => {
     try {
       const userData = localStorage.getItem("authUser");
-      if (userData) {
-        const parsed = JSON.parse(userData);
-        return parsed.licence || "";
-      }
-      return "";
+      return userData ? JSON.parse(userData) : null;
     } catch {
-      return "";
+      return null;
     }
   };
+
+  const authUser = getAuthUser();
+  const role = authUser?.role || "user";
+  const isImpersonated = authUser?.impersonated || false;
+
+  const getUserLicence = (): string => authUser?.licence || "";
 
   // ✅ Get connected Broker Name
   const getBrokerName = (): string => {
@@ -227,10 +228,15 @@ export function useNavData() {
     [t, role, brokerConnected, licence]
   );
 
-  // ✅ Filter items based on show condition
+  // ✅ Filter items based on show condition & impersonation
   const filteredData = data.map((section) => ({
     ...section,
-    items: section.items.filter((item) => item.show !== false),
+    items: section.items.filter((item) => {
+      if (isImpersonated) {
+        return item.title === t("Dashboard") || item.title === t("Api Info");
+      }
+      return item.show !== false;
+    }),
   }));
 
   return filteredData;

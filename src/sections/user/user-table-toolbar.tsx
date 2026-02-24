@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 // @mui
 import Stack from '@mui/material/Stack';
 import MenuItem from '@mui/material/MenuItem';
-import Checkbox from '@mui/material/Checkbox';
+import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import InputLabel from '@mui/material/InputLabel';
 import IconButton from '@mui/material/IconButton';
@@ -19,10 +19,11 @@ import CustomPopover, { usePopover } from 'src/components/custom-popover';
 // ----------------------------------------------------------------------
 
 type Props = {
-  filters: IUserTableFilters;
+  filters: IUserTableFilters & { clientType?: string; tradingType?: string };
   onFilters: (name: string, value: IUserTableFilterValue) => void;
   //
   roleOptions: string[];
+  onResetFilters?: VoidFunction;
 };
 
 export default function UserTableToolbar({
@@ -30,6 +31,7 @@ export default function UserTableToolbar({
   onFilters,
   //
   roleOptions,
+  onResetFilters,
 }: Props) {
   const popover = usePopover();
 
@@ -40,12 +42,16 @@ export default function UserTableToolbar({
     [onFilters]
   );
 
-  const handleFilterRole = useCallback(
-    (event: SelectChangeEvent<string[]>) => {
-      onFilters(
-        'role',
-        typeof event.target.value === 'string' ? event.target.value.split(',') : event.target.value
-      );
+  const handleFilterClientType = useCallback(
+    (event: SelectChangeEvent<string>) => {
+      onFilters('clientType', event.target.value);
+    },
+    [onFilters]
+  );
+
+  const handleFilterTradingType = useCallback(
+    (event: SelectChangeEvent<string>) => {
+      onFilters('tradingType', event.target.value);
     },
     [onFilters]
   );
@@ -64,70 +70,40 @@ export default function UserTableToolbar({
           pr: { xs: 2.5, md: 1 },
         }}
       >
-        <FormControl
-          sx={{
-            flexShrink: 0,
-            width: { xs: 1, md: 200 },
-          }}
-        >
-          <InputLabel>Role</InputLabel>
-
+        <FormControl sx={{ flexShrink: 0, width: { xs: 1, md: 160 } }}>
+          <InputLabel>Client Type</InputLabel>
           <Select
-            multiple
-            value={filters.role}
-            onChange={handleFilterRole}
-            input={<OutlinedInput label="Role" />}
-            renderValue={(selected) => selected.map((value) => value).join(', ')}
-            MenuProps={{
-              PaperProps: {
-                sx: { maxHeight: 240 },
-              },
-            }}
+            value={filters.clientType || 'All'}
+            onChange={handleFilterClientType}
+            input={<OutlinedInput label="Client Type" />}
           >
-            {roleOptions.map((option) => (
-              <MenuItem key={option} value={option}>
-                <Checkbox disableRipple size="small" checked={filters.role.includes(option)} />
-                {option}
-              </MenuItem>
-            ))}
+            <MenuItem value="All">All</MenuItem>
+            <MenuItem value="Live">Live</MenuItem>
+            <MenuItem value="Paper Trading">Paper Trading</MenuItem>
+            <MenuItem value="Live 2 Days Only">Live 2 Days Only</MenuItem>
           </Select>
         </FormControl>
-        <FormControl
-          sx={{
-            flexShrink: 0,
-            width: { xs: 1, md: 200 },
-          }}
-        >
-          <InputLabel>Role</InputLabel>
 
+        <FormControl sx={{ flexShrink: 0, width: { xs: 1, md: 160 } }}>
+          <InputLabel>Trading Type</InputLabel>
           <Select
-            multiple
-            value={filters.role}
-            onChange={handleFilterRole}
-            input={<OutlinedInput label="Role" />}
-            renderValue={(selected) => selected.map((value) => value).join(', ')}
-            MenuProps={{
-              PaperProps: {
-                sx: { maxHeight: 240 },
-              },
-            }}
+            value={filters.tradingType || 'All'}
+            onChange={handleFilterTradingType}
+            input={<OutlinedInput label="Trading Type" />}
           >
-            {roleOptions.map((option) => (
-              <MenuItem key={option} value={option}>
-                <Checkbox disableRipple size="small" checked={filters.role.includes(option)} />
-                {option}
-              </MenuItem>
-            ))}
+            <MenuItem value="All">All</MenuItem>
+            <MenuItem value="Ready">Ready</MenuItem>
+            <MenuItem value="Demo/No-Broker">Demo/No-Broker</MenuItem>
+            <MenuItem value="Unverified">Unverified</MenuItem>
           </Select>
         </FormControl>
-        
-       
-        <Stack direction="row" alignItems="center" spacing={2} flexGrow={1} sx={{ width:300}}>
+
+        <Stack direction="row" alignItems="center" spacing={2} flexGrow={1} sx={{ width: 1 }}>
           <TextField
             fullWidth
             value={filters.name}
             onChange={handleFilterName}
-            placeholder="Search..."
+            placeholder="Search by name or email..."
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -136,71 +112,23 @@ export default function UserTableToolbar({
               ),
             }}
           />
-            <TextField
-            fullWidth
-            value={filters.name}
-            onChange={handleFilterName}
-            placeholder="Search..."
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Iconify icon="eva:search-fill" sx={{ color: 'text.disabled' }} />
-                </InputAdornment>
-              ),
-            }}
-          />
-            <TextField
-            fullWidth
-            value={filters.name}
-            onChange={handleFilterName}
-            placeholder="Search..."
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Iconify icon="eva:search-fill" sx={{ color: 'text.disabled' }} />
-                </InputAdornment>
-              ),
-            }}
-          />
+
+          {onResetFilters && (
+            <Button
+              color="error"
+              sx={{ flexShrink: 0 }}
+              onClick={onResetFilters}
+              startIcon={<Iconify icon="solar:trash-bin-trash-bold" />}
+            >
+              Reset
+            </Button>
+          )}
 
           <IconButton onClick={popover.onOpen}>
             <Iconify icon="eva:more-vertical-fill" />
           </IconButton>
         </Stack>
       </Stack>
-      <Stack
-        spacing={2}
-        alignItems={{ xs: 'flex-end', md: 'center' }}
-        direction={{
-          xs: 'column',
-          md: 'row',
-        }}
-        sx={{
-          p: 2.5,
-          pr: { xs: 2.5, md: 1 },
-        }}
-      >
-      <Stack direction="row" alignItems="center" spacing={2} flexGrow={1} sx={{ width:1}}>
-   
-     
-      <TextField
-   
-       label="Outlined"
-      />
-  <TextField
-   
-   label="Outlined"
-  />
-    <TextField
-   
-   label="Outlined"
-  />
-  
-     
-        
-      </Stack>
-      </Stack>
-
 
       <CustomPopover
         open={popover.open}
