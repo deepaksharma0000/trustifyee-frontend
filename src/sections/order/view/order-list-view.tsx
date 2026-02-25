@@ -23,6 +23,15 @@ import {
   CircularProgress,
   Alert,
   TextField,
+  Grid,
+  ToggleButtonGroup,
+  ToggleButton,
+  Dialog,
+  DialogContent,
+  IconButton,
+  Tabs,
+  Tab,
+  Divider,
 } from "@mui/material";
 import { Link as RouterLink } from 'react-router-dom';
 import { paths } from 'src/routes/paths';
@@ -69,9 +78,17 @@ export default function OptionChainPage() {
   const [quoteMap, setQuoteMap] = useState<
     Record<
       string,
-      { ltp: number; oi: number | null; dir?: "up" | "down" }
+      {
+        ltp: number;
+        oi: number | null;
+        volume: number | null;
+        percentChange: number | null;
+        dir?: "up" | "down";
+      }
     >
   >({});
+  const [viewMode, setViewMode] = useState<"LTP" | "OI">("LTP");
+  const [indexLtp, setIndexLtp] = useState<number>(0);
   const [autoSelecting, setAutoSelecting] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   /* ---------------- AUTO SQUARE OFF STATE ---------------- */
@@ -81,6 +98,11 @@ export default function OptionChainPage() {
 
   /* ---------------- MARKET STATUS STATE ---------------- */
   const [marketStatus, setMarketStatus] = useState<{ isOpen: boolean, message: string } | null>(null);
+
+  /* ---------------- ORDER DIALOG STATE ---------------- */
+  const [orderDialogOpen, setOrderDialogOpen] = useState(false);
+  const [selectedOrderOption, setSelectedOrderOption] = useState<OptionItem | null>(null);
+  const [orderSide, setOrderSide] = useState<'BUY' | 'SELL'>('BUY');
 
   const blinkTimers = useRef<Record<string, number>>({});
 
@@ -199,7 +221,8 @@ export default function OptionChainPage() {
         grouped[opt.strike][opt.optiontype] = opt;
       });
 
-      setMarketData(Object.values(grouped));
+      setIndexLtp(json.data.ltp || 0);
+      setMarketData(Object.values(grouped).sort((a, b) => a.strikePrice - b.strikePrice));
     } catch (err: any) {
       setApiError(err.message || "API error");
     } finally {
@@ -238,6 +261,11 @@ export default function OptionChainPage() {
             const ltp = Number(item.ltp || 0);
             const oi =
               item.oi === null || item.oi === undefined ? null : Number(item.oi);
+            const volume =
+              item.volume === null || item.volume === undefined ? null : Number(item.volume);
+            const percentChange =
+              item.percentChange === null || item.percentChange === undefined ? null : Number(item.percentChange);
+
             const prevLtp = prev[symbolToken]?.ltp;
 
             let dir: "up" | "down" | undefined;
@@ -245,7 +273,14 @@ export default function OptionChainPage() {
               dir = ltp > prevLtp ? "up" : "down";
             }
 
-            next[symbolToken] = { ltp, oi, dir };
+            next[symbolToken] = { ltp, oi, volume, percentChange, dir };
+
+            // Update Index LTP & Status if this is the index token
+            const indexTokens = ["99926000", "99926009", "99926037"];
+            if (indexTokens.includes(symbolToken)) {
+              setIndexLtp(ltp);
+              // Store index percent change in quoteMap as well
+            }
 
             if (dir) {
               if (blinkTimers.current[symbolToken]) {
@@ -278,6 +313,18 @@ export default function OptionChainPage() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
     const items: { exchange: string; tradingsymbol: string; symboltoken: string }[] = [];
+
+    // 1. Subscribe to Index Token
+    const indexTokens: Record<string, string> = { "NIFTY": "99926000", "BANKNIFTY": "99926009", "FINNIFTY": "99926037" };
+    const indexTradingSymbols: Record<string, string> = { "NIFTY": "Nifty 50", "BANKNIFTY": "Nifty Bank", "FINNIFTY": "Nifty Fin Service" };
+
+    items.push({
+      exchange: "NSE",
+      tradingsymbol: indexTradingSymbols[symbol] || "Nifty 50",
+      symboltoken: indexTokens[symbol] || "99926000",
+    });
+
+    // 2. Subscribe to Options
     marketData.forEach((row) => {
       if (row.CE) {
         items.push({
@@ -299,12 +346,12 @@ export default function OptionChainPage() {
       ws.send(
         JSON.stringify({
           type: "subscribe",
-          intervalMs: 2000,
+          intervalMs: 1500,
           items,
         })
       );
     }
-  }, [marketData]);
+  }, [marketData, symbol]);
 
   /* ---------------- EXPIRY CHECK ---------------- */
   const isBrokerConnected = !!authUser?.broker_connected || localStorage.getItem('angel_jwt') !== null;
@@ -552,7 +599,17 @@ export default function OptionChainPage() {
     alert(resultMsg);
   };
 
+  const handleOpenOrderDialog = (opt: OptionItem, side: 'BUY' | 'SELL') => {
+    setSelectedOrderOption(opt);
+    setOrderSide(side);
+    setOrderDialogOpen(true);
+  };
 
+  const lotSizeMap: Record<string, number> = {
+    "NIFTY": 25,
+    "BANKNIFTY": 15,
+    "FINNIFTY": 40
+  };
 
   /* ---------------- UI ---------------- */
   let content: React.ReactNode;
@@ -566,116 +623,310 @@ export default function OptionChainPage() {
   } else if (marketData.length === 0) {
     content = <Typography>No option chain data</Typography>;
   } else {
+    const sortedStrikes = [...marketData].sort((a, b) => a.strikePrice - b.strikePrice);
+    let spotInserted = false;
+
     content = (
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Strike</TableCell>
-              <TableCell align="center">CALL (CE)</TableCell>
-              <TableCell align="center">PUT (PE)</TableCell>
-            </TableRow>
-          </TableHead>
+      <>
+        <style>
+          {`
+            @keyframes pulse {
+              0% { transform: scale(0.95); opacity: 0.7; }
+              50% { transform: scale(1.05); opacity: 1; }
+              100% { transform: scale(0.95); opacity: 0.7; }
+            }
+          `}
+        </style>
 
-          <TableBody>
-            {marketData.map((row) => (
-              <TableRow key={row.strikePrice}>
-                <TableCell>{row.strikePrice}</TableCell>
+        {/* Premium Header Summary */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} md={4}>
+            <Card sx={{ p: 2, display: 'flex', alignItems: 'center', bgcolor: 'primary.darker', color: 'common.white' }}>
+              <Box sx={{ flexGrow: 1 }}>
+                <Typography variant="overline" sx={{ opacity: 0.8 }}>Current Index Value</Typography>
+                <Stack direction="row" spacing={1} alignItems="baseline">
+                  <Typography variant="h3" fontWeight="bold">{indexLtp.toFixed(2)}</Typography>
+                  <Typography variant="subtitle2" sx={{
+                    color: (quoteMap[Object.keys(quoteMap).find(k => ["99926000", "99926009", "99926037"].includes(k)) || '']?.percentChange || 0) >= 0 ? 'success.light' : 'error.light'
+                  }}>
+                    {(quoteMap[Object.keys(quoteMap).find(k => ["99926000", "99926009", "99926037"].includes(k)) || '']?.percentChange || 0) >= 0 ? '+' : ''}
+                    {quoteMap[Object.keys(quoteMap).find(k => ["99926000", "99926009", "99926037"].includes(k)) || '']?.percentChange?.toFixed(2) || '0.00'}%
+                  </Typography>
+                </Stack>
+                <Typography variant="caption" sx={{ opacity: 0.6 }}>Updated: {new Date().toLocaleTimeString()}</Typography>
+              </Box>
+              <Iconify icon="eva:activity-fill" width={48} sx={{ opacity: 0.2 }} />
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Card sx={{ p: 2, display: 'flex', alignItems: 'center', height: '100%' }}>
+              <Box sx={{ flexGrow: 1 }}>
+                <Typography variant="overline" color="text.secondary">Market Status</Typography>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: marketStatus?.isOpen ? 'success.main' : 'error.main' }} />
+                  <Typography variant="h6" color={marketStatus?.isOpen ? 'success.main' : 'error.main'}>
+                    {marketStatus?.isOpen ? 'MARKET OPEN' : 'MARKET CLOSED'}
+                  </Typography>
+                </Stack>
+                <Typography variant="caption" color="text.secondary">{marketStatus?.message || 'Exchange status updated live'}</Typography>
+              </Box>
+              <Iconify icon={marketStatus?.isOpen ? 'eva:trending-up-fill' : 'eva:moon-fill'} width={40} color="text.disabled" />
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Card sx={{ p: 2, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  disabled={selectedOptions.length === 0}
+                  onClick={executeSelectedOrders}
+                  startIcon={<Iconify icon="eva:flash-fill" />}
+                  sx={{ px: 4, height: 48, fontWeight: 'bold' }}
+                >
+                  PLACE ORDERS ({selectedOptions.length})
+                </Button>
+              </Stack>
+            </Card>
+          </Grid>
+        </Grid>
 
-                <TableCell align="center">
-                  {row.CE ? (
-                    <>
-                      <Typography variant="body2">
-                        {row.CE.tradingsymbol}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          display: "block",
-                          color: getDirectionColor(quoteMap[row.CE.symboltoken]?.dir),
-                          backgroundColor: getDirectionBgColor(quoteMap[row.CE.symboltoken]?.dir),
-                          borderRadius: 1,
-                          px: 0.5,
-                          py: 0.25,
-                          mt: 0.5,
-                        }}
-                      >
-                        LTP: {quoteMap[row.CE.symboltoken]?.ltp ?? "-"} | OI:{" "}
-                        {quoteMap[row.CE.symboltoken]?.oi ?? "-"}
-                      </Typography>
-                      <Button
-                        size="small"
-                        variant={isOptionSelected(row.CE) ? "contained" : "outlined"}
-                        color={isOptionSelected(row.CE) ? "success" : "primary"}
-                        sx={{ mt: 1 }}
-                        disabled={!isAdmin}
-                        onClick={() => handleSelectOption(row.CE!)}
-                      >
-                        {isOptionSelected(row.CE) ? "✓ SELECTED" : "SELECT CE"}
-                      </Button>
-                    </>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
+        <Stack direction="row" justifyContent="center" sx={{ mb: 2 }}>
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(e, next) => next && setViewMode(next)}
+            size="small"
+            color="primary"
+            sx={{ bgcolor: 'background.paper', boxShadow: (theme) => theme.customShadows.z8 }}
+          >
+            <ToggleButton value="LTP" sx={{ px: 3, fontWeight: 'bold' }}>LTP VIEW</ToggleButton>
+            <ToggleButton value="OI" sx={{ px: 3, fontWeight: 'bold' }}>OI VIEW</ToggleButton>
+          </ToggleButtonGroup>
+        </Stack>
 
-                <TableCell align="center">
-                  {row.PE ? (
-                    <>
-                      <Typography variant="body2">
-                        {row.PE.tradingsymbol}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          display: "block",
-                          color: getDirectionColor(quoteMap[row.PE.symboltoken]?.dir),
-                          backgroundColor: getDirectionBgColor(quoteMap[row.PE.symboltoken]?.dir),
-                          borderRadius: 1,
-                          px: 0.5,
-                          py: 0.25,
-                          mt: 0.5,
-                        }}
-                      >
-                        LTP: {quoteMap[row.PE.symboltoken]?.ltp ?? "-"} | OI:{" "}
-                        {quoteMap[row.PE.symboltoken]?.oi ?? "-"}
-                      </Typography>
-                      <Button
-                        size="small"
-                        variant={isOptionSelected(row.PE) ? "contained" : "outlined"}
-                        color={isOptionSelected(row.PE) ? "success" : "error"}
-                        sx={{ mt: 1 }}
-                        disabled={!isAdmin}
-                        onClick={() => handleSelectOption(row.PE!)}
-                      >
-                        {isOptionSelected(row.PE) ? "✓ SELECTED" : "SELECT PE"}
-                      </Button>
-                    </>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
+        <TableContainer
+          component={Paper}
+          sx={{
+            maxHeight: 700,
+            overflow: 'auto',
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            boxShadow: (theme) => theme.customShadows.z20
+          }}
+        >
+          <Table stickyHeader size="small">
+            <TableHead>
+              <TableRow>
+                {viewMode === "LTP" ? (
+                  <>
+                    <TableCell align="center" sx={{ backgroundColor: 'background.neutral', fontWeight: 'bold' }}>VOLUME (CE)</TableCell>
+                    <TableCell align="center" sx={{ backgroundColor: 'background.neutral', fontWeight: 'bold' }}>LTP (CALL)</TableCell>
+                    <TableCell align="center" sx={{ backgroundColor: 'primary.main', color: 'common.white', fontWeight: 'bold', minWidth: 100 }}>STRIKE</TableCell>
+                    <TableCell align="center" sx={{ backgroundColor: 'background.neutral', fontWeight: 'bold' }}>LTP (PUT)</TableCell>
+                    <TableCell align="center" sx={{ backgroundColor: 'background.neutral', fontWeight: 'bold' }}>VOLUME (PE)</TableCell>
+                  </>
+                ) : (
+                  <>
+                    <TableCell align="center" sx={{ backgroundColor: 'background.neutral', fontWeight: 'bold' }}>CALL OI</TableCell>
+                    <TableCell align="center" sx={{ backgroundColor: 'background.neutral', fontWeight: 'bold' }}>LTP (CALL)</TableCell>
+                    <TableCell align="center" sx={{ backgroundColor: 'primary.main', color: 'common.white', fontWeight: 'bold' }}>STRIKE</TableCell>
+                    <TableCell align="center" sx={{ backgroundColor: 'background.neutral', fontWeight: 'bold' }}>LTP (PUT)</TableCell>
+                    <TableCell align="center" sx={{ backgroundColor: 'background.neutral', fontWeight: 'bold' }}>PUT OI</TableCell>
+                  </>
+                )}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+
+            <TableBody>
+              {sortedStrikes.map((row, index) => {
+                const subRows: React.ReactNode[] = [];
+
+                const isCeItm = row.strikePrice < indexLtp;
+                const isPeItm = row.strikePrice > indexLtp;
+
+                const renderPriceCellWithButtons = (
+                  opt: OptionItem | undefined,
+                  isItm: boolean,
+                  value: string | number,
+                  showLtpMeta: boolean = true
+                ) => {
+                  if (!opt) return <TableCell align="center">-</TableCell>;
+                  const quote = quoteMap[opt.symboltoken];
+                  return (
+                    <TableCell align="center"
+                      sx={{
+                        bgcolor: isItm ? 'rgba(255, 245, 157, 0.15)' : 'transparent',
+                        position: 'relative',
+                        '&:hover .entry-btns': { opacity: 1 },
+                        minWidth: 100
+                      }}
+                    >
+                      <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
+                        <Box sx={{ flexGrow: 1, textAlign: 'center' }}>
+                          <Typography variant="body2" fontWeight="bold">
+                            {typeof value === 'number' ? value.toLocaleString() : value}
+                          </Typography>
+                          {showLtpMeta && (
+                            <Typography variant="caption" sx={{
+                              fontWeight: 'bold',
+                              color: (quote?.percentChange || 0) >= 0 ? 'success.main' : 'error.main',
+                              display: 'block'
+                            }}>
+                              {(quote?.percentChange || 0) >= 0 ? '+' : ''}
+                              {quote?.percentChange?.toFixed(2) || '0.00'}%
+                            </Typography>
+                          )}
+                        </Box>
+
+                        <Stack className="entry-btns" direction="row" spacing={0.3} sx={{
+                          opacity: 0,
+                          position: 'absolute',
+                          right: 2,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          transition: 'opacity 0.2s',
+                          bgcolor: 'background.paper',
+                          borderRadius: 1,
+                          boxShadow: 2,
+                          p: 0.3,
+                          zIndex: 2
+                        }}>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="success"
+                            sx={{ minWidth: 28, height: 24, p: 0, fontSize: 11, fontWeight: 'bold' }}
+                            onClick={(e) => { e.stopPropagation(); handleOpenOrderDialog(opt, 'BUY'); }}
+                          >B</Button>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="error"
+                            sx={{ minWidth: 28, height: 24, p: 0, fontSize: 11, fontWeight: 'bold' }}
+                            onClick={(e) => { e.stopPropagation(); handleOpenOrderDialog(opt, 'SELL'); }}
+                          >S</Button>
+                        </Stack>
+                      </Stack>
+                    </TableCell>
+                  );
+                };
+
+                // Insert Spotlight row if this is the spot
+                if (!spotInserted && indexLtp > 0 && (row.strikePrice > indexLtp || index === sortedStrikes.length - 1)) {
+                  spotInserted = true;
+                  subRows.push(
+                    <TableRow key="spot-row" sx={{ backgroundColor: 'info.lighter', borderY: '3px solid', borderColor: 'info.main', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                      <TableCell colSpan={viewMode === "LTP" ? 7 : 5} align="center" sx={{ py: 1.5 }}>
+                        <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
+                          <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'info.main', animation: 'pulse 1s infinite' }} />
+                          <Typography variant="h6" sx={{ color: 'info.darker', fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase' }}>
+                            {marketStatus?.isOpen ? 'LIVE MARKET' : 'MARKET CLOSED'} AT {indexLtp.toFixed(2)}
+                          </Typography>
+                          <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'info.main', animation: 'pulse 1s infinite' }} />
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+
+                subRows.push(
+                  <TableRow
+                    key={row.strikePrice}
+                    hover
+                    sx={{
+                      cursor: 'pointer',
+                      '&:hover': { bgcolor: 'action.hover' }
+                    }}
+                  >
+                    {viewMode === "LTP" ? (
+                      <>
+                        <TableCell align="center" sx={{ bgcolor: isCeItm ? 'rgba(255, 245, 157, 0.15)' : 'transparent' }}>
+                          <Typography variant="body2" fontWeight="bold">
+                            {quoteMap[row.CE?.symboltoken || '']?.volume?.toLocaleString() || '0'}
+                          </Typography>
+                        </TableCell>
+
+                        {renderPriceCellWithButtons(
+                          row.CE,
+                          isCeItm,
+                          quoteMap[row.CE?.symboltoken || '']?.ltp?.toFixed(2) || '0.00',
+                          true
+                        )}
+
+                        <TableCell align="center" sx={{ bgcolor: 'grey.100', fontWeight: 'bold', color: 'primary.dark' }}>
+                          <Typography variant="subtitle2">{row.strikePrice}</Typography>
+                        </TableCell>
+
+                        {renderPriceCellWithButtons(
+                          row.PE,
+                          isPeItm,
+                          quoteMap[row.PE?.symboltoken || '']?.ltp?.toFixed(2) || '0.00',
+                          true
+                        )}
+
+                        <TableCell align="center" sx={{ bgcolor: isPeItm ? 'rgba(255, 245, 157, 0.15)' : 'transparent' }}>
+                          <Typography variant="body2" fontWeight="bold">
+                            {quoteMap[row.PE?.symboltoken || '']?.volume?.toLocaleString() || '0'}
+                          </Typography>
+                        </TableCell>
+                      </>
+                    ) : (
+                      <>
+                        {renderPriceCellWithButtons(
+                          row.CE,
+                          isCeItm,
+                          quoteMap[row.CE?.symboltoken || '']?.oi || 0,
+                          false
+                        )}
+
+                        {renderPriceCellWithButtons(
+                          row.CE,
+                          isCeItm,
+                          quoteMap[row.CE?.symboltoken || '']?.ltp?.toFixed(2) || '0.00',
+                          true
+                        )}
+
+                        <TableCell align="center" sx={{ bgcolor: 'grey.100', fontWeight: 'bold', color: 'primary.dark' }}>
+                          <Typography variant="subtitle2">{row.strikePrice}</Typography>
+                        </TableCell>
+
+                        {renderPriceCellWithButtons(
+                          row.PE,
+                          isPeItm,
+                          quoteMap[row.PE?.symboltoken || '']?.ltp?.toFixed(2) || '0.00',
+                          true
+                        )}
+
+                        {renderPriceCellWithButtons(
+                          row.PE,
+                          isPeItm,
+                          quoteMap[row.PE?.symboltoken || '']?.oi || 0,
+                          false
+                        )}
+                      </>
+                    )}
+                  </TableRow>
+                );
+                return subRows;
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </>
     );
   }
 
   return (
     <Container maxWidth="xl" sx={{ mt: 3 }}>
       <Card sx={{ p: 3 }}>
-        <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
+        <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2} sx={{ mb: 3 }}>
           <Typography variant="h4">
             📊 {symbol} Option Chain
           </Typography>
 
-          {marketStatus && !marketStatus.isOpen && (
-            <Alert severity="warning" sx={{ width: '100%', mb: 2 }}>
-              ⛔ {marketStatus.message}. Orders will be rejected.
-            </Alert>
-          )}
           {isAdmin && (
             <Stack direction="row" spacing={2} alignItems="center">
               <Chip
@@ -704,7 +955,6 @@ export default function OptionChainPage() {
                 value={stopLoss}
                 onChange={(e) => setStopLoss(e.target.value)}
                 sx={{ width: 100 }}
-                placeholder="Ex. 150"
               />
               <TextField
                 label="Target"
@@ -713,7 +963,6 @@ export default function OptionChainPage() {
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
                 sx={{ width: 100 }}
-                placeholder="Ex. 250"
               />
 
               <Box sx={{ border: '1px dashed grey', p: 1, borderRadius: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -741,34 +990,27 @@ export default function OptionChainPage() {
             </Stack>
           )}
         </Box>
-        <Box mb={2} maxWidth={220}>
-          <FormControl fullWidth size="small">
+
+        <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+          <FormControl size="small" sx={{ width: 180 }}>
             <InputLabel>Symbol</InputLabel>
             <Select
               label="Symbol"
               value={symbol}
-              onChange={(e) =>
-                setSymbol(e.target.value as "NIFTY" | "BANKNIFTY" | "FINNIFTY")
-              }
+              onChange={(e) => setSymbol(e.target.value as any)}
             >
               <MenuItem value="NIFTY">NIFTY 50</MenuItem>
               <MenuItem value="BANKNIFTY">BANK NIFTY</MenuItem>
               <MenuItem value="FINNIFTY">FIN NIFTY</MenuItem>
             </Select>
           </FormControl>
-        </Box>
 
-
-        {/* Expiry Selector */}
-        <Box mb={3} maxWidth={240}>
-          <FormControl fullWidth size="small">
+          <FormControl size="small" sx={{ width: 220 }}>
             <InputLabel>Expiry</InputLabel>
             <Select
               label="Expiry"
               value={selectedExpiry}
-              onChange={(e) => {
-                setSelectedExpiry(e.target.value);
-              }}
+              onChange={(e) => setSelectedExpiry(e.target.value)}
             >
               {expiryDates.map((e) => (
                 <MenuItem key={e.value} value={e.value}>
@@ -777,76 +1019,351 @@ export default function OptionChainPage() {
               ))}
             </Select>
           </FormControl>
-        </Box>
 
-        {/* Strategy Auto-Select */}
-        {isAdmin && (
-          <Box mb={3} display="flex" gap={2} alignItems="center">
-            <FormControl size="small" sx={{ minWidth: 200 }}>
-              <InputLabel>Strategy</InputLabel>
-              <Select
-                label="Strategy"
-                value={strategy}
-                onChange={(e) => setStrategy(e.target.value)}
+          {isAdmin && (
+            <>
+              <FormControl size="small" sx={{ minWidth: 200 }}>
+                <InputLabel>Strategy</InputLabel>
+                <Select
+                  label="Strategy"
+                  value={strategy}
+                  onChange={(e) => setStrategy(e.target.value)}
+                >
+                  <MenuItem value="Gamma">Gamma (Scalping)</MenuItem>
+                  <MenuItem value="Alpha">Alpha (Trend)</MenuItem>
+                </Select>
+              </FormControl>
+              <Button
+                variant="outlined"
+                onClick={handleAutoSelectStrategy}
+                disabled={autoSelecting || !selectedExpiry}
               >
-                <MenuItem value="Gamma">Gamma (Scalping)</MenuItem>
-                <MenuItem value="Alpha">Alpha (Momentum)</MenuItem>
-                <MenuItem value="Beta">Beta (Aggressive)</MenuItem>
-                <MenuItem value="Delta">Delta (Neutral)</MenuItem>
-                <MenuItem value="SIGMA">SIGMA (Premium)</MenuItem>
-                <MenuItem value="ZETA">ZETA (Experimental)</MenuItem>
-                <MenuItem value="DELTA">DELTA (High Vol)</MenuItem>
-                <MenuItem value="GAMA">GAMA (Low Vol)</MenuItem>
-                <MenuItem value="ALPHA">ALPHA (Trend)</MenuItem>
-              </Select>
-            </FormControl>
-            <Button
-              variant="outlined"
-              color="secondary"
-              onClick={handleAutoSelectStrategy}
-              disabled={autoSelecting || !selectedExpiry}
-              startIcon={autoSelecting ? <CircularProgress size={20} /> : <Iconify icon="eva:magic-fill" />}
-            >
-              Auto-Select Strikes
-            </Button>
-          </Box>
-        )}
-
-        <Box sx={{ position: "relative" }}>
-          <Button
-            variant="contained"
-            color="primary"
-            fullWidth
-            size="large"
-            disabled={selectedOptions.length === 0 || !isAdmin}
-            onClick={executeSelectedOrders}
-            sx={{ mb: 2, height: 56, fontSize: '1.1rem', fontWeight: 'bold' }}
-          >
-            {selectedOptions.length > 0
-              ? `EXECUTE ${selectedOptions.length} TRADES NOW`
-              : "SELECT STRIKES TO TRADE"}
-          </Button>
-
-          {selectedOptions.length > 0 && isAdmin && (
-            <Button
-              variant="text"
-              color="inherit"
-              onClick={() => { setSelectedOptions([]); setStopLoss(""); setTarget(""); }}
-              sx={{ position: 'absolute', right: 0, top: -45 }}
-            >
-              Clear All
-            </Button>
+                Auto-Select
+              </Button>
+            </>
           )}
-        </Box>
-
-        {content}
+        </Stack>
 
         {apiError && (
-          <Alert severity="error" sx={{ mt: 2 }}>
+          <Alert severity="error" sx={{ mb: 2 }}>
             {apiError}
           </Alert>
         )}
+
+        {content}
       </Card>
+
+      <OrderDialog
+        open={orderDialogOpen}
+        onClose={() => setOrderDialogOpen(false)}
+        option={selectedOrderOption}
+        side={orderSide}
+        setSide={setOrderSide}
+        ltp={quoteMap[selectedOrderOption?.symboltoken || '']?.ltp || 0}
+        percentChange={quoteMap[selectedOrderOption?.symboltoken || '']?.percentChange || 0}
+        indexSymbol={symbol}
+        lotSize={lotSizeMap[symbol] || 25}
+      />
     </Container>
+  );
+}
+
+/* ---------------- ORDER DIALOG COMPONENT ---------------- */
+
+interface OrderDialogProps {
+  open: boolean;
+  onClose: () => void;
+  option: OptionItem | null;
+  side: 'BUY' | 'SELL';
+  setSide: (side: 'BUY' | 'SELL') => void;
+  ltp: number;
+  percentChange: number;
+  indexSymbol: string;
+  lotSize: number;
+}
+
+function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange, indexSymbol, lotSize }: OrderDialogProps) {
+  const [tab, setTab] = useState(0);
+  const [productType, setProductType] = useState<'INTRADAY' | 'CARRYFORWARD'>('INTRADAY');
+  const [lots, setLots] = useState(1);
+  const [price, setPrice] = useState<string>("");
+  const [isLimit, setIsLimit] = useState(false);
+  const [slTargetEnabled, setSlTargetEnabled] = useState(false);
+  const [stopLoss, setStopLoss] = useState("");
+  const [target, setTarget] = useState("");
+  const [executing, setExecuting] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setPrice(ltp.toFixed(2));
+    }
+  }, [open, ltp]);
+
+  if (!option) return null;
+
+  const handleExecute = async () => {
+    if (lots <= 0) {
+      alert("Please enter a valid lot quantity");
+      return;
+    }
+
+    setExecuting(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      const API_BASE = HOST_API || "";
+
+      const payload = {
+        exchange: "NFO",
+        tradingsymbol: option.tradingsymbol,
+        side,
+        transactiontype: side,
+        quantity: lots,
+        ordertype: isLimit ? "LIMIT" : "MARKET",
+        price: isLimit ? Number(price) : 0,
+        producttype: productType,
+        symboltoken: option.symboltoken,
+        stopLossPrice: slTargetEnabled && stopLoss ? Number(stopLoss) : undefined,
+        targetPrice: slTargetEnabled && target ? Number(target) : undefined,
+        strategy: "Manual"
+      };
+
+      const res = await fetch(`${API_BASE}/api/orders/place-all`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (json.ok) {
+        alert(`✅ Broadcast Complete!\nProcessed for ${json.totalUsers} users.`);
+        onClose();
+      } else {
+        alert(`❌ Order Failed: ${json.error || "Unknown error"}`);
+      }
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="xs"
+      PaperProps={{
+        sx: { borderRadius: 1.5, overflow: 'hidden' }
+      }}
+    >
+      <Box sx={{ p: 2, bgcolor: side === 'BUY' ? 'rgba(76, 175, 80, 0.08)' : 'rgba(244, 67, 54, 0.08)' }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Stack spacing={0.5}>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="h6" fontWeight="bold" sx={{ color: 'text.primary' }}>
+                {indexSymbol}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {new Date(option.expiry).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </Typography>
+              <Chip
+                label={option.strike}
+                size="small"
+                sx={{ bgcolor: 'grey.200', fontWeight: 'bold' }}
+              />
+              <Chip
+                label={option.optiontype}
+                size="small"
+                color={option.optiontype === 'CE' ? 'success' : 'error'}
+                sx={{ fontWeight: 'bold' }}
+              />
+            </Stack>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="h5" color={percentChange >= 0 ? 'success.main' : 'error.main'} fontWeight="bold">
+                {ltp.toFixed(2)}
+              </Typography>
+              <Typography variant="caption" sx={{ color: percentChange >= 0 ? 'success.main' : 'error.main', fontWeight: 'bold' }}>
+                {percentChange >= 0 ? '▲' : '▼'} {Math.abs(percentChange).toFixed(2)}%
+              </Typography>
+            </Stack>
+          </Stack>
+
+          <Stack spacing={1} alignItems="flex-end">
+            <Stack direction="row" spacing={1}>
+              {/* Fullscreen icon mock */}
+              <IconButton size="small" sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+                <Iconify icon="eva:expand-fill" width={16} />
+              </IconButton>
+              <IconButton size="small" onClick={onClose} sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+                <Iconify icon="eva:close-fill" width={16} />
+              </IconButton>
+            </Stack>
+            <ToggleButtonGroup
+              value={side}
+              exclusive
+              onChange={(e, next) => next && setSide(next)}
+              size="small"
+              sx={{ height: 32 }}
+            >
+              <ToggleButton value="BUY" sx={{
+                px: 2,
+                fontWeight: 'bold',
+                '&.Mui-selected': { bgcolor: 'success.main', color: 'common.white', '&:hover': { bgcolor: 'success.dark' } }
+              }}>B</ToggleButton>
+              <ToggleButton value="SELL" sx={{
+                px: 2,
+                fontWeight: 'bold',
+                '&.Mui-selected': { bgcolor: 'error.main', color: 'common.white', '&:hover': { bgcolor: 'error.dark' } }
+              }}>S</ToggleButton>
+            </ToggleButtonGroup>
+          </Stack>
+        </Stack>
+      </Box>
+
+      <Tabs
+        value={tab}
+        onChange={(e, v) => setTab(v)}
+        sx={{
+          px: 2,
+          borderBottom: 1,
+          borderColor: 'divider',
+          '& .MuiTab-root': { minWidth: 80, fontWeight: 'bold', fontSize: 13 }
+        }}
+      >
+        <Tab label="Regular" />
+        <Tab label="Stop Loss" />
+        <Tab label="GTT" />
+        <Tab label="SIP" disabled />
+      </Tabs>
+
+      <DialogContent sx={{ p: 2.5 }}>
+        <Grid container spacing={2.5}>
+          <Grid item xs={12} sm={4}>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block', fontWeight: 'bold' }}>
+              Product Type
+            </Typography>
+            <ToggleButtonGroup
+              value={productType}
+              exclusive
+              onChange={(e, next) => next && setProductType(next)}
+              fullWidth
+              size="small"
+              sx={{ height: 36 }}
+            >
+              <ToggleButton value="INTRADAY" sx={{ fontWeight: 'bold' }}>INT</ToggleButton>
+              <ToggleButton value="CARRYFORWARD" sx={{ fontWeight: 'bold' }}>CF</ToggleButton>
+            </ToggleButtonGroup>
+          </Grid>
+
+          <Grid item xs={6} sm={4}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>Lots</Typography>
+              <Typography variant="caption" color="text.disabled" sx={{ fontSize: 10 }}>1 Lot = {lotSize} Qty</Typography>
+            </Stack>
+            <TextField
+              fullWidth
+              size="small"
+              type="number"
+              value={lots}
+              onChange={(e) => setLots(Number(e.target.value))}
+              sx={{ mt: 0.5 }}
+            />
+          </Grid>
+
+          <Grid item xs={6} sm={4}>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block', fontWeight: 'bold' }}>
+              Price
+            </Typography>
+            <TextField
+              fullWidth
+              size="small"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              disabled={!isLimit}
+              sx={{ mt: 0.5 }}
+            />
+            <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 1 }}>
+              <Typography variant="caption" sx={{ fontWeight: isLimit ? 'bold' : 'normal', color: isLimit ? 'primary.main' : 'text.disabled' }}>Limit</Typography>
+              <Switch
+                size="small"
+                checked={!isLimit}
+                onChange={() => setIsLimit(!isLimit)}
+              />
+              <Typography variant="caption" sx={{ fontWeight: !isLimit ? 'bold' : 'normal', color: !isLimit ? 'primary.main' : 'text.disabled' }}>Market</Typography>
+            </Stack>
+          </Grid>
+        </Grid>
+
+        <Box sx={{ mt: 3 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={slTargetEnabled}
+                onChange={(e) => setSlTargetEnabled(e.target.checked)}
+              />
+            }
+            label={<Typography variant="body2" fontWeight="bold">Set Stop Loss / Target</Typography>}
+          />
+          {slTargetEnabled && (
+            <Grid container spacing={2} sx={{ mt: 1, p: 1.5, bgcolor: 'grey.100', borderRadius: 1 }}>
+              <Grid item xs={6}>
+                <Typography variant="caption" fontWeight="bold">Stop Loss</Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  value={stopLoss}
+                  onChange={(e) => setStopLoss(e.target.value)}
+                  placeholder="SL Price"
+                  sx={{ bgcolor: 'background.paper', mt: 0.5 }}
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="caption" fontWeight="bold">Target</Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  placeholder="Target Price"
+                  sx={{ bgcolor: 'background.paper', mt: 0.5 }}
+                />
+              </Grid>
+            </Grid>
+          )}
+        </Box>
+      </DialogContent>
+
+      <Divider />
+
+      <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
+        <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
+          <Stack>
+            <Typography variant="caption" color="text.secondary" fontWeight="bold">Available Margin</Typography>
+            <Typography variant="subtitle2" fontWeight="bold">₹ 0.00</Typography>
+          </Stack>
+          <Stack alignItems="flex-end">
+            <Typography variant="caption" color="text.secondary" fontWeight="bold">Charges</Typography>
+            <Typography variant="subtitle2" fontWeight="bold">₹ 0</Typography>
+          </Stack>
+        </Stack>
+
+        <Button
+          fullWidth
+          variant="contained"
+          size="large"
+          color={side === 'BUY' ? 'success' : 'error'}
+          onClick={handleExecute}
+          disabled={executing}
+          sx={{ height: 48, fontWeight: 'bold', fontSize: 16 }}
+        >
+          {executing ? <CircularProgress size={24} /> : `PLACE ${side} ORDER`}
+        </Button>
+      </Box>
+    </Dialog>
   );
 }

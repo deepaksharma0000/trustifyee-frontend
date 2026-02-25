@@ -99,6 +99,7 @@ export default function OverviewBankingView() {
     lots: '',
   });
   const [totalPnl, setTotalPnl] = useState(0);
+  const [broadcastLoading, setBroadcastLoading] = useState<string | null>(null);
 
   const fetchSignals = useCallback(async () => {
     try {
@@ -107,7 +108,7 @@ export default function OverviewBankingView() {
       if (signalFilters.strategy !== 'All') params.strategy = signalFilters.strategy;
       if (signalFilters.search) params.search = signalFilters.search;
 
-      const res = await axiosInstance.get('/api/signal/all', { params });
+      const res = await axiosInstance.get('/api/signals/all', { params });
       setSignals(res.data.data || []);
     } catch (err) {
       console.error('Failed to fetch signals', err);
@@ -125,7 +126,7 @@ export default function OverviewBankingView() {
       if (params.strategy === 'All') delete (params as any).strategy;
       if (params.status === 'All') delete (params as any).status;
 
-      const res = await axiosInstance.get('/api/order/history-all', { params });
+      const res = await axiosInstance.get('/api/orders/history-all', { params });
       setHistory(res.data.data || []);
       setTotalPnl(res.data.totalRealisedPnl || 0);
     } catch (err) {
@@ -135,10 +136,26 @@ export default function OverviewBankingView() {
     }
   }, [historyFilters]);
 
+  const handleBroadcastSignal = async (signalId: string) => {
+    try {
+      setBroadcastLoading(signalId);
+      const res = await axiosInstance.post('/api/signals/broadcast', { signalId });
+      alert(`Broadcast successful! Triggered for ${res.data.totalUsers} users.`);
+      fetchSignals(); // Refresh list to show as CLOSED
+    } catch (err) {
+      console.error('Broadcast failed', err);
+      alert(`Broadcast failed: ${err.message || 'Unknown error'}`);
+    } finally {
+      setBroadcastLoading(null);
+    }
+  };
+
+
+
   const fetchUniqueSymbols = useCallback(async (index: string, from: string, to: string) => {
     try {
       setSymbolLoading(true);
-      const res = await axiosInstance.get('/api/order/unique-symbols', {
+      const res = await axiosInstance.get('/api/orders/unique-symbols', {
         params: {
           indexSymbol: index,
           fromDate: from,
@@ -184,7 +201,7 @@ export default function OverviewBankingView() {
 
   const handleHandleExport = async () => {
     try {
-      const exportUrl = `/api/order/export-all`;
+      const exportUrl = `/api/orders/export-all`;
       const res = await axiosInstance.get(exportUrl, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
@@ -260,6 +277,7 @@ export default function OverviewBankingView() {
             >
               {STRATEGIES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
             </TextField>
+
           </Box>
 
           <TableContainer component={Paper} elevation={0} variant="outlined" sx={{ borderRadius: 1.5 }}>
@@ -274,6 +292,7 @@ export default function OverviewBankingView() {
                   <TableCell>Strategy</TableCell>
                   <TableCell>Trade Type</TableCell>
                   <TableCell>Status</TableCell>
+                  <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -319,6 +338,25 @@ export default function OverviewBankingView() {
                         <Label variant="soft" color={statusColor}>
                           {statusText}
                         </Label>
+                      </TableCell>
+                      <TableCell align="right">
+                        {row.status === 'ACTIVE' ? (
+                          <LoadingButton
+                            size="small"
+                            variant="contained"
+                            color="warning"
+                            loading={broadcastLoading === row._id}
+                            onClick={() => handleBroadcastSignal(row._id)}
+                            startIcon={<Iconify icon="solar:bolt-bold" />}
+                            sx={{ boxShadow: (theme) => (theme as any).customShadows.warning }}
+                          >
+                            Execute
+                          </LoadingButton>
+                        ) : (
+                          <Button size="small" disabled variant="soft" startIcon={<Iconify icon="solar:check-read-bold" />}>
+                            Executed
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
