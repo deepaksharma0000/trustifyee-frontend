@@ -78,20 +78,23 @@ export default function JwtRegisterView() {
   });
 
   const renderHead = (
-    <Stack spacing={2} sx={{ mb: 5, position: 'relative' }}>
+    <Stack spacing={0.5} sx={{ mb: 1.5 }}>
       <m.div variants={varFade().inDown}>
-        <Typography variant="h3" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
-          Create Account
+        <Typography variant="h3" sx={{
+          fontWeight: 800,
+          letterSpacing: -0.5,
+          lineHeight: 1.1,
+          color: '#1C252E',
+          fontSize: { md: '2.2rem', lg: '2.8rem' }
+        }}>
+          Begin Your <span style={{ color: '#00a76f' }}>Journey.</span>
         </Typography>
       </m.div>
 
       <m.div variants={varFade().inDown}>
-        <Stack direction="row" spacing={0.5}>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>Already have an account?</Typography>
-          <Link component={RouterLink} href={paths.auth.jwt.login} variant="subtitle2" sx={{ color: '#00cc70' }}>
-            Sign in
-          </Link>
-        </Stack>
+        <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 380, lineHeight: 1.4, fontWeight: 500 }}>
+          Create your account for institutional-grade algorithmic trading.
+        </Typography>
       </m.div>
     </Stack>
   );
@@ -102,18 +105,19 @@ export default function JwtRegisterView() {
         component="div"
         sx={{
           color: 'text.secondary',
-          mt: 2.5,
+          mt: 1.5,
           typography: 'caption',
           textAlign: 'center',
+          lineHeight: 1.2
         }}
       >
         {'By signing up, I agree to '}
-        <Link underline="always" color="inherit">
-          Terms of Service
+        <Link underline="always" color="inherit" sx={{ fontWeight: 700 }}>
+          Terms
         </Link>
         {' and '}
-        <Link underline="always" color="inherit">
-          Privacy Policy
+        <Link underline="always" color="inherit" sx={{ fontWeight: 700 }}>
+          Privacy
         </Link>
         .
       </Typography>
@@ -121,13 +125,13 @@ export default function JwtRegisterView() {
   );
 
   const renderForm = (
-    <Stack spacing={2.5}>
-      {!!errorMsg && <Alert severity="error">{errorMsg}</Alert>}
+    <Stack spacing={1.5}>
+      {!!errorMsg && <Alert severity="error" sx={{ py: 0 }}>{errorMsg}</Alert>}
 
       <m.div variants={varFade().inUp}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-          <RHFTextField name="firstName" label="First name" sx={{ '& .MuiOutlinedInput-root': { bgcolor: alpha(theme.palette.grey[500], 0.04) } }} />
-          <RHFTextField name="lastName" label="Last name" sx={{ '& .MuiOutlinedInput-root': { bgcolor: alpha(theme.palette.grey[500], 0.04) } }} />
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+          <RHFTextField name="firstName" label="First name" sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#ffffffcf', borderRadius: 1 } }} />
+          <RHFTextField name="lastName" label="Last name" sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#ffffffcf', borderRadius: 1 } }} />
         </Stack>
       </m.div>
 
@@ -135,11 +139,11 @@ export default function JwtRegisterView() {
         <RHFTextField
           name="email"
           label="Email address"
-          sx={{ '& .MuiOutlinedInput-root': { bgcolor: alpha(theme.palette.grey[500], 0.04) } }}
+          sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#ffffffcf', borderRadius: 1 } }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <Iconify icon="solar:letter-bold-duotone" width={24} sx={{ color: 'text.disabled' }} />
+                <Iconify icon="solar:letter-bold-duotone" width={22} sx={{ color: '#00cc70' }} />
               </InputAdornment>
             ),
           }}
@@ -151,16 +155,16 @@ export default function JwtRegisterView() {
           name="password"
           label="Password"
           type={password.value ? 'text' : 'password'}
-          sx={{ '& .MuiOutlinedInput-root': { bgcolor: alpha(theme.palette.grey[500], 0.04) } }}
+          sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#ffffffcf', borderRadius: 1 } }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <Iconify icon="solar:lock-password-bold-duotone" width={24} sx={{ color: 'text.disabled' }} />
+                <Iconify icon="solar:lock-password-bold-duotone" width={22} sx={{ color: '#00cc70' }} />
               </InputAdornment>
             ),
             endAdornment: (
               <InputAdornment position="end">
-                <IconButton onClick={password.onToggle} edge="end">
+                <IconButton onClick={password.onToggle} edge="end" size="small" sx={{ color: 'text.disabled' }}>
                   <Iconify icon={password.value ? 'solar:eye-bold' : 'solar:eye-closed-bold'} />
                 </IconButton>
               </InputAdornment>
@@ -180,16 +184,16 @@ export default function JwtRegisterView() {
             py: 1.5,
             fontSize: 16,
             fontWeight: 700,
-            borderRadius: 1.5,
+            borderRadius: 1,
             bgcolor: '#00a76f',
             color: '#fff',
             '&:hover': {
               bgcolor: '#008b5c',
-              boxShadow: `0 8px 16px ${alpha('#00a76f', 0.24)}`,
+              boxShadow: `0 8px 16px ${alpha('#00a76f', 0.2)}`,
             }
           }}
         >
-          Initialize Account
+          Create My Account
         </LoadingButton>
       </m.div>
     </Stack>
@@ -208,10 +212,43 @@ export default function JwtRegisterView() {
             }
           }
         }}
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          height: 1
+        }}
       >
         {renderHead}
         {renderForm}
         {renderTerms}
+
+        <m.div variants={varFade().inUp}>
+          <Stack direction="row" spacing={0.5} justifyContent="center" sx={{ mt: 1.5, mb: 0.5 }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: 13 }}>Already have an account?</Typography>
+            <Link component={RouterLink} href={paths.auth.jwt.login} variant="subtitle2" sx={{ color: '#00cc70', fontSize: 13 }}>
+              Sign in
+            </Link>
+          </Stack>
+        </m.div>
+
+        <m.div variants={varFade().inUp}>
+          <Typography
+            variant="caption"
+            sx={{
+              display: 'block',
+              textAlign: 'center',
+              color: 'text.disabled',
+              fontFamily: 'monospace',
+              fontWeight: 600,
+              letterSpacing: 1,
+              opacity: 0.5,
+              fontSize: 9
+            }}
+          >
+            NETWORK SECURE // FINVESTA_ALGO_V5
+          </Typography>
+        </m.div>
       </Box>
     </FormProvider>
   );

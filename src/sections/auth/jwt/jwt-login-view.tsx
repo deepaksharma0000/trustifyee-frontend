@@ -126,40 +126,73 @@ export default function ClassicLoginView() {
   });
 
   const renderHead = (
-    <Stack spacing={2} sx={{ mb: 5, position: 'relative' }}>
+    <Stack spacing={1} sx={{ mb: 2 }}>
       <m.div variants={varFade().inDown}>
-        <Typography variant="h3" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
-          Welcome back
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#00cc70' }} />
+          <Typography variant="overline" sx={{ color: 'text.disabled', letterSpacing: 1, fontWeight: 800, fontSize: 11 }}>
+            Enterprise Security Verified
+          </Typography>
+        </Stack>
+        <Typography variant="h3" sx={{
+          fontWeight: 800,
+          letterSpacing: -1,
+          lineHeight: 1.1,
+          color: '#1C252E',
+          fontSize: { md: '2.2rem', lg: '2.8rem' }
+        }}>
+          Pure <span style={{ color: '#00a76f' }}>Intelligence.</span> <br />
+          Zero Emotion.
         </Typography>
       </m.div>
 
       <m.div variants={varFade().inDown}>
-        <Stack direction="row" spacing={0.5}>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>New user?</Typography>
-          <Link component={RouterLink} href={paths.authDemo.classic.register} variant="subtitle2" sx={{ color: '#00cc70' }}>
-            Create an account
-          </Link>
+        <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 380, lineHeight: 1.4, fontWeight: 500 }}>
+          Experience institutional-grade algorithmic trading with sub-millisecond precision.
+        </Typography>
+      </m.div>
+
+      <m.div variants={varFade().inDown}>
+        <Stack direction="row" spacing={3} sx={{ mt: 0.5 }}>
+          {[
+            { value: '99.9%', label: 'Uptime', icon: 'solar:bolt-bold-duotone' },
+            { value: '< 2ms', label: 'Latency', icon: 'solar:stopwatch-bold-duotone' },
+          ].map((stat) => (
+            <Stack key={stat.label} direction="row" alignItems="center" spacing={1}>
+              <Iconify icon={stat.icon} width={18} sx={{ color: '#00cc70' }} />
+              <Stack spacing={0}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1 }}>{stat.value}</Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled', textTransform: 'uppercase', fontWeight: 800, fontSize: 8, letterSpacing: 0.5 }}>{stat.label}</Typography>
+              </Stack>
+            </Stack>
+          ))}
         </Stack>
       </m.div>
     </Stack>
   );
 
   const renderForm = (
-    <Stack spacing={3}>
+    <Stack spacing={2}>
       <m.div variants={varFade().inUp}>
         <RHFTextField
           name="email"
-          label="Email or Username"
+          label="Identifier"
+          placeholder="Email or Username"
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <Iconify icon="solar:user-bold-duotone" width={24} sx={{ color: 'text.disabled' }} />
+                <Iconify icon="solar:user-id-bold-duotone" width={22} sx={{ color: '#00cc70' }} />
               </InputAdornment>
             ),
           }}
           sx={{
             '& .MuiOutlinedInput-root': {
-              bgcolor: alpha(theme.palette.grey[500], 0.04),
+              bgcolor: '#ffffffcf',
+              borderRadius: 1,
+              '&.Mui-focused': {
+                bgcolor: '#ffffffcf',
+                boxShadow: `0 0 0 2px ${alpha('#00cc70', 0.1)}`,
+              }
             }
           }}
         />
@@ -168,17 +201,18 @@ export default function ClassicLoginView() {
       <m.div variants={varFade().inUp}>
         <RHFTextField
           name="password"
-          label="Password"
+          label="Security Key"
+          placeholder="Enter password"
           type={password.value ? 'text' : 'password'}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <Iconify icon="solar:lock-password-bold-duotone" width={24} sx={{ color: 'text.disabled' }} />
+                <Iconify icon="solar:key-square-bold-duotone" width={22} sx={{ color: '#00cc70' }} />
               </InputAdornment>
             ),
             endAdornment: (
               <InputAdornment position="end">
-                <IconButton onClick={password.onToggle} edge="end">
+                <IconButton onClick={password.onToggle} edge="end" size="small" sx={{ color: 'text.disabled' }}>
                   <Iconify icon={password.value ? 'solar:eye-bold' : 'solar:eye-closed-bold'} />
                 </IconButton>
               </InputAdornment>
@@ -186,22 +220,26 @@ export default function ClassicLoginView() {
           }}
           sx={{
             '& .MuiOutlinedInput-root': {
-              bgcolor: alpha(theme.palette.grey[500], 0.04),
+              bgcolor: '#ffffffcf',
+              borderRadius: 1,
+              '&.Mui-focused': {
+                bgcolor: '#ffffffcf',
+                boxShadow: `0 0 0 2px ${alpha('#00cc70', 0.1)}`,
+              }
             }
           }}
         />
       </m.div>
 
-      <m.div variants={varFade().inUp}>
+      <m.div variants={varFade().inUp} style={{ textAlign: 'right', marginTop: 4 }}>
         <Link
           component={RouterLink}
           href={paths.authDemo.classic.forgotPassword}
-          variant="body2"
-          color="inherit"
-          underline="always"
-          sx={{ alignSelf: 'flex-end', display: 'block', mb: 1 }}
+          variant="caption"
+          color="text.disabled"
+          sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, '&:hover': { color: '#00cc70' } }}
         >
-          Forgot password?
+          Recover Access?
         </Link>
       </m.div>
 
@@ -216,16 +254,16 @@ export default function ClassicLoginView() {
             py: 1.5,
             fontSize: 16,
             fontWeight: 700,
-            borderRadius: 1.5,
+            borderRadius: 1,
             bgcolor: '#00a76f',
             color: '#fff',
             '&:hover': {
               bgcolor: '#008b5c',
-              boxShadow: `0 8px 16px ${alpha('#00a76f', 0.24)}`,
+              boxShadow: `0 12px 24px ${alpha('#00a76f', 0.2)}`,
             }
           }}
         >
-          Unlock Terminal
+          Sign In to Terminal
         </LoadingButton>
       </m.div>
     </Stack>
@@ -249,16 +287,29 @@ export default function ClassicLoginView() {
         {renderForm}
 
         <m.div variants={varFade().inUp}>
+          <Stack direction="row" spacing={0.5} justifyContent="center" sx={{ mt: 4, mb: 1 }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>New user?</Typography>
+            <Link component={RouterLink} href={paths.authDemo.classic.register} variant="subtitle2" sx={{ color: '#00cc70' }}>
+              Create an account
+            </Link>
+          </Stack>
+        </m.div>
+
+        <m.div variants={varFade().inUp}>
           <Typography
             variant="caption"
             sx={{
-              mt: 5,
               display: 'block',
               textAlign: 'center',
               color: 'text.disabled',
+              fontFamily: 'monospace',
+              fontWeight: 600,
+              letterSpacing: 1,
+              opacity: 0.6,
+              fontSize: 10
             }}
           >
-            Institutional grade security enabled. All sessions are encrypted.
+            NETWORK SECURE // FINVESTA_ALGO_V5
           </Typography>
         </m.div>
       </Box>
