@@ -16,6 +16,9 @@ import {
   Stack,
   Divider,
   alpha,
+  Skeleton,
+  Tooltip,
+  Avatar,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import Grid from '@mui/material/Unstable_Grid2';
@@ -561,111 +564,362 @@ export default function OverviewAppView() {
   }
 
   // ── ADMIN / SUB-ADMIN DASHBOARD ─────────────────────────────────────────
+  const now = new Date();
+  const timeString = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  const dateString = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  const adminStats = [
+    {
+      title: 'Total Clients',
+      value: stats?.total ?? 0,
+      icon: 'mdi:account-group',
+      color: '#6366f1',
+      gradient: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+      bgGradient: 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.18) 100%)',
+      path: paths.dashboard.general.ecommerce,
+      change: '+12%',
+      changeLabel: 'vs last month',
+    },
+    {
+      title: 'Active Clients',
+      value: stats?.active ?? 0,
+      icon: 'mdi:check-circle',
+      color: '#10b981',
+      gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+      bgGradient: 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(5,150,105,0.18) 100%)',
+      path: paths.dashboard.permission,
+      change: 'Active Now',
+      changeLabel: 'subscribed users',
+    },
+    {
+      title: 'Expired',
+      value: stats?.expired ?? 0,
+      icon: 'mdi:clock-alert-outline',
+      color: '#ef4444',
+      gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+      bgGradient: 'linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(220,38,38,0.18) 100%)',
+      path: paths.dashboard.user.list,
+      change: 'Renewal Needed',
+      changeLabel: 'expired accounts',
+    },
+    {
+      title: 'Live Trading',
+      value: stats?.live ?? 0,
+      icon: 'mdi:chart-line-variant',
+      color: '#3b82f6',
+      gradient: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+      bgGradient: 'linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(29,78,216,0.18) 100%)',
+      path: paths.dashboard.general.ecommerce,
+      change: 'Trading Now',
+      changeLabel: 'live accounts',
+    },
+    {
+      title: 'Demo Mode',
+      value: stats?.demo ?? 0,
+      icon: 'mdi:test-tube-outline',
+      color: '#f59e0b',
+      gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+      bgGradient: 'linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(217,119,6,0.18) 100%)',
+      path: paths.dashboard.general.ecommerce,
+      change: 'Trial Users',
+      changeLabel: 'in demo mode',
+    },
+  ];
+
   return (
-    <Container maxWidth={settings.themeStretch ? false : 'xl'}>
-      <Box sx={{ mb: 4 }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-          <Box>
-            <Typography variant="h3" fontWeight={700} gutterBottom>Trading Dashboard</Typography>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Chip label={`${user.licence} Account`} color="success" size="small" icon={<Iconify icon="mdi:check-circle" width={18} />} />
-              <Chip label={user.broker || 'No Broker'} variant="outlined" size="small" />
-              <Typography variant="caption" color="text.secondary">Last updated: {new Date().toLocaleTimeString()}</Typography>
-            </Stack>
-          </Box>
-          <Button
-            variant="contained"
-            startIcon={loading ? null : <Iconify icon="mdi:refresh" width={20} />}
-            onClick={fetchData} disabled={loading}
-            sx={{ background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`, px: 3, fontWeight: 600 }}
-          >
-            {loading ? 'Refreshing...' : 'Refresh Data'}
-          </Button>
+    <Container maxWidth={settings.themeStretch ? false : 'xl'} sx={{ py: 3 }}>
+
+      {/* ── TOP HEADER BAR ──────────────────────────────────────── */}
+      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between" spacing={2} sx={{ mb: 4 }}>
+        <Box>
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+            <Box sx={{
+              width: 8, height: 8, borderRadius: '50%', bgcolor: '#22c55e',
+              boxShadow: '0 0 0 3px rgba(34,197,94,0.3)',
+              animation: 'adminpulse 2s ease-in-out infinite',
+              '@keyframes adminpulse': { '0%,100%': { boxShadow: '0 0 0 3px rgba(34,197,94,0.3)' }, '50%': { boxShadow: '0 0 0 7px rgba(34,197,94,0.08)' } }
+            }} />
+            <Typography variant="overline" sx={{ color: 'text.disabled', letterSpacing: 2, fontSize: '0.68rem', fontWeight: 700 }}>
+              ADMIN CONTROL PANEL
+            </Typography>
+          </Stack>
+          <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: '-0.5px' }}>
+            Trading Dashboard
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            {dateString} · {timeString}
+          </Typography>
+        </Box>
+
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Chip
+            label={`${user.licence} Admin`}
+            size="small"
+            icon={<Iconify icon="mdi:shield-crown" width={14} />}
+            sx={{
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              color: '#fff', fontWeight: 700, border: 'none',
+              '& .MuiChip-icon': { color: '#fff' }
+            }}
+          />
+          <Tooltip title="Refresh dashboard data">
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={loading ? undefined : <Iconify icon="mdi:refresh" width={18} />}
+              onClick={fetchData}
+              disabled={loading}
+              sx={{
+                borderRadius: 2, fontWeight: 600, px: 2,
+                borderColor: alpha(theme.palette.primary.main, 0.35),
+                '&:hover': { borderColor: theme.palette.primary.main, bgcolor: alpha(theme.palette.primary.main, 0.06) }
+              }}
+            >
+              {loading ? 'Refreshing…' : 'Refresh'}
+            </Button>
+          </Tooltip>
         </Stack>
-        {loading && <LinearProgress />}
+      </Stack>
 
-        {user.licence === 'Live' && !isBrokerConnected && (
-          <Alert severity="warning" sx={{ mt: 2, mb: 2 }}
-            action={<Button color="inherit" size="small" onClick={() => navigate(paths.dashboard.brokerConnect)}>Connect Now</Button>}
-          >
-            <strong>Broker Session Inactive:</strong> Your API keys are assigned, but you need to log in to your broker account to authorize trading operations for today.
-          </Alert>
-        )}
-      </Box>
+      {loading && <LinearProgress sx={{ mb: 3, borderRadius: 4, height: 3 }} />}
 
-      <Grid container spacing={3}>
-        <Grid xs={12}>
-          <Card sx={{ background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.9)} 0%, ${alpha(theme.palette.primary.dark, 0.9)} 100%)`, color: 'white', position: 'relative', overflow: 'hidden' }}>
-            <CardContent sx={{ p: 4 }}>
-              <Grid container spacing={3} alignItems="center">
-                <Grid xs={12} md={8}>
-                  <Typography variant="h4" fontWeight={700} gutterBottom>Welcome back, {user.full_name || user.user_name}! 👋</Typography>
-                  <Typography variant="body1" sx={{ opacity: 0.9, mb: 2 }}>
-                    Monitor your algo trading system performance and client analytics in real-time
+      {/* Broker warning */}
+      {user.licence === 'Live' && !isBrokerConnected && (
+        <Alert
+          severity="warning" variant="outlined" sx={{ mb: 3, borderRadius: 2 }}
+          action={<Button color="inherit" size="small" onClick={() => navigate(paths.dashboard.brokerConnect)}>Connect Now</Button>}
+        >
+          <strong>Broker Session Inactive:</strong> Your API keys are assigned, but you need to log in to your broker account to authorize trading for today.
+        </Alert>
+      )}
+
+      {/* ── HERO WELCOME CARD ──────────────────────────────────────── */}
+      <Card sx={{
+        mb: 3.5, borderRadius: 3, overflow: 'hidden', position: 'relative',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #0f172a 100%)',
+        color: 'white',
+        boxShadow: `0 20px 60px ${alpha('#000', 0.45)}`,
+        border: `1px solid ${alpha('#6366f1', 0.25)}`
+      }}>
+        {/* Decorative orbs */}
+        <Box sx={{ position: 'absolute', top: -80, right: -80, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.35) 0%, transparent 65%)', pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', bottom: -50, left: -30, width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.2) 0%, transparent 65%)', pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', top: 20, left: '40%', width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 65%)', pointerEvents: 'none' }} />
+
+        <CardContent sx={{ p: { xs: 3, md: 4 }, position: 'relative' }}>
+          <Grid container spacing={3} alignItems="center">
+            <Grid xs={12} md={7}>
+              {/* Admin badge */}
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+                <Avatar sx={{
+                  width: 48, height: 48, fontWeight: 800, fontSize: '1.2rem',
+                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  boxShadow: '0 4px 16px rgba(99,102,241,0.5)'
+                }}>
+                  {(user.full_name || user.user_name || 'A')[0].toUpperCase()}
+                </Avatar>
+                <Box>
+                  <Typography variant="body2" sx={{ opacity: 0.6, letterSpacing: 1, fontSize: '0.7rem', fontWeight: 700 }}>
+                    WELCOME BACK
                   </Typography>
-                  <Stack direction="row" spacing={2}>
-                    <Box sx={{ bgcolor: alpha('#fff', 0.2), px: 2, py: 1, borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Iconify icon="mdi:circle" width={12} color="#4ade80" />
-                      <Box><Typography variant="caption" display="block">System Status</Typography><Typography variant="h6" fontWeight={600}>Online</Typography></Box>
-                    </Box>
-                    <Box sx={{ bgcolor: alpha('#fff', 0.2), px: 2, py: 1, borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Iconify icon="mdi:circle" width={12} color="#4ade80" />
-                      <Box><Typography variant="caption" display="block">API Status</Typography><Typography variant="h6" fontWeight={600}>Connected</Typography></Box>
-                    </Box>
-                  </Stack>
-                </Grid>
-                <Grid xs={12} md={4} sx={{ textAlign: 'center' }}>
-                  <SeoIllustration sx={{ maxWidth: 200, opacity: 0.9 }} />
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
-        </Grid>
+                  <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.5px', lineHeight: 1.2 }}>
+                    {user.full_name || user.user_name} 👋
+                  </Typography>
+                </Box>
+              </Stack>
 
-        {/* Admin Stats Cards */}
-        {[
-          { title: 'Total Clients', value: stats?.total ?? 0, icon: 'mdi:account-group', color: theme.palette.info.main, path: paths.dashboard.general.ecommerce },
-          { title: 'Active Clients', value: stats?.active ?? 0, icon: 'mdi:check-circle', color: theme.palette.success.main, path: paths.dashboard.permission },
-          { title: 'Expired Clients', value: stats?.expired ?? 0, icon: 'mdi:close-circle', color: theme.palette.error.main, path: paths.dashboard.user.list },
-          { title: 'Live Trading', value: stats?.live ?? 0, icon: 'mdi:chart-line', color: theme.palette.primary.main, path: paths.dashboard.general.ecommerce },
-          { title: 'Demo Mode', value: stats?.demo ?? 0, icon: 'mdi:test-tube', color: theme.palette.warning.main, path: paths.dashboard.general.ecommerce },
-        ].map((item) => (
-          <Grid key={item.title} xs={12} sm={6} md={4}>
+              <Typography variant="body1" sx={{ opacity: 0.65, mb: 3, maxWidth: 500, lineHeight: 1.7 }}>
+                Monitor your algo trading system performance and manage client analytics in real-time. All systems are operational.
+              </Typography>
+
+              {/* Status pills */}
+              <Stack direction="row" spacing={1.5} flexWrap="wrap" rowGap={1}>
+                {[
+                  { icon: 'mdi:circle', color: '#22c55e', label: 'System', value: 'Online' },
+                  { icon: 'mdi:api', color: '#3b82f6', label: 'API', value: 'Connected' },
+                  { icon: 'mdi:database', color: '#a855f7', label: 'DB', value: 'Healthy' },
+                ].map((s) => (
+                  <Box key={s.label} sx={{
+                    bgcolor: alpha('#fff', 0.07), px: 2, py: 1, borderRadius: 1.5,
+                    border: `1px solid ${alpha('#fff', 0.1)}`, backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'center', gap: 1
+                  }}>
+                    <Iconify icon={s.icon} width={10} sx={{ color: s.color }} />
+                    <Box>
+                      <Typography variant="caption" sx={{ opacity: 0.55, display: 'block', lineHeight: 1 }}>{s.label}</Typography>
+                      <Typography variant="subtitle2" fontWeight={700} sx={{ lineHeight: 1.3 }}>{s.value}</Typography>
+                    </Box>
+                  </Box>
+                ))}
+              </Stack>
+            </Grid>
+
+            <Grid xs={12} md={5}>
+              {/* Right side — quick admin metrics */}
+              <Grid container spacing={1.5}>
+                {[
+                  { label: 'Broker', value: user.broker || 'N/A', icon: 'mdi:bank-outline', color: '#6366f1' },
+                  { label: 'Role', value: user.role === 'admin' ? 'Super Admin' : 'Sub Admin', icon: 'mdi:shield-star', color: '#10b981' },
+                  { label: 'Licence', value: user.licence || '—', icon: 'mdi:certificate', color: '#f59e0b' },
+                  { label: 'Sub Admin', value: user.sub_admin || 'Main', icon: 'mdi:account-tie', color: '#3b82f6' },
+                ].map((m) => (
+                  <Grid key={m.label} xs={6}>
+                    <Box sx={{
+                      p: 1.5, borderRadius: 2,
+                      bgcolor: alpha(m.color, 0.1),
+                      border: `1px solid ${alpha(m.color, 0.2)}`,
+                      backdropFilter: 'blur(8px)',
+                    }}>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Iconify icon={m.icon} width={18} sx={{ color: m.color }} />
+                        <Box>
+                          <Typography variant="caption" sx={{ opacity: 0.55, display: 'block', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>{m.label}</Typography>
+                          <Typography variant="subtitle2" fontWeight={700} noWrap>{m.value}</Typography>
+                        </Box>
+                      </Stack>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* ── STATS CARDS ──────────────────────────────────────── */}
+      <Grid container spacing={2.5} sx={{ mb: 3.5 }}>
+        {adminStats.map((item) => (
+          <Grid key={item.title} xs={12} sm={6} md={4} lg={2.4}>
             <Card
               onClick={() => navigate(item.path)}
               sx={{
                 cursor: 'pointer',
-                background: `linear-gradient(135deg, ${alpha(item.color, 0.08)} 0%, ${alpha(item.color, 0.14)} 100%)`,
+                background: item.bgGradient,
                 border: `1px solid ${alpha(item.color, 0.2)}`,
-                transition: 'all 0.22s ease',
+                borderRadius: 2.5,
+                transition: 'all 0.25s cubic-bezier(0.4,0,0.2,1)',
+                position: 'relative',
+                overflow: 'hidden',
                 '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: `0 8px 24px ${alpha(item.color, 0.25)}`,
-                  border: `1px solid ${alpha(item.color, 0.4)}`,
+                  transform: 'translateY(-5px) scale(1.01)',
+                  boxShadow: `0 12px 32px ${alpha(item.color, 0.35)}`,
+                  border: `1px solid ${alpha(item.color, 0.5)}`,
                 },
+                '&:hover .stat-icon-bg': {
+                  opacity: 0.25,
+                  transform: 'scale(1.15) rotate(10deg)',
+                }
               }}
             >
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={2}>
-                  <Box sx={{ p: 2, borderRadius: 2, bgcolor: alpha(item.color, 0.12), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Iconify icon={item.icon} width={32} sx={{ color: item.color }} />
-                  </Box>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">{item.title}</Typography>
-                    <Typography variant="h4" fontWeight={700}>{item.value}</Typography>
-                  </Box>
-                </Stack>
+              {/* Big decorative icon in bg */}
+              <Box
+                className="stat-icon-bg"
+                sx={{
+                  position: 'absolute', right: -14, top: -14,
+                  width: 90, height: 90,
+                  opacity: 0.1, transition: 'all 0.35s ease',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+              >
+                <Iconify icon={item.icon} width={80} sx={{ color: item.color }} />
+              </Box>
+
+              <CardContent sx={{ p: 2.5 }}>
+                <Box sx={{
+                  width: 42, height: 42, borderRadius: 1.5, mb: 1.5,
+                  background: item.gradient,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: `0 4px 14px ${alpha(item.color, 0.45)}`
+                }}>
+                  <Iconify icon={item.icon} width={22} sx={{ color: '#fff' }} />
+                </Box>
+
+                <Typography variant="caption" color="text.disabled" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 0.5 }}>
+                  {item.title}
+                </Typography>
+
+                {loading ? (
+                  <Skeleton width={60} height={40} />
+                ) : (
+                  <Typography variant="h3" fontWeight={800} sx={{ lineHeight: 1, mb: 0.5, color: item.color }}>
+                    {item.value}
+                  </Typography>
+                )}
+
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                  {item.changeLabel}
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
         ))}
-
-        {user.licence === 'Live' && (
-          <Grid xs={12}>
-            <LiveTradingControl user={user} />
-          </Grid>
-        )}
       </Grid>
+
+      {/* ── QUICK ACTION SHORTCUTS ─────────────────────────────── */}
+      <Card sx={{
+        mb: 3.5, borderRadius: 2.5,
+        border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+        background: alpha(theme.palette.background.paper, 0.8),
+        backdropFilter: 'blur(12px)',
+      }}>
+        <CardContent sx={{ p: 2.5 }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Iconify icon="mdi:lightning-bolt" width={20} sx={{ color: '#f59e0b' }} />
+              <Typography variant="subtitle1" fontWeight={700}>Quick Actions</Typography>
+            </Stack>
+            <Chip label="Admin Tools" size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />
+          </Stack>
+          <Grid container spacing={1.5}>
+            {[
+              { label: 'Manage Clients', icon: 'mdi:account-group-outline', color: '#6366f1', path: paths.dashboard.general.ecommerce },
+              { label: 'User Permissions', icon: 'mdi:shield-key-outline', color: '#10b981', path: paths.dashboard.permission },
+              { label: 'User List', icon: 'mdi:format-list-bulleted', color: '#3b82f6', path: paths.dashboard.user.list },
+              { label: 'Broker Connect', icon: 'mdi:link-variant', color: '#f59e0b', path: paths.dashboard.brokerConnect },
+            ].map((action) => (
+              <Grid key={action.label} xs={6} sm={3}>
+                <Box
+                  onClick={() => navigate(action.path)}
+                  sx={{
+                    p: 2, borderRadius: 2, cursor: 'pointer', textAlign: 'center',
+                    border: `1px solid ${alpha(action.color, 0.2)}`,
+                    bgcolor: alpha(action.color, 0.04),
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      bgcolor: alpha(action.color, 0.1),
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 4px 16px ${alpha(action.color, 0.2)}`
+                    }
+                  }}
+                >
+                  <Box sx={{
+                    width: 40, height: 40, borderRadius: '50%', margin: '0 auto 8px',
+                    bgcolor: alpha(action.color, 0.15),
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    <Iconify icon={action.icon} width={22} sx={{ color: action.color }} />
+                  </Box>
+                  <Typography variant="caption" fontWeight={700} sx={{ color: 'text.primary', fontSize: '0.75rem' }}>
+                    {action.label}
+                  </Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* ── LIVE TRADING CONTROL (if admin has live licence) ───── */}
+      {user.licence === 'Live' && (
+        <Box sx={{ mt: 1 }}>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+            <Iconify icon="mdi:chart-timeline-variant-shimmer" width={22} sx={{ color: '#22c55e' }} />
+            <Typography variant="h6" fontWeight={700}>Live Trading Operations</Typography>
+            <Chip label="LIVE" size="small" sx={{ bgcolor: alpha('#22c55e', 0.15), color: '#22c55e', fontWeight: 800, fontSize: '0.65rem' }} />
+          </Stack>
+          <LiveTradingControl user={user} />
+        </Box>
+      )}
     </Container>
   );
 }
