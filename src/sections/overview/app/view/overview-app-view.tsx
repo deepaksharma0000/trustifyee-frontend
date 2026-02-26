@@ -55,7 +55,7 @@ export default function OverviewAppView() {
   const theme = useTheme();
   const settings = useSettingsContext();
   const navigate = useNavigate();
-  const { user } = useAuthUser();
+  const { user } = useAuthUser() as any;
   const isAdmin = user?.role === 'admin' || user?.role === 'sub-admin';
   const isBrokerConnected = !!user?.broker_connected || localStorage.getItem('angel_jwt') !== null;
   const canViewDashboard = isAdmin || isBrokerConnected;

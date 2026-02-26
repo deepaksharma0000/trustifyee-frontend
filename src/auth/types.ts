@@ -16,6 +16,8 @@ export type ActionMapType<M extends { [index: string]: any }> = {
 export type AuthUserType = null | {
   id?: string;
   role?: string;
+  sub_admin?: string;
+  group_service?: string;
   displayName?: string;
   photoURL?: string;
   phoneNumber?: string;
@@ -43,8 +45,6 @@ export type AuthUserType = null | {
   broker_verified?: boolean;
   client_key?: string;
   api_key?: string;
-  sub_admin?: string;
-  group_service?: string;
   status?: 'active' | 'inactive';
   is_star?: boolean;
   is_login?: boolean;
