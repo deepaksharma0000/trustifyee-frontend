@@ -304,19 +304,28 @@ export default function OverviewAppView() {
 
         {/* Custom Stats Cards */}
         {[
-          { title: 'Total Clients', value: stats?.total ?? 0, icon: 'mdi:account-group', color: theme.palette.info.main },
-          { title: 'Active Clients', value: stats?.active ?? 0, icon: 'mdi:check-circle', color: theme.palette.success.main },
-          { title: 'Expired Clients', value: stats?.expired ?? 0, icon: 'mdi:close-circle', color: theme.palette.error.main },
-          { title: 'Live Trading', value: stats?.live ?? 0, icon: 'mdi:chart-line', color: theme.palette.primary.main },
-          { title: 'Demo Mode', value: stats?.demo ?? 0, icon: 'mdi:test-tube', color: theme.palette.warning.main },
+          { title: 'Total Clients', value: stats?.total ?? 0, icon: 'mdi:account-group', color: theme.palette.info.main, path: paths.dashboard.general.ecommerce },
+          { title: 'Active Clients', value: stats?.active ?? 0, icon: 'mdi:check-circle', color: theme.palette.success.main, path: paths.dashboard.permission },
+          { title: 'Expired Clients', value: stats?.expired ?? 0, icon: 'mdi:close-circle', color: theme.palette.error.main, path: paths.dashboard.user.list },
+          { title: 'Live Trading', value: stats?.live ?? 0, icon: 'mdi:chart-line', color: theme.palette.primary.main, path: paths.dashboard.general.ecommerce },
+          { title: 'Demo Mode', value: stats?.demo ?? 0, icon: 'mdi:test-tube', color: theme.palette.warning.main, path: paths.dashboard.general.ecommerce },
         ].map((item) => (
           <Grid key={item.title} xs={12} sm={6} md={4}>
-            <Card sx={{
-              background: `linear-gradient(135deg, ${alpha(item.color, 0.08)} 0%, ${alpha(item.color, 0.12)} 100%)`,
-              border: `1px solid ${alpha(item.color, 0.2)}`,
-              transition: 'transform 0.2s',
-              '&:hover': { transform: 'translateY(-4px)' },
-            }}>
+            <Card
+              onClick={() => isAdmin && navigate(item.path)}
+              sx={{
+                background: `linear-gradient(135deg, ${alpha(item.color, 0.08)} 0%, ${alpha(item.color, 0.12)} 100%)`,
+                border: `1px solid ${alpha(item.color, 0.2)}`,
+                transition: 'transform 0.2s',
+                ...(isAdmin && {
+                  cursor: 'pointer',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: (theme) => (theme as any).customShadows.z12,
+                  },
+                }),
+              }}
+            >
               <CardContent>
                 <Stack direction="row" alignItems="center" spacing={2}>
                   <Box sx={{
