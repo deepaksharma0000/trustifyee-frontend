@@ -60,14 +60,30 @@ export default function UserNewEditForm({ currentUser }: Props) {
     isVerified: Yup.boolean(),
   });
 
-  const defaultValues = useMemo(
+  type FormValuesProps = {
+    name: string;
+    city: string;
+    role: string;
+    email: string;
+    state: string;
+    status: string;
+    address: string;
+    country: string;
+    zipCode: string;
+    company: string;
+    avatarUrl: any;
+    phoneNumber: string;
+    isVerified: boolean;
+  };
+
+  const defaultValues = useMemo<FormValuesProps>(
     () => ({
       name: currentUser?.name || '',
       city: currentUser?.city || '',
       role: currentUser?.role || '',
       email: currentUser?.email || '',
       state: currentUser?.state || '',
-      status: currentUser?.status || '',
+      status: currentUser?.status || 'active',
       address: currentUser?.address || '',
       country: currentUser?.country || '',
       zipCode: currentUser?.zipCode || '',
@@ -79,8 +95,8 @@ export default function UserNewEditForm({ currentUser }: Props) {
     [currentUser]
   );
 
-  const methods = useForm({
-    resolver: yupResolver(NewUserSchema),
+  const methods = useForm<FormValuesProps>({
+    resolver: yupResolver(NewUserSchema) as any,
     defaultValues,
   });
 

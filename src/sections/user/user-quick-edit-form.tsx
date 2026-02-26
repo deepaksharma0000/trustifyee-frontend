@@ -46,7 +46,23 @@ export default function UserQuickEditForm({ currentUser, open, onClose }: Props)
     role: Yup.string().required('Role is required'),
   });
 
-  const defaultValues = useMemo(
+  type FormValuesProps = {
+    name: string;
+    email: string;
+    phoneNumber: string;
+    address: string;
+    country: string;
+    state: string;
+    city: string;
+    zipCode: string;
+    status: string | undefined;
+    company: string;
+    role: string;
+    licence: 'Live' | 'Demo';
+    brokerVerified: boolean;
+  };
+
+  const defaultValues = useMemo<FormValuesProps>(
     () => ({
       name: currentUser?.name || '',
       email: currentUser?.email || '',
@@ -56,17 +72,17 @@ export default function UserQuickEditForm({ currentUser, open, onClose }: Props)
       state: currentUser?.state || '',
       city: currentUser?.city || '',
       zipCode: currentUser?.zipCode || '',
-      status: currentUser?.status,
+      status: currentUser?.status || 'active',
       company: currentUser?.company || '',
       role: currentUser?.role || '',
       licence: currentUser?.licence || 'Demo',
-      brokerVerified: currentUser?.brokerVerified || false,
+      brokerVerified: currentUser?.brokerVerified || currentUser?.broker_verified || false,
     }),
     [currentUser]
   );
 
-  const methods = useForm({
-    resolver: yupResolver(NewUserSchema),
+  const methods = useForm<FormValuesProps>({
+    resolver: yupResolver(NewUserSchema) as any,
     defaultValues,
   });
 

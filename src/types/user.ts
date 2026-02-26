@@ -93,20 +93,39 @@ export type IUserCard = {
 };
 
 export interface IUserItem {
-  id: string;
+  id: string; // Required in many components
+  _id?: string;
   name?: string;
+  user_name?: string;
   fullname?: string;
+  full_name?: string;
 
   email: string;
+  phone_number?: string;
   phoneNumber?: string;
 
   role?: string;
   status?: string;
 
   broker?: string | null;
+  trading_status?: 'enabled' | 'disabled';
   tradingStatus?: 'active' | 'inactive';
-  accountType?: 'DEMO' | 'LIVE';
+  licence?: 'Live' | 'Demo';
+  sub_admin?: string;
+  group_service?: string;
+  to_month?: string;
   month?: string;
+  service_to_month?: string;
+  start_date?: Date | string;
+  startdate?: Date | string;
+  end_date?: Date | string;
+  enddate?: Date | string;
+  avatar_color?: string;
+  is_login?: boolean;
+  is_online?: boolean;
+  broker_verified?: boolean;
+  brokerVerified?: boolean;
+  is_star?: boolean;
 
   address?: string;
   city?: string;
@@ -114,14 +133,10 @@ export interface IUserItem {
   zipCode?: string;
   country?: string;
 
-  avatarUrl?: string;
-  company?: string;
   isVerified?: boolean;
   isOnline?: boolean;
-  brokerVerified?: boolean;
-  licence?: 'Live' | 'Demo';
-  startdate?: Date | string;
-  enddate?: Date | string;
+  avatarUrl?: string;
+  company?: string;
   createdAt?: Date | string;
 }
 

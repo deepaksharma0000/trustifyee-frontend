@@ -43,6 +43,14 @@ export type AuthUserType = null | {
   broker_verified?: boolean;
   client_key?: string;
   api_key?: string;
+  sub_admin?: string;
+  group_service?: string;
+  status?: 'active' | 'inactive';
+  is_star?: boolean;
+  is_login?: boolean;
+  strategies?: string[];
+  to_month?: string;
+  service_to_month?: string;
   _id?: string;
 };
 
