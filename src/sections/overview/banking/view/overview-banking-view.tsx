@@ -285,12 +285,15 @@ export default function OverviewBankingView() {
               <TableHead>
                 <TableRow>
                   <TableCell>S.No</TableCell>
-                  <TableCell>Signals Time</TableCell>
+                  <TableCell>Signal Time</TableCell>
+                  <TableCell>Last Update</TableCell>
                   <TableCell>Type</TableCell>
                   <TableCell>Symbol</TableCell>
                   <TableCell>Price</TableCell>
                   <TableCell>Strategy</TableCell>
-                  <TableCell>Trade Type</TableCell>
+                  <TableCell align="center">Total</TableCell>
+                  <TableCell align="center">Success</TableCell>
+                  <TableCell align="center">Failures</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
@@ -312,19 +315,30 @@ export default function OverviewBankingView() {
                     typeLabel = row.side === 'BUY' ? 'SX' : 'LX';
                   }
 
-                  let statusColor: 'info' | 'success' | 'default' = 'default';
+                  let statusColor: 'info' | 'success' | 'warning' | 'error' | 'default' = 'default';
                   let statusText = row.status;
+
                   if (row.status === 'ACTIVE') {
                     statusColor = 'info';
+                  } else if (row.status === 'EXECUTION_IN_PROGRESS') {
+                    statusColor = 'warning';
+                    statusText = 'In Progress';
                   } else if (row.status === 'CLOSED') {
                     statusColor = 'success';
-                    statusText = 'Square Off';
+                    statusText = 'Executed';
+                  } else if (row.status === 'PARTIAL') {
+                    statusColor = 'warning';
+                    statusText = 'Partial Success';
+                  } else if (row.status === 'FAILED') {
+                    statusColor = 'error';
+                    statusText = 'Failed';
                   }
 
                   return (
                     <TableRow key={row._id}>
                       <TableCell>{index + 1}</TableCell>
-                      <TableCell>{format(new Date(row.createdAt), 'dd/MM/yyyy HH:mm:ss')}</TableCell>
+                      <TableCell>{format(new Date(row.createdAt), 'dd/MM/yy HH:mm')}</TableCell>
+                      <TableCell>{row.updatedAt ? format(new Date(row.updatedAt), 'dd/MM/yy HH:mm') : '-'}</TableCell>
                       <TableCell>
                         <Label color={row.side === 'BUY' ? 'success' : 'error'} variant="soft">
                           {typeLabel}
@@ -333,7 +347,19 @@ export default function OverviewBankingView() {
                       <TableCell>{row.tradingsymbol}</TableCell>
                       <TableCell>{row.price.toFixed(2)}</TableCell>
                       <TableCell>{row.strategy || '-'}</TableCell>
-                      <TableCell>{row.exchange}</TableCell>
+
+                      <TableCell align="center">
+                        <Label variant="outlined" color="info">{row.totalExecutions || 0}</Label>
+                      </TableCell>
+
+                      <TableCell align="center">
+                        <Label variant="soft" color="success">{row.successCount || 0}</Label>
+                      </TableCell>
+
+                      <TableCell align="center">
+                        <Label variant="soft" color="error">{row.failCount || 0}</Label>
+                      </TableCell>
+
                       <TableCell>
                         <Label variant="soft" color={statusColor}>
                           {statusText}

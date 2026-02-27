@@ -282,6 +282,8 @@ export default function DataGridCustom({ data = [] }: Props) {
   const [clientToDelete, setClientToDelete] = useState<ClientData | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [editingClient, setEditingClient] = useState<ClientData | null>(null);
+  const [groups, setGroups] = useState<any[]>([]); // [NEW]
+  const [strategiesList, setStrategiesList] = useState<string[]>(["Beta", "Alpha", "Gamma", "Delta", "Zeta", "Sigma"]);
 
   const [formData, setFormData] = useState<ClientFormData>({
     user_name: '', email: '', full_name: '', phone_number: '', broker: 'AngelOne', licence: 'Live',
@@ -290,13 +292,34 @@ export default function DataGridCustom({ data = [] }: Props) {
     end_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
   });
 
-  const strategiesList = ["Beta", "Alpha", "Gamma", "Delta", "Zeta", "Sigma"];
-
   const fetchClients = useCallback(async () => {
     setFetchLoading(true);
     const d = await apiService.getLoggedInClients();
     setClients(d.map(c => ({ ...c, is_star: !!c.is_star })));
     setFetchLoading(false);
+  }, []);
+
+  const fetchGroups = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/group/all`, {
+        headers: { 'x-access-token': localStorage.getItem('authToken') || '' }
+      });
+      const json = await res.json();
+      if (json.status) setGroups(json.data || []);
+    } catch (e) { console.error("Failed to fetch groups"); }
+  }, []); // [NEW]
+
+  const fetchStrategies = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE_URL}/api/strategy/list`, {
+        headers: { Authorization: token ? `Bearer ${token}` : "" }
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setStrategiesList(json.strategies.map((s: any) => s.name));
+      }
+    } catch (e) { console.error("Failed to fetch strategies"); }
   }, []);
 
   const handleToggleStar = useCallback(async (id: string) => {
@@ -311,7 +334,13 @@ export default function DataGridCustom({ data = [] }: Props) {
     }
   }, []);
 
-  useEffect(() => { if (isAdmin) fetchClients(); }, [isAdmin, fetchClients]);
+  useEffect(() => {
+    if (isAdmin) {
+      fetchClients();
+      fetchGroups(); // [NEW]
+      fetchStrategies();
+    }
+  }, [isAdmin, fetchClients, fetchGroups, fetchStrategies]);
 
   const handleEdit = useCallback((c: ClientData) => {
     setEditingClient(c);
@@ -430,8 +459,10 @@ export default function DataGridCustom({ data = [] }: Props) {
 
                   <Grid item xs={12} sm={6}>
                     <TextField fullWidth select label="Group Service" value={formData.group_service} onChange={(e) => setFormData({ ...formData, group_service: e.target.value })}>
-                      <MenuItem value="service1">Service 1</MenuItem>
-                      <MenuItem value="service2">Service 2</MenuItem>
+                      <MenuItem value=""><em>None</em></MenuItem>
+                      {groups.map((g) => (
+                        <MenuItem key={g._id} value={g.name}>{g.name}</MenuItem>
+                      ))}
                     </TextField>
                   </Grid>
 

@@ -86,7 +86,10 @@ export default function ProductNewEditForm({ currentProduct }: Props) {
     try {
       const response = await fetch(`${API_BASE}/api/strategy/add-strategies`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-access-token': localStorage.getItem('authToken') || '',
+        },
         body: JSON.stringify(data),
       });
 

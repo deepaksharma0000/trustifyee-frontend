@@ -150,7 +150,7 @@ export function useNavData() {
             show: role !== "user",
             children: [
               { title: t("All Services"), path: paths.dashboard.product.root },
-              { title: t("Group Services"), path: paths.dashboard.product.demo.details },
+              { title: t("Group Services"), path: paths.dashboard.product.groupService },
               { title: t("Strategis"), path: paths.dashboard.product.new },
             ],
           },

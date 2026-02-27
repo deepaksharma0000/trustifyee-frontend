@@ -134,6 +134,7 @@ export const paths = {
       new: `${ROOTS.DASHBOARD}/product/new`,
       details: (id: string) => `${ROOTS.DASHBOARD}/product/${id}`,
       edit: (id: string) => `${ROOTS.DASHBOARD}/product/${id}/edit`,
+      groupService: `${ROOTS.DASHBOARD}/product/group-service`, // [NEW]
       demo: {
         details: `${ROOTS.DASHBOARD}/product/${MOCK_ID}`,
         edit: `${ROOTS.DASHBOARD}/product/${MOCK_ID}/edit`,

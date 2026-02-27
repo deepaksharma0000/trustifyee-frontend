@@ -90,6 +90,7 @@ export default function OptionChainPage() {
   const [viewMode, setViewMode] = useState<"LTP" | "OI">("LTP");
   const [indexLtp, setIndexLtp] = useState<number>(0);
   const [autoSelecting, setAutoSelecting] = useState(false);
+  const [strategiesList, setStrategiesList] = useState<string[]>(["Gamma", "Alpha"]);
   const wsRef = useRef<WebSocket | null>(null);
   /* ---------------- AUTO SQUARE OFF STATE ---------------- */
   const [autoSquareOffEnabled, setAutoSquareOffEnabled] = useState(false);
@@ -236,6 +237,22 @@ export default function OptionChainPage() {
   useEffect(() => {
     fetchOptionChainFromLTP();
 
+    // Fetch Strategies
+    fetch(`${API_BASE}/api/strategy/list`, {
+      headers: { Authorization: token ? `Bearer ${token}` : "" }
+    })
+      .then(res => res.json())
+      .then(json => {
+        if (json.ok) {
+          const names = json.strategies.map((s: any) => s.name);
+          setStrategiesList(names);
+          if (names.length > 0 && !names.includes(strategy)) {
+            setStrategy(names[0]);
+          }
+        }
+      })
+      .catch(err => console.error("Failed to fetch strategies", err));
+
     // Check Market Status
     fetch(`${API_BASE}/api/market/status`)
       .then(res => res.json())
@@ -243,7 +260,7 @@ export default function OptionChainPage() {
         if (json.ok) setMarketStatus(json.data);
       })
       .catch(err => console.error("Market status check failed", err));
-  }, [fetchOptionChainFromLTP, API_BASE]);
+  }, [fetchOptionChainFromLTP, API_BASE, token, strategy]);
 
   useEffect(() => {
     const ws = new WebSocket(WS_URL);
@@ -1029,8 +1046,9 @@ export default function OptionChainPage() {
                   value={strategy}
                   onChange={(e) => setStrategy(e.target.value)}
                 >
-                  <MenuItem value="Gamma">Gamma (Scalping)</MenuItem>
-                  <MenuItem value="Alpha">Alpha (Trend)</MenuItem>
+                  {strategiesList.map((s) => (
+                    <MenuItem key={s} value={s}>{s}</MenuItem>
+                  ))}
                 </Select>
               </FormControl>
               <Button
