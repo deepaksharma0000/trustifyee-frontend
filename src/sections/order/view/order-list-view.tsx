@@ -585,6 +585,7 @@ export default function OptionChainPage() {
             ordertype: "MARKET",
             symboltoken: opt.symboltoken,
             strategy,
+            tradeType: "Option-Chain",
           }),
         });
 
@@ -1142,7 +1143,8 @@ function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange,
         symboltoken: option.symboltoken,
         stopLossPrice: slTargetEnabled && stopLoss ? Number(stopLoss) : undefined,
         targetPrice: slTargetEnabled && target ? Number(target) : undefined,
-        strategy: "Manual"
+        strategy: "Manual",
+        tradeType: "Option-Chain"
       };
 
       const res = await fetch(`${API_BASE}/api/orders/place-all`, {

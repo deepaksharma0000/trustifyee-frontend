@@ -24,6 +24,7 @@ import {
   Avatar,
   LinearProgress,
 } from '@mui/material';
+import { useSnackbar } from 'notistack';
 // components
 import Iconify from 'src/components/iconify';
 import Scrollbar from 'src/components/scrollbar';
@@ -48,8 +49,10 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [searchQuery, setSearchQuery] = useState('');
   const [positions, setPositions] = useState<any[]>([]);
+  const { enqueueSnackbar } = useSnackbar();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || '';
 
   const OPEN_POSITIONS_DATA = positions;
@@ -117,8 +120,10 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
     setSearchQuery(event.target.value);
   };
 
-  const handleUpdatePrice = (id: string) => {
-    console.log('Update price for position:', id);
+  const handleUpdatePrice = async () => {
+    enqueueSnackbar('Refreshing positions...', { variant: 'info' });
+    await fetchOpenPositions();
+    enqueueSnackbar('Positions updated successfully', { variant: 'success' });
   };
 
   const handleSquareOff = async (orderid: string) => {
@@ -140,13 +145,13 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
       const json = await res.json();
 
       if (json.ok) {
-        alert("Position exited");
+        enqueueSnackbar('Position exited successfully', { variant: 'success' });
         fetchOpenPositions();
       } else {
-        alert(json.message || "Exit failed");
+        enqueueSnackbar(json.message || "Exit failed", { variant: 'error' });
       }
     } catch {
-      alert("Exit failed");
+      enqueueSnackbar("Exit failed", { variant: 'error' });
     }
   };
 
@@ -162,7 +167,7 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
     const priceDifference = position.side === 'BUY'
       ? (position.ltp || position.livePrice || 0) - position.entryPrice
       : position.entryPrice - (position.ltp || position.livePrice || 0);
-    return (priceDifference * position.quantity).toFixed(2); // Note: quantity was entryQty in mock, but schema uses quantity
+    return (priceDifference * position.quantity).toFixed(2);
   };
 
   // Calculate progress towards target
@@ -170,7 +175,7 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
     // If no target/SL, return 0 progress
     if (!position.targetPrice || !position.stopLossPrice) return 0;
 
-    if (position.side === 'BUY') { // Using 'side' instead of 'tradeType' per earlier fix
+    if (position.side === 'BUY') {
       const totalRange = position.targetPrice - position.stopLossPrice;
       if (totalRange === 0) return 0;
       const currentProgress = (position.ltp || position.livePrice || position.entryPrice) - position.stopLossPrice;
@@ -191,19 +196,23 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
       const res = await fetch(
         `${API_BASE}/api/orders/status/${clientcode}/${orderid}`
       );
-
       const json = await res.json();
-
-      // backend true return kar raha hai
       return json === true;
     } catch (err) {
       return false;
     }
   };
 
-
-
-
+  const filteredPositions = positions.filter((pos) => {
+    const searchStr = searchQuery.toLowerCase();
+    return (
+      pos.tradingsymbol?.toLowerCase().includes(searchStr) ||
+      pos.strategy?.toLowerCase().includes(searchStr) ||
+      pos.tradeType?.toLowerCase().includes(searchStr) ||
+      pos.side?.toLowerCase().includes(searchStr) ||
+      pos.orderid?.toLowerCase().includes(searchStr)
+    );
+  });
 
   // Mobile card view for positions
   const renderMobileCard = (row: any) => {
@@ -231,14 +240,15 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
               <Box>
                 <Typography variant="subtitle2">{row.tradingsymbol}</Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {row.quantity}
+                  Qty: {row.quantity}
                 </Typography>
               </Box>
             </Stack>
             <Chip
               label={row.side}
               size="small"
-              color={row.side === 'CALL' ? 'primary' : 'secondary'}
+              variant="soft"
+              color={row.side === 'BUY' ? 'success' : 'error'}
             />
           </Box>
 
@@ -253,7 +263,7 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
             <Typography variant="caption" color="text.secondary">
               Live Price
             </Typography>
-            <Typography variant="body2" fontWeight="bold">
+            <Typography variant="body2" fontWeight="bold" color="info.main">
               {row.ltp || row.livePrice || row.status || '-'}
             </Typography>
           </Box>
@@ -288,6 +298,34 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
             </Typography>
           </Box>
 
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              Target Exit Time
+            </Typography>
+            <TextField
+              type="datetime-local"
+              size="small"
+              defaultValue={row.autoSquareOffTime ? new Date(row.autoSquareOffTime).toLocaleString('sv-SE').replace(' ', 'T').slice(0, 16) : ''}
+              inputProps={{ style: { fontSize: '11px', padding: '4px 8px' } }}
+              onBlur={(e) => {
+                const val = e.target.value;
+                const currentVal = row.autoSquareOffTime ? new Date(row.autoSquareOffTime).toLocaleString('sv-SE').replace(' ', 'T').slice(0, 16) : '';
+                if (val && val !== currentVal) {
+                  handleUpdateAutoExit(row.orderid, val, true);
+                }
+              }}
+              sx={{ width: 160 }}
+              disabled={user?.role !== 'admin' && user?.role !== 'subadmin'}
+            />
+          </Box>
+
+          <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+            <Chip label={row.tradeType || 'Manual'} size="small" variant="soft" color="info" />
+            <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
+              {row.signalTime ? new Date(row.signalTime).toLocaleString() : (row.createdAt ? new Date(row.createdAt).toLocaleString() : '-')}
+            </Typography>
+          </Stack>
+
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
             {user?.licence !== 'Demo' && (
               <>
@@ -295,7 +333,7 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
                   variant="outlined"
                   size="small"
                   fullWidth
-                  onClick={() => handleUpdatePrice(row.id)}
+                  onClick={() => handleUpdatePrice()}
                   startIcon={<Iconify icon="eva:refresh-fill" width={16} />}
                 >
                   Update
@@ -323,11 +361,38 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
     );
   };
 
+  const handleUpdateAutoExit = async (orderid: string, time: string, enabled: boolean) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/orders/update-auto-exit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          orderid,
+          autoSquareOffTime: time,
+          autoSquareOffEnabled: enabled
+        }),
+      });
+
+      const json = await res.json();
+      if (json.ok) {
+        enqueueSnackbar('Target Exit Time saved!', { variant: 'success' });
+        fetchOpenPositions();
+      } else {
+        enqueueSnackbar(json.message || "Failed to update auto exit", { variant: 'error' });
+      }
+    } catch (err: any) {
+      enqueueSnackbar("Failed to update auto exit. Check if Redis is running.", { variant: 'error' });
+    }
+  };
+
   // Desktop table view for positions
   const renderDesktopTable = () => (
     <TableContainer sx={{ position: 'relative', overflow: 'auto' }}>
       <Scrollbar>
-        <Table size="small" sx={{ minWidth: 1000 }}>
+        <Table size="small" sx={{ minWidth: 1500 }}>
           <TableHead>
             <TableRow>
               <TableCell>Trade Type</TableCell>
@@ -335,18 +400,22 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
               <TableCell>Type</TableCell>
               <TableCell>Symbol</TableCell>
               <TableCell>Strategy</TableCell>
-              <TableCell align="right">Qty</TableCell>
+              <TableCell align="right">Entry Qty</TableCell>
+              <TableCell align="right">Exit Qty</TableCell>
               <TableCell align="right">Live Price</TableCell>
               <TableCell align="right">Entry Price</TableCell>
-              <TableCell align="right">Stop Loss</TableCell>
-              <TableCell align="right">Target</TableCell>
-              <TableCell align="right">P&L</TableCell>
+              <TableCell align="right">Exit Price</TableCell>
+              <TableCell>Exit Time</TableCell>
+              <TableCell align="right">Stop Loss Price</TableCell>
+              <TableCell align="right">Target Price</TableCell>
+              <TableCell align="right">Total P&L</TableCell>
+              <TableCell sx={{ minWidth: 200 }}>Target Exit Time</TableCell>
               <TableCell align="center">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {positions.length > 0 ? (
-              positions.map((row) => {
+            {filteredPositions.length > 0 ? (
+              filteredPositions.map((row) => {
                 const total = calculateTotal(row);
                 const isProfit = parseFloat(total) >= 0;
 
@@ -354,70 +423,110 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
                   <TableRow key={row.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                     <TableCell>
                       <Chip
-                        icon={<Iconify icon={row.side === 'BUY' ? 'eva:trending-up-fill' : 'eva:trending-down-fill'} />}
-                        label={row.side}
+                        label={row.tradeType || 'Manual'}
                         size="small"
-                        color={row.side === 'BUY' ? 'success' : 'error'}
+                        color="info"
+                        variant="soft"
                       />
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2">
-                        {row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-'}
+                      <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>
+                        {row.signalTime ? new Date(row.signalTime).toLocaleDateString() : (row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-')}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {row.createdAt ? new Date(row.createdAt).toLocaleTimeString() : '-'}
+                        {row.signalTime ? new Date(row.signalTime).toLocaleTimeString() : (row.createdAt ? new Date(row.createdAt).toLocaleTimeString() : '-')}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Chip
                         label={row.side}
                         size="small"
+                        variant="soft"
                         color={row.side === 'BUY' ? 'success' : 'error'}
                       />
                     </TableCell>
                     <TableCell>
-                      <Typography variant="subtitle2">{row.tradingsymbol}</Typography>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>{row.tradingsymbol}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Tooltip title={row.quantity} arrow>
-                        <Typography variant="body2" noWrap sx={{ maxWidth: 120 }}>
-                          {row.quantity}
-                        </Typography>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                        <Typography variant="body2">{row.quantity}</Typography>
-                        {(row.exitQty || 0) > 0 && (
-                          <Typography variant="caption" color="text.secondary">
-                            Exited: {row.exitQty}
-                          </Typography>
-                        )}
-                      </Box>
+                      <Typography variant="body2" color="primary" fontWeight="bold">
+                        {row.strategy || 'Manual'}
+                      </Typography>
                     </TableCell>
                     <TableCell align="right">
                       <Typography variant="body2" fontWeight="bold">
-                        {row.ltp || row.status || '-'}
+                        {row.quantity}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" color={(row.exitQty || 0) > 0 ? 'error.main' : 'text.disabled'}>
+                        {row.exitQty || 0}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" fontWeight="bold" sx={{ color: 'info.main' }}>
+                        {row.ltp || row.livePrice || row.status || '-'}
                       </Typography>
                     </TableCell>
                     <TableCell align="right">{row.entryPrice}</TableCell>
                     <TableCell align="right">
-                      <Typography variant="body2" color="error.main" fontWeight="bold">
+                      <Typography variant="body2" color="text.secondary">
+                        {row.exitPrice || '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="caption" sx={{ display: 'block' }}>
+                        {row.exitAt ? new Date(row.exitAt).toLocaleDateString() : '-'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {row.exitAt ? new Date(row.exitAt).toLocaleTimeString() : '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" color="error.main">
                         {row.stopLossPrice || '-'}
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Typography variant="body2" color="success.main" fontWeight="bold">
+                      <Typography variant="body2" color="success.main">
                         {row.targetPrice || '-'}
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Chip
-                        label={`${isProfit ? '+' : ''}${total}`}
-                        size="small"
-                        color={isProfit ? 'success' : 'error'}
-                        variant={isProfit ? 'filled' : 'outlined'}
-                      />
+                      <Typography
+                        variant="subtitle2"
+                        fontWeight="bold"
+                        color={isProfit ? 'success.main' : 'error.main'}
+                      >
+                        {isProfit ? '+' : ''}{total}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <TextField
+                          type="datetime-local"
+                          size="small"
+                          defaultValue={row.autoSquareOffTime ? new Date(row.autoSquareOffTime).toLocaleString('sv-SE').replace(' ', 'T').slice(0, 16) : ''}
+                          inputProps={{ style: { fontSize: '12px' } }}
+                          onBlur={(e) => {
+                            const val = e.target.value;
+                            const currentVal = row.autoSquareOffTime ? new Date(row.autoSquareOffTime).toLocaleString('sv-SE').replace(' ', 'T').slice(0, 16) : '';
+                            if (val && val !== currentVal) {
+                              handleUpdateAutoExit(row.orderid, val, true);
+                            }
+                          }}
+                          disabled={user?.role !== 'admin' && user?.role !== 'subadmin'}
+                        />
+                        {(user?.role === 'admin' || user?.role === 'subadmin') && row.autoSquareOffEnabled && (
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleUpdateAutoExit(row.orderid, '', false)}
+                          >
+                            <Iconify icon="eva:close-circle-fill" width={16} />
+                          </IconButton>
+                        )}
+                      </Stack>
                     </TableCell>
                     <TableCell align="center">
                       {user?.licence !== 'Demo' ? (
@@ -425,7 +534,7 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
                           <Tooltip title="Update Price" arrow>
                             <IconButton
                               size="small"
-                              onClick={() => handleUpdatePrice(row.id)}
+                              onClick={() => handleUpdatePrice()}
                               sx={{
                                 border: `1px solid ${theme.palette.primary.main}`,
                                 borderRadius: 1,
@@ -460,11 +569,11 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={12} align="center" sx={{ py: 3 }}>
+                <TableCell colSpan={16} align="center" sx={{ py: 3 }}>
                   <Box sx={{ py: 3 }}>
                     <Iconify icon="eva:search-outline" width={40} color="text.secondary" />
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      No open positions found
+                      No open positions found matching your search
                     </Typography>
                   </Box>
                 </TableCell>
