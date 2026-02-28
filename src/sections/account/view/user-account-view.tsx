@@ -322,7 +322,7 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
             <Chip label={row.tradeType || 'Manual'} size="small" variant="soft" color="info" />
             <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
-              {row.signalTime ? new Date(row.signalTime).toLocaleString() : (row.createdAt ? new Date(row.createdAt).toLocaleString() : '-')}
+              {(row.signalTime || row.createdAt) ? new Date(row.signalTime || row.createdAt).toLocaleString() : '-'}
             </Typography>
           </Stack>
 
@@ -431,10 +431,10 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>
-                        {row.signalTime ? new Date(row.signalTime).toLocaleDateString() : (row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-')}
+                        {(row.signalTime || row.createdAt) ? new Date(row.signalTime || row.createdAt).toLocaleDateString() : '-'}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {row.signalTime ? new Date(row.signalTime).toLocaleTimeString() : (row.createdAt ? new Date(row.createdAt).toLocaleTimeString() : '-')}
+                        {(row.signalTime || row.createdAt) ? new Date(row.signalTime || row.createdAt).toLocaleTimeString() : '-'}
                       </Typography>
                     </TableCell>
                     <TableCell>

@@ -22,9 +22,9 @@ import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
 import { useSettingsContext } from 'src/components/settings';
 import { useSnackbar } from 'src/components/snackbar';
 import { HOST_API } from 'src/config-global';
+import { TableHeadCustom, TableNoData, TableSkeleton } from 'src/components/table';
 //
 import GroupServiceNewForm from '../group-service-new-form';
-import { TableHeadCustom, TableNoData, TableSkeleton } from 'src/components/table';
 
 // ----------------------------------------------------------------------
 
