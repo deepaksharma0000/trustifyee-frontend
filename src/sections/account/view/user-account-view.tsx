@@ -263,8 +263,8 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
             <Typography variant="caption" color="text.secondary">
               Live Price
             </Typography>
-            <Typography variant="body2" fontWeight="bold" color="info.main">
-              {row.ltp || row.livePrice || row.status || '-'}
+            <Typography variant="body2" fontWeight="bold" color={row.ltp || row.livePrice ? 'info.main' : 'text.disabled'}>
+              {(row.ltp || row.livePrice) ? `₹${Number(row.ltp || row.livePrice).toFixed(2)}` : '—'}
             </Typography>
           </Box>
 
@@ -464,9 +464,26 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Typography variant="body2" fontWeight="bold" sx={{ color: 'info.main' }}>
-                        {row.ltp || row.livePrice || row.status || '-'}
-                      </Typography>
+                      {(row.ltp || row.livePrice) ? (
+                        <Stack direction="row" alignItems="center" spacing={0.5} justifyContent="flex-end">
+                          <Box sx={{
+                            width: 6, height: 6, borderRadius: '50%', bgcolor: '#22c55e',
+                            boxShadow: '0 0 0 2px rgba(34,197,94,0.25)',
+                            animation: 'ltpPulse 2s ease-in-out infinite',
+                            '@keyframes ltpPulse': { '0%,100%': { opacity: 1 }, '50%': { opacity: 0.4 } },
+                            flexShrink: 0,
+                          }} />
+                          <Typography variant="body2" fontWeight={700} sx={{ color: 'info.main', fontFamily: 'monospace' }}>
+                            ₹{Number(row.ltp || row.livePrice).toFixed(2)}
+                          </Typography>
+                        </Stack>
+                      ) : (
+                        <Tooltip title="Market closed or broker session inactive" arrow>
+                          <Typography variant="body2" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>
+                            —
+                          </Typography>
+                        </Tooltip>
+                      )}
                     </TableCell>
                     <TableCell align="right">{row.entryPrice}</TableCell>
                     <TableCell align="right">
