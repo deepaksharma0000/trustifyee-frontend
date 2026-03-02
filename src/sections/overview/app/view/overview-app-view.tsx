@@ -36,6 +36,7 @@ import { SeoIllustration } from 'src/assets/illustrations';
 import Iconify from 'src/components/iconify';
 import OpenPositionView from 'src/sections/account/view/user-account-view';
 import LiveTradingControl from 'src/sections/overview/e-commerce/view/LiveTradingControl';
+import AlgoRiskDisclaimer from 'src/components/algo-risk-disclaimer/AlgoRiskDisclaimer';
 
 // ----------------------------------------------------------------------
 
@@ -351,6 +352,7 @@ export default function OverviewAppView() {
 
         {/* Open Positions */}
         <OpenPositionView embed />
+        <AlgoRiskDisclaimer variant="simple" />
       </Container>
     );
   }
@@ -402,7 +404,6 @@ export default function OverviewAppView() {
   if (!isAdmin && user.licence === 'Live') {
     return (
       <Container maxWidth={settings.themeStretch ? false : 'xl'} sx={{ pt: 1 }}>
-
         {/* Broker Session Warning */}
         {!isBrokerConnected && (
           <Alert
@@ -559,6 +560,7 @@ export default function OverviewAppView() {
 
         {/* Live Trading Control */}
         <LiveTradingControl user={user} />
+        <AlgoRiskDisclaimer variant="simple" />
       </Container>
     );
   }
@@ -920,6 +922,7 @@ export default function OverviewAppView() {
           <LiveTradingControl user={user} />
         </Box>
       )}
+      <AlgoRiskDisclaimer variant="footer" />
     </Container>
   );
 }

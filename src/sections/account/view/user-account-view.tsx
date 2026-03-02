@@ -34,6 +34,7 @@ import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
 import { paths } from 'src/routes/paths';
 import { HOST_API } from 'src/config-global';
 import { useAuthUser } from 'src/hooks/use-auth-user';
+import AlgoRiskDisclaimer from 'src/components/algo-risk-disclaimer/AlgoRiskDisclaimer';
 
 // ----------------------------------------------------------------------
 
@@ -603,12 +604,13 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
   );
 
   const content = (
-    <Card sx={{
-      borderRadius: 2,
-      boxShadow: theme.shadows[5],
-      overflow: 'visible',
-      mt: embed ? 3 : 0
-    }}>
+    <>
+      <Card sx={{
+        borderRadius: 2,
+        boxShadow: theme.shadows[5],
+        overflow: 'visible',
+        mt: embed ? 3 : 0
+      }}>
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         alignItems="center"
@@ -681,7 +683,8 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
       ) : (
         renderDesktopTable()
       )}
-    </Card>
+      </Card>
+    </>
   );
 
   if (embed) return content;
@@ -699,6 +702,7 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
         }}
       />
       {content}
+      <AlgoRiskDisclaimer variant="simple" />
     </Container>
   );
 }

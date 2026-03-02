@@ -34,6 +34,7 @@ import Iconify from 'src/components/iconify';
 import { HOST_API } from 'src/config-global';
 // local components
 import LiveTradingControl from './LiveTradingControl';
+import AlgoRiskDisclaimer from 'src/components/algo-risk-disclaimer/AlgoRiskDisclaimer';
 
 // Types
 interface ClientFormData {
@@ -561,6 +562,8 @@ export default function DataGridCustom({ data = [] }: Props) {
           }}>Yes, Delete</Button>
         </DialogActions>
       </Dialog>
+
+      {isAdmin && <AlgoRiskDisclaimer variant="footer" />}
     </Box>
   );
 }
