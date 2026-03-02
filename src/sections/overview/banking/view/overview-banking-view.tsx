@@ -698,8 +698,13 @@ export default function OverviewBankingView() {
 
                   <Alert
                     severity={globalTradingStatus === 'enabled' ? "success" : "error"}
-                    variant="soft"
-                    sx={{ textAlign: 'left', fontWeight: 'bold' }}
+                    variant="outlined"
+                    sx={{
+                      textAlign: 'left',
+                      fontWeight: 'bold',
+                      bgcolor: globalTradingStatus === 'enabled' ? 'success.lighter' : 'error.lighter',
+                      borderColor: (theme) => alpha(theme.palette[globalTradingStatus === 'enabled' ? 'success' : 'error'].main, 0.2)
+                    }}
                   >
                     {globalTradingStatus === 'enabled'
                       ? "Trading is currently allowed for all users."
