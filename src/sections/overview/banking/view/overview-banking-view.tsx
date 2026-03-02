@@ -27,8 +27,11 @@ import {
   useMediaQuery,
   useTheme,
   InputAdornment,
-  Chip
+  Chip,
+  Grid,
+  CircularProgress
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -120,6 +123,12 @@ export default function OverviewBankingView() {
   const [totalPnl, setTotalPnl] = useState(0);
   const [broadcastLoading, setBroadcastLoading] = useState<string | null>(null);
 
+  // Global Kill Switch State
+  const [globalTradingStatus, setGlobalTradingStatus] = useState<'enabled' | 'disabled'>('enabled');
+  const [activeUsers, setActiveUsers] = useState<any[]>([]);
+  const [activeUsersLoading, setActiveUsersLoading] = useState(false);
+  const [globalStatusLoading, setGlobalStatusLoading] = useState(false);
+
   const fetchStrategies = useCallback(async () => {
     try {
       const res = await axiosInstance.get('/api/product/list');
@@ -156,7 +165,7 @@ export default function OverviewBankingView() {
       if (INDEX_MAP[params.indexSymbol]) {
         params.indexSymbol = INDEX_MAP[params.indexSymbol];
       }
-      
+
       if (params.symbol === 'All' || !params.symbol) delete (params as any).symbol;
       if (params.indexSymbol === 'All') delete (params as any).indexSymbol;
       if (params.strategy === 'All') delete (params as any).strategy;
@@ -177,7 +186,7 @@ export default function OverviewBankingView() {
       setBroadcastLoading(signalId);
       const res = await axiosInstance.post('/api/signals/broadcast', { signalId });
       alert(`Broadcast successful! Triggered for ${res.data.totalUsers} users.`);
-      fetchSignals(); 
+      fetchSignals();
     } catch (err) {
       console.error('Broadcast failed', err);
       alert(`Broadcast failed: ${err.message || 'Unknown error'}`);
@@ -207,6 +216,51 @@ export default function OverviewBankingView() {
     }
   }, []);
 
+  const fetchGlobalStatus = useCallback(async () => {
+    try {
+      setGlobalStatusLoading(true);
+      const res = await axiosInstance.get('/api/system/trading-status');
+      if (res.data.status) {
+        setGlobalTradingStatus(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch global status', err);
+    } finally {
+      setGlobalStatusLoading(false);
+    }
+  }, []);
+
+  const fetchActiveUsers = useCallback(async () => {
+    try {
+      setActiveUsersLoading(true);
+      const res = await axiosInstance.get('/api/user/active-trading');
+      if (res.data.status) {
+        setActiveUsers(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch active users', err);
+    } finally {
+      setActiveUsersLoading(false);
+    }
+  }, []);
+
+  const toggleGlobalStatus = async () => {
+    const newValue = globalTradingStatus === 'enabled' ? 'disabled' : 'enabled';
+    if (!window.confirm(`⚠️ ATTENTION: Are you sure you want to ${newValue.toUpperCase()} trading globally?`)) return;
+
+    try {
+      setGlobalStatusLoading(true);
+      const res = await axiosInstance.post('/api/system/trading-status', { value: newValue });
+      if (res.data.status) {
+        setGlobalTradingStatus(res.data.data);
+      }
+    } catch (err: any) {
+      alert(`Update failed: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setGlobalStatusLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchStrategies();
   }, [fetchStrategies]);
@@ -220,9 +274,13 @@ export default function OverviewBankingView() {
   useEffect(() => {
     if (isAdmin) {
       if (currentTab === 0) fetchSignals();
-      else fetchHistory();
+      else if (currentTab === 1 || currentTab === 2) fetchHistory();
+      else if (currentTab === 3) {
+        fetchGlobalStatus();
+        fetchActiveUsers();
+      }
     }
-  }, [isAdmin, currentTab, fetchSignals, fetchHistory]);
+  }, [isAdmin, currentTab, fetchSignals, fetchHistory, fetchGlobalStatus, fetchActiveUsers]);
 
   const handleHandleExport = async () => {
     try {
@@ -278,10 +336,10 @@ export default function OverviewBankingView() {
               Broker Status
             </Button>
             {isAdmin && (
-              <Button 
-                variant="contained" 
-                color="primary" 
-                onClick={handleHandleExport} 
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleHandleExport}
                 startIcon={<Iconify icon="eva:download-fill" />}
                 sx={{ borderRadius: 1.5 }}
               >
@@ -291,29 +349,36 @@ export default function OverviewBankingView() {
           </Stack>
         </Stack>
 
-        <Tabs 
-           value={currentTab} 
-           onChange={(_e, v) => setCurrentTab(v)} 
-           sx={{ 
-             mb: 3,
-             '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0' }
-           }}
+        <Tabs
+          value={currentTab}
+          onChange={(_e, v) => setCurrentTab(v)}
+          sx={{
+            mb: 3,
+            '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0' }
+          }}
         >
-          <Tab 
-            label="All Signals" 
-            icon={<Iconify icon="solar:bolt-bold-duotone" width={22} />} 
-            iconPosition="start" 
+          <Tab
+            label="All Signals"
+            icon={<Iconify icon="solar:bolt-bold-duotone" width={22} />}
+            iconPosition="start"
           />
-          <Tab 
-            label="Trade History" 
-            icon={<Iconify icon="solar:history-bold-duotone" width={22} />} 
-            iconPosition="start" 
+          <Tab
+            label="Trade History"
+            icon={<Iconify icon="solar:history-bold-duotone" width={22} />}
+            iconPosition="start"
           />
-          <Tab 
-            label="Order History" 
-            icon={<Iconify icon="solar:bill-list-bold-duotone" width={22} />} 
-            iconPosition="start" 
+          <Tab
+            label="Order History"
+            icon={<Iconify icon="solar:bill-list-bold-duotone" width={22} />}
+            iconPosition="start"
           />
+          {isAdmin && (
+            <Tab
+              label="Trading Status"
+              icon={<Iconify icon="solar:shield-check-bold-duotone" width={22} />}
+              iconPosition="start"
+            />
+          )}
         </Tabs>
 
         {/* --- LIVE OPERATION TAB --- */}
@@ -396,10 +461,10 @@ export default function OverviewBankingView() {
                       <TableCell><Chip label={row.strategy || 'Manual'} size="small" variant="soft" /></TableCell>
 
                       <TableCell align="center">
-                         <Stack direction="row" spacing={0.5} justifyContent="center">
-                            <Label color="success">{row.successCount || 0}</Label>
-                            <Label color="error">{row.failCount || 0}</Label>
-                         </Stack>
+                        <Stack direction="row" spacing={0.5} justifyContent="center">
+                          <Label color="success">{row.successCount || 0}</Label>
+                          <Label color="error">{row.failCount || 0}</Label>
+                        </Stack>
                       </TableCell>
 
                       <TableCell>
@@ -432,11 +497,11 @@ export default function OverviewBankingView() {
         {/* --- TRADE HISTORY TAB (REINSTATED) --- */}
         <CustomTabPanel value={currentTab} index={1}>
           <Box sx={{ mb: 3, p: 2, bgcolor: 'background.neutral', borderRadius: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-             <Stack direction="row" spacing={1} alignItems="center">
-                <Iconify icon="solar:history-bold-duotone" width={28} color="info.main" />
-                <Typography variant="h6">Recent Trade History</Typography>
-             </Stack>
-             <Button size="small" variant="soft" color="info" onClick={fetchHistory}>Refresh Status</Button>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Iconify icon="solar:history-bold-duotone" width={28} color="info.main" />
+              <Typography variant="h6">Recent Trade History</Typography>
+            </Stack>
+            <Button size="small" variant="soft" color="info" onClick={fetchHistory}>Refresh Status</Button>
           </Box>
 
           <TableContainer component={Paper} elevation={0} variant="outlined" sx={{ borderRadius: 1.5 }}>
@@ -511,25 +576,25 @@ export default function OverviewBankingView() {
             <TextField select label="Strategy" size="small" value={historyFilters.strategy} onChange={(e) => setHistoryFilters({ ...historyFilters, strategy: e.target.value })}>
               {strategies.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
             </TextField>
-            
+
             <TextField label="Lots" size="small" type="number" value={historyFilters.lots} onChange={(e) => setHistoryFilters({ ...historyFilters, lots: e.target.value })} />
-            
+
             <Stack direction="row" spacing={1} sx={{ gridColumn: 'span 2' }}>
               <Button variant="contained" color="primary" onClick={fetchHistory} sx={{ flexGrow: 1 }}>Filter History</Button>
               <Button variant="outlined" color="inherit" onClick={() => setHistoryFilters({ fromDate: format(new Date(), 'yyyy-MM-dd'), toDate: format(new Date(), 'yyyy-MM-dd'), indexSymbol: 'All', symbol: '', strategy: 'All', status: 'CLOSED', lots: '' })}>Reset</Button>
             </Stack>
           </Box>
 
-          <Box sx={{ 
-            mb: 3, p: 2, 
+          <Box sx={{
+            mb: 3, p: 2,
             background: (theme: any) => `linear-gradient(135deg, ${theme.palette.background.neutral} 0%, ${theme.palette.action.selected} 100%)`,
             borderRadius: 2, border: '1px solid', borderColor: 'divider',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             boxShadow: theme.shadows[1]
           }}>
             <Stack direction="row" alignItems="center" spacing={1.5}>
-               <Iconify icon="solar:wallet-money-bold-duotone" width={32} color="primary.main" />
-               <Typography variant="subtitle1" fontWeight={700}>Total Realised P/L</Typography>
+              <Iconify icon="solar:wallet-money-bold-duotone" width={32} color="primary.main" />
+              <Typography variant="subtitle1" fontWeight={700}>Total Realised P/L</Typography>
             </Stack>
             <Typography variant="h4" color={totalPnl >= 0 ? 'success.main' : 'error.main'} sx={{ fontFamily: 'monospace', fontWeight: 900 }}>
               {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)}
@@ -585,55 +650,185 @@ export default function OverviewBankingView() {
             </Table>
           </TableContainer>
         </CustomTabPanel>
+
+        {/* --- TRADING STATUS TAB (GLOBAL KILL SWITCH) --- */}
+        {isAdmin && (
+          <CustomTabPanel value={currentTab} index={3}>
+            <Grid container spacing={3}>
+              {/* Global Switch Card */}
+              <Grid item xs={12} md={4}>
+                <Card sx={{
+                  p: 3,
+                  textAlign: 'center',
+                  border: '1.5px solid',
+                  borderColor: globalTradingStatus === 'enabled' ? 'success.main' : 'error.main',
+                  bgcolor: globalTradingStatus === 'enabled' ? alpha(theme.palette.success.main, 0.05) : alpha(theme.palette.error.main, 0.05),
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}>
+                  <Box sx={{
+                    position: 'absolute',
+                    top: -20,
+                    right: -20,
+                    opacity: 0.1,
+                    transform: 'rotate(15deg)'
+                  }}>
+                    <Iconify icon="solar:shield-warning-bold" width={120} />
+                  </Box>
+
+                  <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 800 }}>Master Control</Typography>
+                  <Typography variant="h4" gutterBottom sx={{ fontWeight: 900 }}>Global Switch Kill</Typography>
+
+                  <Box sx={{ my: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <Switch
+                      checked={globalTradingStatus === 'enabled'}
+                      onChange={toggleGlobalStatus}
+                      color="success"
+                      disabled={globalStatusLoading}
+                      sx={{
+                        transform: 'scale(2)',
+                        '& .MuiSwitch-switchBase.Mui-checked': { color: 'success.main' },
+                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { opacity: 0.5, backgroundColor: 'success.main' }
+                      }}
+                    />
+                    <Typography variant="h6" sx={{ mt: 3, color: globalTradingStatus === 'enabled' ? 'success.main' : 'error.main', fontWeight: 800 }}>
+                      SYSTEM: {globalTradingStatus.toUpperCase()}
+                    </Typography>
+                  </Box>
+
+                  <Alert
+                    severity={globalTradingStatus === 'enabled' ? "success" : "error"}
+                    variant="soft"
+                    sx={{ textAlign: 'left', fontWeight: 'bold' }}
+                  >
+                    {globalTradingStatus === 'enabled'
+                      ? "Trading is currently allowed for all users."
+                      : "ALL TRADING IS STOPPED. No orders will reach the brokers."}
+                  </Alert>
+                </Card>
+              </Grid>
+
+              {/* Stats & Info Card */}
+              <Grid item xs={12} md={8}>
+                <Card sx={{ p: 3, height: '100%', border: '1px solid', borderColor: 'divider' }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+                    <Box>
+                      <Typography variant="h6" sx={{ fontWeight: 800 }}>Active Trading Pool</Typography>
+                      <Typography variant="body2" color="text.secondary">Users with trading enabled and active status.</Typography>
+                    </Box>
+                    <Button
+                      size="small"
+                      variant="soft"
+                      startIcon={<Iconify icon="eva:refresh-fill" />}
+                      onClick={fetchActiveUsers}
+                      disabled={activeUsersLoading}
+                    >
+                      Refresh List
+                    </Button>
+                  </Stack>
+
+                  <TableContainer component={Paper} elevation={0} variant="outlined" sx={{ borderRadius: 1.5, maxHeight: 400 }}>
+                    <Table size="small" stickyHeader>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>User</TableCell>
+                          <TableCell>Licence</TableCell>
+                          <TableCell>Broker</TableCell>
+                          <TableCell align="center">Ready</TableCell>
+                          <TableCell align="right">Join Date</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {activeUsersLoading && (
+                          <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4 }}><CircularProgress size={24} /></TableCell></TableRow>
+                        )}
+                        {!activeUsersLoading && activeUsers.length === 0 && (
+                          <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4 }}>No active traders found.</TableCell></TableRow>
+                        )}
+                        {!activeUsersLoading && activeUsers.map((u) => (
+                          <TableRow key={u._id}>
+                            <TableCell>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{u.user_name}</Typography>
+                              <Typography variant="caption" color="text.secondary">{u.email}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Label color={u.licence === 'Live' ? 'success' : 'warning'}>{u.licence}</Label>
+                            </TableCell>
+                            <TableCell>{u.broker || '-'}</TableCell>
+                            <TableCell align="center">
+                              <Iconify
+                                icon={u.broker_verified ? "eva:checkmark-circle-2-fill" : "eva:close-circle-fill"}
+                                sx={{ color: u.broker_verified ? 'success.main' : 'error.main' }}
+                              />
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography variant="caption">{format(new Date(u.created_at), 'dd MMM yy')}</Typography>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="caption" color="text.disabled">
+                      *Total Active Users: {activeUsers.length}
+                    </Typography>
+                  </Box>
+                </Card>
+              </Grid>
+            </Grid>
+          </CustomTabPanel>
+        )}
       </Card>
 
       {/* --- PROFESSIONAL FOOTER --- */}
       <Card sx={{ p: 4, mt: 4, bgcolor: 'background.neutral', border: '1px solid', borderColor: 'divider' }}>
         <Stack spacing={3}>
-           <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="overline" color="text.secondary">Regulatory Compliance & Disclaimer</Typography>
-              <Stack direction="row" spacing={1} alignItems="center">
-                 <Typography variant="caption">Language:</Typography>
-                 <Button 
-                   size="small" 
-                   variant={disclLang === 'en' ? 'contained' : 'outlined'} 
-                   onClick={() => setDisclLang('en')}
-                   sx={{ minWidth: 40, py: 0 }}
-                 >EN</Button>
-                 <Button 
-                   size="small" 
-                   variant={disclLang === 'hi' ? 'contained' : 'outlined'} 
-                   onClick={() => setDisclLang('hi')}
-                   sx={{ minWidth: 40, py: 0 }}
-                 >HI</Button>
-              </Stack>
-           </Stack>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="overline" color="text.secondary">Regulatory Compliance & Disclaimer</Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="caption">Language:</Typography>
+              <Button
+                size="small"
+                variant={disclLang === 'en' ? 'contained' : 'outlined'}
+                onClick={() => setDisclLang('en')}
+                sx={{ minWidth: 40, py: 0 }}
+              >EN</Button>
+              <Button
+                size="small"
+                variant={disclLang === 'hi' ? 'contained' : 'outlined'}
+                onClick={() => setDisclLang('hi')}
+                sx={{ minWidth: 40, py: 0 }}
+              >HI</Button>
+            </Stack>
+          </Stack>
 
-           <Box>
-           {disclLang === 'en' ? (
+          <Box>
+            {disclLang === 'en' ? (
               <Stack spacing={2}>
-                 <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
-                   <strong>THIS RESULTS IS VALID FOR TODAY ONLY</strong>. WE DO NOT DIRECTLY OR INDIRECTLY MAKE ANY REFERENCE TO THE PAST OR EXPECTED FUTURE RETURN/PERFORMANCE OF THE ALGORITHM.
-                 </Typography>
-                 <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
-                   All securities algorithmic trading systems are subject to market risks and no assurance can be given that the user's objectives will be achieved based on today's performance. This results is intended for informational purposes and should not be construed as financial advice.
-                 </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
+                  <strong>THIS RESULTS IS VALID FOR TODAY ONLY</strong>. WE DO NOT DIRECTLY OR INDIRECTLY MAKE ANY REFERENCE TO THE PAST OR EXPECTED FUTURE RETURN/PERFORMANCE OF THE ALGORITHM.
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
+                  All securities algorithmic trading systems are subject to market risks and no assurance can be given that the user's objectives will be achieved based on today's performance. This results is intended for informational purposes and should not be construed as financial advice.
+                </Typography>
               </Stack>
-           ) : (
+            ) : (
               <Stack spacing={2}>
-                 <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6, fontSize: '0.85rem' }}>
-                   <strong>यह परिणाम केवल आज के लिए मान्य है</strong>। हम प्रत्यक्ष या अप्रत्यक्ष रूप से एल्गोरिदम के पिछले या अपेक्षित भविष्य के लाभ/प्रदर्शन के बारे में कोई संदर्भ नहीं देते हैं।
-                 </Typography>
-                 <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6, fontSize: '0.85rem' }}>
-                   सभी प्रतिभूतियां एल्गो ट्रेडिंग सिस्टम बाजार जोखिमों के अधीन हैं और इस बात का कोई आश्वासन नहीं दिया जा सकता है कि उपयोगकर्ता के उद्देश्यों को आज के प्रदर्शन के आधार पर प्राप्त किया जाएगा। यह परिणाम केवल आज के लिए मान्य है।
-                 </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6, fontSize: '0.85rem' }}>
+                  <strong>यह परिणाम केवल आज के लिए मान्य है</strong>। हम प्रत्यक्ष या अप्रत्यक्ष रूप से एल्गोरिदम के पिछले या अपेक्षित भविष्य के लाभ/प्रदर्शन के बारे में कोई संदर्भ नहीं देते हैं।
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6, fontSize: '0.85rem' }}>
+                  सभी प्रतिभूतियां एल्गो ट्रेडिंग सिस्टम बाजार जोखिमों के अधीन हैं और इस बात का कोई आश्वासन नहीं दिया जा सकता है कि उपयोगकर्ता के उद्देश्यों को आज के प्रदर्शन के आधार पर प्राप्त किया जाएगा। यह परिणाम केवल आज के लिए मान्य है।
+                </Typography>
               </Stack>
-           )}
-           </Box>
+            )}
+          </Box>
 
-           <Typography variant="caption" align="center" color="text.disabled" sx={{ pt: 2, borderTop: '1px dashed', borderColor: 'divider' }}>
-             © 2026 Trustifye Algos. All rights reserved. Precise Trading Solutions.
-           </Typography>
+          <Typography variant="caption" align="center" color="text.disabled" sx={{ pt: 2, borderTop: '1px dashed', borderColor: 'divider' }}>
+            © 2026 Trustifye Algos. All rights reserved. Precise Trading Solutions.
+          </Typography>
         </Stack>
       </Card>
     </Container >
