@@ -1082,6 +1082,7 @@ export default function OptionChainPage() {
         percentChange={quoteMap[selectedOrderOption?.symboltoken || '']?.percentChange || 0}
         indexSymbol={symbol}
         lotSize={lotSizeMap[symbol] || 25}
+        strategy={strategy}
       />
     </Container>
   );
@@ -1099,9 +1100,10 @@ interface OrderDialogProps {
   percentChange: number;
   indexSymbol: string;
   lotSize: number;
+  strategy: string;
 }
 
-function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange, indexSymbol, lotSize }: OrderDialogProps) {
+function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange, indexSymbol, lotSize, strategy }: OrderDialogProps) {
   const [tab, setTab] = useState(0);
   const [productType, setProductType] = useState<'INTRADAY' | 'CARRYFORWARD'>('INTRADAY');
   const [lots, setLots] = useState(1);
@@ -1143,7 +1145,7 @@ function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange,
         symboltoken: option.symboltoken,
         stopLossPrice: slTargetEnabled && stopLoss ? Number(stopLoss) : undefined,
         targetPrice: slTargetEnabled && target ? Number(target) : undefined,
-        strategy: "Manual",
+        strategy: strategy || "Manual",
         tradeType: "Option-Chain"
       };
 

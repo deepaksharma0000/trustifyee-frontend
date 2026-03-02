@@ -486,7 +486,11 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
                         </Tooltip>
                       )}
                     </TableCell>
-                    <TableCell align="right">{row.entryPrice}</TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" fontWeight={700} sx={{ color: 'text.primary' }}>
+                        {row.entryPrice ? `₹${Number(row.entryPrice).toFixed(2)}` : '—'}
+                      </Typography>
+                    </TableCell>
                     <TableCell align="right">
                       <Typography variant="body2" color="text.secondary">
                         {row.exitPrice || '-'}

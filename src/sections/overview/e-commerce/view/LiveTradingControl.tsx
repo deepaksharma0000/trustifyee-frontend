@@ -25,10 +25,10 @@ interface TradingRow {
 }
 
 const SYMBOL_LOT_SIZES = {
-    BankNifty: 30,
-    FINNIFTY: 60,
-    NIFTY: 65,
-    SENSEX: 20
+    BankNifty: 15,
+    FINNIFTY: 40,
+    NIFTY: 25,
+    SENSEX: 10
 };
 
 const SYMBOL_COLORS: Record<string, string> = {
@@ -143,7 +143,7 @@ export default function LiveTradingControl({ user }: { user: any }) {
                     symbol: symbolMap[row.symbol] || row.symbol,
                     optiontype: optionType,
                     side: 'BUY',
-                    quantity: row.noOfLots,
+                    quantity: row.noOfLots, // Backend handles expansion to units
                     strategy: row.strategy,
                     producttype: row.productType === 'MIS' ? 'INTRADAY' : 'DELIVERY'
                 })
