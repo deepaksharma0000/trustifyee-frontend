@@ -285,55 +285,64 @@ function PhoneVerifyModal({ open, phone, onVerify, onCancel }: PhoneVerifyModalP
             },
           }}
         >
-          {digits.map((d, idx) => (
-            <Box
-              key={idx}
-              component="input"
-              ref={el => { inputRefs.current[idx] = el as HTMLInputElement | null; }}
-              value={d}
-              onChange={e => handleDigitChange(idx, e.target.value)}
-              onKeyDown={e => handleKeyDown(idx, e as any)}
-              maxLength={1}
-              inputMode="numeric"
-              pattern="[0-9]*"
-              sx={{
-                width: 64,
-                height: 70,
-                borderRadius: '14px',
-                fontSize: 28,
-                fontWeight: 800,
-                fontFamily: 'monospace',
-                textAlign: 'center',
-                outline: 'none',
-                cursor: 'text',
-                transition: 'all 0.18s ease',
-                color: error ? '#ff5630' : d ? '#00a76f' : '#1C252E',
-                background: error
-                  ? '#fff5f3'
-                  : d
-                    ? alpha('#00a76f', 0.06)
-                    : '#F4F6F8',
-                border: error
-                  ? '2px solid #ff5630'
-                  : d
-                    ? '2px solid #00a76f'
-                    : '2px solid #E5E8EB',
-                boxShadow: d && !error
-                  ? `0 0 0 4px ${alpha('#00a76f', 0.1)}`
-                  : error
-                    ? `0 0 0 4px ${alpha('#ff5630', 0.08)}`
-                    : 'none',
-                '&:focus': {
-                  border: error ? '2px solid #ff5630' : '2px solid #00a76f',
-                  background: error ? '#fff5f3' : alpha('#00a76f', 0.05),
-                  boxShadow: error
-                    ? `0 0 0 4px ${alpha('#ff5630', 0.1)}`
-                    : `0 0 0 4px ${alpha('#00a76f', 0.12)}`,
-                  color: error ? '#ff5630' : '#00a76f',
-                },
-              }}
-            />
-          ))}
+          {digits.map((d, idx) => {
+            const isError = !!error;
+            const isFilled = !!d;
+
+            let fontColor = '#1C252E';
+            if (isError) fontColor = '#ff5630';
+            else if (isFilled) fontColor = '#00a76f';
+
+            let bgColor = '#F4F6F8';
+            if (isError) bgColor = '#fff5f3';
+            else if (isFilled) bgColor = alpha('#00a76f', 0.06);
+
+            let borderStyle = '2px solid #E5E8EB';
+            if (isError) borderStyle = '2px solid #ff5630';
+            else if (isFilled) borderStyle = '2px solid #00a76f';
+
+            let shadowStyle = 'none';
+            if (isError) shadowStyle = `0 0 0 4px ${alpha('#ff5630', 0.08)}`;
+            else if (isFilled) shadowStyle = `0 0 0 4px ${alpha('#00a76f', 0.1)}`;
+
+            return (
+              <Box
+                key={idx}
+                component="input"
+                ref={el => { inputRefs.current[idx] = el as HTMLInputElement | null; }}
+                value={d}
+                onChange={e => handleDigitChange(idx, e.target.value)}
+                onKeyDown={e => handleKeyDown(idx, (e as any))}
+                maxLength={1}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                sx={{
+                  width: 64,
+                  height: 70,
+                  borderRadius: '14px',
+                  fontSize: 28,
+                  fontWeight: 800,
+                  fontFamily: 'monospace',
+                  textAlign: 'center',
+                  outline: 'none',
+                  cursor: 'text',
+                  transition: 'all 0.18s ease',
+                  color: fontColor,
+                  background: bgColor,
+                  border: borderStyle,
+                  boxShadow: shadowStyle,
+                  '&:focus': {
+                    border: isError ? '2px solid #ff5630' : '2px solid #00a76f',
+                    background: isError ? '#fff5f3' : alpha('#00a76f', 0.05),
+                    boxShadow: isError
+                      ? `0 0 0 4px ${alpha('#ff5630', 0.1)}`
+                      : `0 0 0 4px ${alpha('#00a76f', 0.12)}`,
+                    color: isError ? '#ff5630' : '#00a76f',
+                  },
+                }}
+              />
+            );
+          })}
         </Box>
 
         {/* Error message */}

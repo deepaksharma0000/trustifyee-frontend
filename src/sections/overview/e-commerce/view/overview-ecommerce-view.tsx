@@ -33,8 +33,8 @@ import Iconify from 'src/components/iconify';
 // config
 import { HOST_API } from 'src/config-global';
 // local components
-import LiveTradingControl from './LiveTradingControl';
 import AlgoRiskDisclaimer from 'src/components/algo-risk-disclaimer/AlgoRiskDisclaimer';
+import LiveTradingControl from './LiveTradingControl';
 
 // Types
 interface ClientFormData {

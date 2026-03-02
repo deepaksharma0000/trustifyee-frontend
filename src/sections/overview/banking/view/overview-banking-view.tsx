@@ -198,7 +198,7 @@ export default function OverviewBankingView() {
   const fetchUniqueSymbols = useCallback(async (index: string, from: string, to: string) => {
     try {
       setSymbolLoading(true);
-      let indexVal = INDEX_MAP[index] || index;
+      const indexVal = INDEX_MAP[index] || index;
 
       const res = await axiosInstance.get('/api/orders/unique-symbols', {
         params: {
@@ -587,7 +587,7 @@ export default function OverviewBankingView() {
 
           <Box sx={{
             mb: 3, p: 2,
-            background: (theme: any) => `linear-gradient(135deg, ${theme.palette.background.neutral} 0%, ${theme.palette.action.selected} 100%)`,
+            background: (t: any) => `linear-gradient(135deg, ${t.palette.background.neutral} 0%, ${t.palette.action.selected} 100%)`,
             borderRadius: 2, border: '1px solid', borderColor: 'divider',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             boxShadow: theme.shadows[1]
@@ -703,7 +703,7 @@ export default function OverviewBankingView() {
                       textAlign: 'left',
                       fontWeight: 'bold',
                       bgcolor: globalTradingStatus === 'enabled' ? 'success.lighter' : 'error.lighter',
-                      borderColor: (theme) => alpha(theme.palette[globalTradingStatus === 'enabled' ? 'success' : 'error'].main, 0.2)
+                      borderColor: (t) => alpha(t.palette[globalTradingStatus === 'enabled' ? 'success' : 'error'].main, 0.2)
                     }}
                   >
                     {globalTradingStatus === 'enabled'
@@ -816,7 +816,7 @@ export default function OverviewBankingView() {
                   <strong>THIS RESULTS IS VALID FOR TODAY ONLY</strong>. WE DO NOT DIRECTLY OR INDIRECTLY MAKE ANY REFERENCE TO THE PAST OR EXPECTED FUTURE RETURN/PERFORMANCE OF THE ALGORITHM.
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
-                  All securities algorithmic trading systems are subject to market risks and no assurance can be given that the user's objectives will be achieved based on today's performance. This results is intended for informational purposes and should not be construed as financial advice.
+                  All securities algorithmic trading systems are subject to market risks and no assurance can be given that the user&apos;s objectives will be achieved based on today&apos;s performance. This results is intended for informational purposes and should not be construed as financial advice.
                 </Typography>
               </Stack>
             ) : (
