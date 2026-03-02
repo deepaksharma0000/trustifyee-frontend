@@ -24,6 +24,10 @@ import {
   TableContainer,
   FormControlLabel,
   Box,
+  useMediaQuery,
+  useTheme,
+  InputAdornment,
+  Chip
 } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import { useNavigate } from 'react-router-dom';
@@ -44,9 +48,18 @@ import { useAuthUser } from 'src/hooks/use-auth-user';
 
 // ----------------------------------------------------------------------
 
-const STRATEGIES = ['All', 'ALPHA', 'BETA', 'GAMMA', 'DELTA', 'ZETA', 'SIGMA'];
+const STRATEGIES_LIST = ['All'];
 
-const INDEX_SYMBOLS = ['All', 'BANKNIFTY', 'NIFTY', 'FINNIFTY', 'SENSEX', 'MIDCPNIFTY', 'BANKEX'];
+const INDEX_SYMBOLS = ['All', 'Nifty', 'Bank Nifty', 'FinFifty', 'SenSex', 'MidCapFifty', 'BankEx'];
+
+const INDEX_MAP: { [key: string]: string } = {
+  'Nifty': 'NIFTY',
+  'Bank Nifty': 'BANKNIFTY',
+  'FinFifty': 'FINNIFTY',
+  'SenSex': 'SENSEX',
+  'MidCapFifty': 'MIDCPNIFTY',
+  'BankEx': 'BANKEX'
+};
 
 const OPEN_CLOSE_OPTIONS = ['All', 'OPEN', 'CLOSED'];
 
@@ -72,12 +85,17 @@ function CustomTabPanel(props: TabPanelProps) {
 export default function OverviewBankingView() {
   const { user } = useAuthUser();
   const navigate = useNavigate();
-  const isAdmin = user?.role === 'admin';
+  const isMobile = useMediaQuery((theme: any) => theme.breakpoints.down('sm'));
+  const theme = useTheme();
+  const isAdmin = user?.role === 'admin' || user?.role === 'subadmin';
   const isDemo = user?.licence === 'Demo';
 
   const [currentTab, setCurrentTab] = useState(0);
   const [tradingEnabled, setTradingEnabled] = useState(localStorage.getItem('trading_enabled') === 'true');
   const [error, setError] = useState('');
+
+  // Language for disclaimer
+  const [disclLang, setDisclLang] = useState<'en' | 'hi'>('en');
 
   // Signals State
   const [signals, setSignals] = useState([]);
@@ -87,19 +105,32 @@ export default function OverviewBankingView() {
   // History State
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [strategies, setStrategies] = useState(['All']);
   const [dynamicSymbols, setDynamicSymbols] = useState<string[]>([]);
   const [symbolLoading, setSymbolLoading] = useState(false);
   const [historyFilters, setHistoryFilters] = useState({
-    fromDate: format(new Date(), 'yyyy-MM-01'),
+    fromDate: format(new Date(), 'yyyy-MM-dd'),
     toDate: format(new Date(), 'yyyy-MM-dd'),
     indexSymbol: 'All',
     symbol: '',
     strategy: 'All',
-    status: 'All',
+    status: 'CLOSED', // Default to closed for history
     lots: '',
   });
   const [totalPnl, setTotalPnl] = useState(0);
   const [broadcastLoading, setBroadcastLoading] = useState<string | null>(null);
+
+  const fetchStrategies = useCallback(async () => {
+    try {
+      const res = await axiosInstance.get('/api/product/list');
+      if (res.data.status) {
+        const names = res.data.products.map((p: any) => p.name);
+        setStrategies(['All', ...names]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch strategies', err);
+    }
+  }, []);
 
   const fetchSignals = useCallback(async () => {
     try {
@@ -121,7 +152,12 @@ export default function OverviewBankingView() {
     try {
       setHistoryLoading(true);
       const params = { ...historyFilters };
-      if (params.symbol === 'All') delete (params as any).symbol;
+      // Map frontend labels to backend expected index values
+      if (INDEX_MAP[params.indexSymbol]) {
+        params.indexSymbol = INDEX_MAP[params.indexSymbol];
+      }
+      
+      if (params.symbol === 'All' || !params.symbol) delete (params as any).symbol;
       if (params.indexSymbol === 'All') delete (params as any).indexSymbol;
       if (params.strategy === 'All') delete (params as any).strategy;
       if (params.status === 'All') delete (params as any).status;
@@ -141,7 +177,7 @@ export default function OverviewBankingView() {
       setBroadcastLoading(signalId);
       const res = await axiosInstance.post('/api/signals/broadcast', { signalId });
       alert(`Broadcast successful! Triggered for ${res.data.totalUsers} users.`);
-      fetchSignals(); // Refresh list to show as CLOSED
+      fetchSignals(); 
     } catch (err) {
       console.error('Broadcast failed', err);
       alert(`Broadcast failed: ${err.message || 'Unknown error'}`);
@@ -150,27 +186,20 @@ export default function OverviewBankingView() {
     }
   };
 
-
-
   const fetchUniqueSymbols = useCallback(async (index: string, from: string, to: string) => {
     try {
       setSymbolLoading(true);
+      let indexVal = INDEX_MAP[index] || index;
+
       const res = await axiosInstance.get('/api/orders/unique-symbols', {
         params: {
-          indexSymbol: index,
+          indexSymbol: indexVal === 'All' ? undefined : indexVal,
           fromDate: from,
           toDate: to
         }
       });
       const symbols = res.data.data || [];
-      setDynamicSymbols(symbols);
-
-      // Auto-select first symbol for realistic market flow
-      if (symbols.length > 0) {
-        setHistoryFilters(prev => ({ ...prev, symbol: symbols[0] }));
-      } else {
-        setHistoryFilters(prev => ({ ...prev, symbol: '' }));
-      }
+      setDynamicSymbols(['All', ...symbols]);
     } catch (err) {
       console.error('Failed to fetch symbols', err);
     } finally {
@@ -179,7 +208,11 @@ export default function OverviewBankingView() {
   }, []);
 
   useEffect(() => {
-    if (isAdmin && currentTab === 1) {
+    fetchStrategies();
+  }, [fetchStrategies]);
+
+  useEffect(() => {
+    if (isAdmin && (currentTab === 1 || currentTab === 2)) {
       fetchUniqueSymbols(historyFilters.indexSymbol, historyFilters.fromDate, historyFilters.toDate);
     }
   }, [isAdmin, currentTab, historyFilters.indexSymbol, historyFilters.fromDate, historyFilters.toDate, fetchUniqueSymbols]);
@@ -191,18 +224,19 @@ export default function OverviewBankingView() {
     }
   }, [isAdmin, currentTab, fetchSignals, fetchHistory]);
 
-  // Debounced search for signals
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (currentTab === 0 && isAdmin) fetchSignals();
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [currentTab, isAdmin, fetchSignals]);
-
   const handleHandleExport = async () => {
     try {
+      const params = { ...historyFilters };
+      if (INDEX_MAP[params.indexSymbol]) {
+        params.indexSymbol = INDEX_MAP[params.indexSymbol];
+      }
+      if (params.symbol === 'All' || !params.symbol) delete (params as any).symbol;
+      if (params.indexSymbol === 'All') delete (params as any).indexSymbol;
+      if (params.strategy === 'All') delete (params as any).strategy;
+      if (params.status === 'All') delete (params as any).status;
+
       const exportUrl = `/api/orders/export-all`;
-      const res = await axiosInstance.get(exportUrl, { responseType: 'blob' });
+      const res = await axiosInstance.get(exportUrl, { params, responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -229,82 +263,106 @@ export default function OverviewBankingView() {
       <Card sx={{ p: 3, mb: 3 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
           <Box>
-            <Typography variant="h5" sx={{ mb: 1 }}>Trading Details</Typography>
+            <Typography variant="h5" sx={{ mb: 1 }}>Trade Details</Typography>
             <Typography variant="body2" color="text.secondary">
-              Manage your live signals and track historical performance.
+              Professional trade analysis and execution logs.
             </Typography>
           </Box>
           <Stack direction="row" spacing={1}>
-            {!isDemo && (
-              <Button
-                variant="soft"
-                color="info"
-                onClick={() => navigate('/dashboard/broker-connect')}
-                startIcon={<Iconify icon="solar:link-bold-duotone" />}
-              >
-                Connect AngelOne
-              </Button>
-            )}
+            <Button
+              variant="soft"
+              color="info"
+              onClick={() => navigate('/dashboard/broker-connect')}
+              startIcon={<Iconify icon="solar:link-bold-duotone" />}
+            >
+              Broker Status
+            </Button>
             {isAdmin && (
-              <Button variant="contained" color="primary" onClick={handleHandleExport} startIcon={<Iconify icon="eva:download-fill" />}>
-                Export Trades CSV
+              <Button 
+                variant="contained" 
+                color="primary" 
+                onClick={handleHandleExport} 
+                startIcon={<Iconify icon="eva:download-fill" />}
+                sx={{ borderRadius: 1.5 }}
+              >
+                Export Excel (CSV)
               </Button>
             )}
           </Stack>
         </Stack>
 
-        <Tabs value={currentTab} onChange={(_e, v) => setCurrentTab(v)} sx={{ mb: 3 }}>
-          <Tab label="All Signals" icon={<Iconify icon="solar:chart-square-bold-duotone" width={20} />} iconPosition="start" />
-          <Tab label="Trade History" icon={<Iconify icon="solar:history-bold-duotone" width={20} />} iconPosition="start" />
+        <Tabs 
+           value={currentTab} 
+           onChange={(_e, v) => setCurrentTab(v)} 
+           sx={{ 
+             mb: 3,
+             '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0' }
+           }}
+        >
+          <Tab 
+            label="All Signals" 
+            icon={<Iconify icon="solar:bolt-bold-duotone" width={22} />} 
+            iconPosition="start" 
+          />
+          <Tab 
+            label="Trade History" 
+            icon={<Iconify icon="solar:history-bold-duotone" width={22} />} 
+            iconPosition="start" 
+          />
+          <Tab 
+            label="Order History" 
+            icon={<Iconify icon="solar:bill-list-bold-duotone" width={22} />} 
+            iconPosition="start" 
+          />
         </Tabs>
 
-        {/* --- ALL SIGNALS TAB --- */}
+        {/* --- LIVE OPERATION TAB --- */}
         <CustomTabPanel value={currentTab} index={0}>
           <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
             <TextField
               sx={{ flexGrow: 1 }}
-              label="Search Something Here (Symbol, Strategy...)"
+              size="small"
+              placeholder="Search by Symbol or Strategy..."
               value={signalFilters.search}
               onChange={(e) => setSignalFilters({ ...signalFilters, search: e.target.value })}
-              InputProps={{ startAdornment: <Iconify icon="eva:search-fill" sx={{ color: 'text.disabled', mr: 1 }} /> }}
+              InputProps={{ startAdornment: <InputAdornment position="start"><Iconify icon="eva:search-fill" sx={{ color: 'text.disabled' }} /></InputAdornment> }}
             />
             <TextField
               select
-              label="Select Strategy"
+              size="small"
+              label="Strategy"
               value={signalFilters.strategy}
               onChange={(e) => setSignalFilters({ ...signalFilters, strategy: e.target.value })}
-              sx={{ minWidth: 200 }}
+              sx={{ minWidth: 160 }}
             >
-              {STRATEGIES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+              {strategies.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
             </TextField>
-
+            <Button variant="soft" onClick={fetchSignals}>Refresh</Button>
           </Box>
 
           <TableContainer component={Paper} elevation={0} variant="outlined" sx={{ borderRadius: 1.5 }}>
-            <Table stickyHeader>
+            <Table size="small">
               <TableHead>
                 <TableRow>
                   <TableCell>S.No</TableCell>
                   <TableCell>Signal Time</TableCell>
-                  <TableCell>Last Update</TableCell>
+                  <TableCell>Execution Time</TableCell>
                   <TableCell>Type</TableCell>
                   <TableCell>Symbol</TableCell>
-                  <TableCell>Price</TableCell>
+                  <TableCell align="right">Signal Price</TableCell>
                   <TableCell>Strategy</TableCell>
-                  <TableCell align="center">Total</TableCell>
-                  <TableCell align="center">Success</TableCell>
-                  <TableCell align="center">Failures</TableCell>
+                  <TableCell align="center">Success/Fail</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {signalLoading && (
-                  <TableRow><TableCell colSpan={8} align="center" sx={{ py: 5 }}>Loading signals...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} align="center" sx={{ py: 8 }}>Loading signals...</TableCell></TableRow>
                 )}
 
                 {!signalLoading && signals.length === 0 && (
-                  <TableRow><TableCell colSpan={8} align="center" sx={{ py: 5 }}>No signals found.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} align="center" sx={{ py: 8 }}>No signals found.</TableCell></TableRow>
                 )}
 
                 {!signalLoading && signals.map((row: any, index) => {
@@ -318,52 +376,34 @@ export default function OverviewBankingView() {
                   let statusColor: 'info' | 'success' | 'warning' | 'error' | 'default' = 'default';
                   let statusText = row.status;
 
-                  if (row.status === 'ACTIVE') {
-                    statusColor = 'info';
-                  } else if (row.status === 'EXECUTION_IN_PROGRESS') {
-                    statusColor = 'warning';
-                    statusText = 'In Progress';
-                  } else if (row.status === 'CLOSED') {
-                    statusColor = 'success';
-                    statusText = 'Executed';
-                  } else if (row.status === 'PARTIAL') {
-                    statusColor = 'warning';
-                    statusText = 'Partial Success';
-                  } else if (row.status === 'FAILED') {
-                    statusColor = 'error';
-                    statusText = 'Failed';
-                  }
+                  if (row.status === 'ACTIVE') { statusColor = 'info'; }
+                  else if (row.status === 'EXECUTION_IN_PROGRESS') { statusColor = 'warning'; statusText = 'In Progress'; }
+                  else if (row.status === 'CLOSED') { statusColor = 'success'; statusText = 'Executed'; }
+                  else if (row.status === 'FAILED') { statusColor = 'error'; statusText = 'Failed'; }
 
                   return (
-                    <TableRow key={row._id}>
+                    <TableRow key={row._id} hover>
                       <TableCell>{index + 1}</TableCell>
-                      <TableCell>{format(new Date(row.createdAt), 'dd/MM/yy HH:mm')}</TableCell>
-                      <TableCell>{row.updatedAt ? format(new Date(row.updatedAt), 'dd/MM/yy HH:mm') : '-'}</TableCell>
+                      <TableCell>{format(new Date(row.createdAt), 'HH:mm:ss')}</TableCell>
+                      <TableCell>{row.updatedAt ? format(new Date(row.updatedAt), 'HH:mm:ss') : '-'}</TableCell>
                       <TableCell>
                         <Label color={row.side === 'BUY' ? 'success' : 'error'} variant="soft">
                           {typeLabel}
                         </Label>
                       </TableCell>
-                      <TableCell>{row.tradingsymbol}</TableCell>
-                      <TableCell>{row.price.toFixed(2)}</TableCell>
-                      <TableCell>{row.strategy || '-'}</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>{row.tradingsymbol}</TableCell>
+                      <TableCell align="right">₹{row.price.toFixed(2)}</TableCell>
+                      <TableCell><Chip label={row.strategy || 'Manual'} size="small" variant="soft" /></TableCell>
 
                       <TableCell align="center">
-                        <Label variant="outlined" color="info">{row.totalExecutions || 0}</Label>
-                      </TableCell>
-
-                      <TableCell align="center">
-                        <Label variant="soft" color="success">{row.successCount || 0}</Label>
-                      </TableCell>
-
-                      <TableCell align="center">
-                        <Label variant="soft" color="error">{row.failCount || 0}</Label>
+                         <Stack direction="row" spacing={0.5} justifyContent="center">
+                            <Label color="success">{row.successCount || 0}</Label>
+                            <Label color="error">{row.failCount || 0}</Label>
+                         </Stack>
                       </TableCell>
 
                       <TableCell>
-                        <Label variant="soft" color={statusColor}>
-                          {statusText}
-                        </Label>
+                        <Label variant="soft" color={statusColor}>{statusText}</Label>
                       </TableCell>
                       <TableCell align="right">
                         {row.status === 'ACTIVE' ? (
@@ -374,14 +414,11 @@ export default function OverviewBankingView() {
                             loading={broadcastLoading === row._id}
                             onClick={() => handleBroadcastSignal(row._id)}
                             startIcon={<Iconify icon="solar:bolt-bold" />}
-                            sx={{ boxShadow: (theme) => (theme as any).customShadows.warning }}
                           >
                             Execute
                           </LoadingButton>
                         ) : (
-                          <Button size="small" disabled variant="soft" startIcon={<Iconify icon="solar:check-read-bold" />}>
-                            Executed
-                          </Button>
+                          <Iconify icon="solar:check-circle-bold" sx={{ color: 'success.main' }} />
                         )}
                       </TableCell>
                     </TableRow>
@@ -392,107 +429,57 @@ export default function OverviewBankingView() {
           </TableContainer>
         </CustomTabPanel>
 
-        {/* --- TRADE HISTORY TAB --- */}
+        {/* --- TRADE HISTORY TAB (REINSTATED) --- */}
         <CustomTabPanel value={currentTab} index={1}>
-          <Typography variant="h6" sx={{ mb: 3 }}>Trade History</Typography>
-
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
-            <TextField type="date" label="From Date" InputLabelProps={{ shrink: true }} value={historyFilters.fromDate} onChange={(e) => setHistoryFilters({ ...historyFilters, fromDate: e.target.value })} />
-            <TextField type="date" label="To Date" InputLabelProps={{ shrink: true }} value={historyFilters.toDate} onChange={(e) => setHistoryFilters({ ...historyFilters, toDate: e.target.value })} />
-            <TextField select label="Index Symbol" value={historyFilters.indexSymbol} onChange={(e) => setHistoryFilters({ ...historyFilters, indexSymbol: e.target.value, symbol: '' })}>
-              {INDEX_SYMBOLS.map(i => <MenuItem key={i} value={i}>{i}</MenuItem>)}
-            </TextField>
-            <TextField
-              select
-              label="Symbol"
-              value={historyFilters.symbol}
-              onChange={(e) => setHistoryFilters({ ...historyFilters, symbol: e.target.value })}
-              disabled={symbolLoading || dynamicSymbols.length === 0}
-              placeholder="Select Contract"
-            >
-              {dynamicSymbols.length === 0 && (
-                <MenuItem disabled value="">No symbols found for criteria</MenuItem>
-              )}
-              {dynamicSymbols.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-            </TextField>
-
-            <TextField select label="Strategy" value={historyFilters.strategy} onChange={(e) => setHistoryFilters({ ...historyFilters, strategy: e.target.value })}>
-              {STRATEGIES.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-            </TextField>
-            <TextField select label="Open/Close" value={historyFilters.status} onChange={(e) => setHistoryFilters({ ...historyFilters, status: e.target.value })}>
-              {OPEN_CLOSE_OPTIONS.map((o) => {
-                let label = o;
-                if (o === 'CLOSED') label = 'Close';
-                if (o === 'OPEN') label = 'Open';
-                return (
-                  <MenuItem key={o} value={o}>
-                    {label}
-                  </MenuItem>
-                );
-              })}
-            </TextField>
-            <TextField label="Lots" type="number" value={historyFilters.lots} onChange={(e) => setHistoryFilters({ ...historyFilters, lots: e.target.value })} />
-
-            <Stack direction="row" spacing={1} sx={{ gridColumn: '1 / -1' }}>
-              <Button variant="contained" color="primary" onClick={fetchHistory} disabled={historyLoading} sx={{ minWidth: 120 }}>
-                {historyLoading ? 'Loading...' : 'Apply Filters'}
-              </Button>
-              <Button variant="outlined" color="inherit" onClick={() => setHistoryFilters({ fromDate: format(new Date(), 'yyyy-MM-01'), toDate: format(new Date(), 'yyyy-MM-dd'), indexSymbol: 'All', symbol: '', strategy: 'All', status: 'All', lots: '' })}>
-                Reset
-              </Button>
-            </Stack>
+          <Box sx={{ mb: 3, p: 2, bgcolor: 'background.neutral', borderRadius: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+             <Stack direction="row" spacing={1} alignItems="center">
+                <Iconify icon="solar:history-bold-duotone" width={28} color="info.main" />
+                <Typography variant="h6">Recent Trade History</Typography>
+             </Stack>
+             <Button size="small" variant="soft" color="info" onClick={fetchHistory}>Refresh Status</Button>
           </Box>
 
-          <Box sx={{ mb: 3, p: 2, bgcolor: 'background.neutral', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="subtitle1">Total Realised P/L</Typography>
-            <Typography variant="h5" color={totalPnl >= 0 ? 'success.main' : 'error.main'}>
-              {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)}
-            </Typography>
-          </Box>
-
-          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1.5 }}>
-            <Table>
+          <TableContainer component={Paper} elevation={0} variant="outlined" sx={{ borderRadius: 1.5 }}>
+            <Table size="small">
               <TableHead>
                 <TableRow>
                   <TableCell>Signal Time</TableCell>
                   <TableCell>Symbol</TableCell>
                   <TableCell>Strategy</TableCell>
                   <TableCell>Type</TableCell>
-                  <TableCell>Qty</TableCell>
-                  <TableCell>Entry Price</TableCell>
-                  <TableCell>Exit Price</TableCell>
-                  <TableCell>Realised P/L</TableCell>
+                  <TableCell align="right">Qty</TableCell>
+                  <TableCell align="right">Entry Price</TableCell>
+                  <TableCell align="right">Exit Price</TableCell>
+                  <TableCell align="right">Realised P/L</TableCell>
                   <TableCell>Status</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {historyLoading && (
-                  <TableRow><TableCell colSpan={8} align="center" sx={{ py: 3 }}>Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} align="center" sx={{ py: 6 }}>Loading history...</TableCell></TableRow>
                 )}
-
                 {!historyLoading && history.length === 0 && (
-                  <TableRow><TableCell colSpan={8} align="center" sx={{ py: 3 }}>No history found.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} align="center" sx={{ py: 6 }}>No history records.</TableCell></TableRow>
                 )}
-
                 {!historyLoading && history.map((row: any) => (
-                  <TableRow key={row._id}>
+                  <TableRow key={row._id} hover>
                     <TableCell>{format(new Date(row.createdAt), 'dd/MM/yyyy HH:mm:ss')}</TableCell>
-                    <TableCell>{row.tradingsymbol}</TableCell>
-                    <TableCell>{row.strategy || '-'}</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{row.tradingsymbol}</TableCell>
+                    <TableCell><Chip label={row.strategy || '-'} size="small" variant="soft" /></TableCell>
                     <TableCell>
                       <Label color={row.side === 'BUY' ? 'success' : 'error'} variant="soft">
                         {row.side}
                       </Label>
                     </TableCell>
-                    <TableCell>{row.quantity}</TableCell>
-                    <TableCell>{row.entryPrice.toFixed(2)}</TableCell>
-                    <TableCell>{row.exitPrice?.toFixed(2) || '-'}</TableCell>
-                    <TableCell sx={{ color: (row.pnl || 0) >= 0 ? 'success.main' : 'error.main', fontWeight: 'bold' }}>
-                      {(row.pnl || 0).toFixed(2)}
+                    <TableCell align="right">{row.quantity}</TableCell>
+                    <TableCell align="right">₹{row.entryPrice.toFixed(2)}</TableCell>
+                    <TableCell align="right">₹{(row.exitPrice || 0).toFixed(2) || '-'}</TableCell>
+                    <TableCell align="right" sx={{ color: (row.pnl || 0) >= 0 ? 'success.main' : 'error.main', fontWeight: 'bold' }}>
+                      ₹{(row.pnl || 0).toFixed(2)}
                     </TableCell>
                     <TableCell>
                       <Label variant="soft" color={row.status === 'CLOSED' ? 'default' : 'info'}>
-                        {row.status === 'CLOSED' ? 'Closed' : row.status}
+                        {row.status}
                       </Label>
                     </TableCell>
                   </TableRow>
@@ -501,6 +488,153 @@ export default function OverviewBankingView() {
             </Table>
           </TableContainer>
         </CustomTabPanel>
+
+        {/* --- ORDER HISTORY TAB (ADVANCED) --- */}
+        <CustomTabPanel value={currentTab} index={2}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
+            <TextField type="date" label="From Date" size="small" InputLabelProps={{ shrink: true }} value={historyFilters.fromDate} onChange={(e) => setHistoryFilters({ ...historyFilters, fromDate: e.target.value })} />
+            <TextField type="date" label="To Date" size="small" InputLabelProps={{ shrink: true }} value={historyFilters.toDate} onChange={(e) => setHistoryFilters({ ...historyFilters, toDate: e.target.value })} />
+            <TextField select label="Index Symbol" size="small" value={historyFilters.indexSymbol} onChange={(e) => setHistoryFilters({ ...historyFilters, indexSymbol: e.target.value, symbol: '' })}>
+              {INDEX_SYMBOLS.map(i => <MenuItem key={i} value={i}>{i}</MenuItem>)}
+            </TextField>
+            <TextField
+              select
+              label="Symbol"
+              size="small"
+              value={historyFilters.symbol}
+              onChange={(e) => setHistoryFilters({ ...historyFilters, symbol: e.target.value })}
+              disabled={symbolLoading}
+            >
+              {dynamicSymbols.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+            </TextField>
+
+            <TextField select label="Strategy" size="small" value={historyFilters.strategy} onChange={(e) => setHistoryFilters({ ...historyFilters, strategy: e.target.value })}>
+              {strategies.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+            </TextField>
+            
+            <TextField label="Lots" size="small" type="number" value={historyFilters.lots} onChange={(e) => setHistoryFilters({ ...historyFilters, lots: e.target.value })} />
+            
+            <Stack direction="row" spacing={1} sx={{ gridColumn: 'span 2' }}>
+              <Button variant="contained" color="primary" onClick={fetchHistory} sx={{ flexGrow: 1 }}>Filter History</Button>
+              <Button variant="outlined" color="inherit" onClick={() => setHistoryFilters({ fromDate: format(new Date(), 'yyyy-MM-dd'), toDate: format(new Date(), 'yyyy-MM-dd'), indexSymbol: 'All', symbol: '', strategy: 'All', status: 'CLOSED', lots: '' })}>Reset</Button>
+            </Stack>
+          </Box>
+
+          <Box sx={{ 
+            mb: 3, p: 2, 
+            background: (theme: any) => `linear-gradient(135deg, ${theme.palette.background.neutral} 0%, ${theme.palette.action.selected} 100%)`,
+            borderRadius: 2, border: '1px solid', borderColor: 'divider',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            boxShadow: theme.shadows[1]
+          }}>
+            <Stack direction="row" alignItems="center" spacing={1.5}>
+               <Iconify icon="solar:wallet-money-bold-duotone" width={32} color="primary.main" />
+               <Typography variant="subtitle1" fontWeight={700}>Total Realised P/L</Typography>
+            </Stack>
+            <Typography variant="h4" color={totalPnl >= 0 ? 'success.main' : 'error.main'} sx={{ fontFamily: 'monospace', fontWeight: 900 }}>
+              {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)}
+            </Typography>
+          </Box>
+
+          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1.5, overflow: 'hidden' }}>
+            <Table size="small">
+              <TableHead sx={{ bgcolor: 'background.neutral' }}>
+                <TableRow>
+                  <TableCell>S.No</TableCell>
+                  <TableCell>Signal Time</TableCell>
+                  <TableCell>Symbol</TableCell>
+                  <TableCell>Strategy</TableCell>
+                  <TableCell>Entry Type</TableCell>
+                  <TableCell align="right">Entry Qty</TableCell>
+                  <TableCell align="right">Exit Qty</TableCell>
+                  <TableCell align="right">Entry Price</TableCell>
+                  <TableCell align="right">Exit Price</TableCell>
+                  <TableCell align="right">Total (P&L)</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {historyLoading && (
+                  <TableRow><TableCell colSpan={10} align="center" sx={{ py: 6 }}>Fetching history data...</TableCell></TableRow>
+                )}
+
+                {!historyLoading && history.length === 0 && (
+                  <TableRow><TableCell colSpan={10} align="center" sx={{ py: 6 }}>No historical trades found.</TableCell></TableRow>
+                )}
+
+                {!historyLoading && history.map((row: any, idx) => (
+                  <TableRow key={row._id} hover>
+                    <TableCell>{idx + 1}</TableCell>
+                    <TableCell>{format(new Date(row.createdAt), 'dd MMM, HH:mm')}</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{row.tradingsymbol}</TableCell>
+                    <TableCell><Label variant="soft" color="info">{row.strategy || 'Manual'}</Label></TableCell>
+                    <TableCell>
+                      <Label color={row.side === 'BUY' ? 'success' : 'error'} variant="soft">
+                        {row.side}
+                      </Label>
+                    </TableCell>
+                    <TableCell align="right">{row.quantity}</TableCell>
+                    <TableCell align="right">{row.exitQty || row.quantity}</TableCell>
+                    <TableCell align="right">₹{row.entryPrice.toFixed(2)}</TableCell>
+                    <TableCell align="right">₹{(row.exitPrice || 0).toFixed(2) || '-'}</TableCell>
+                    <TableCell align="right" sx={{ color: (row.pnl || 0) >= 0 ? 'success.main' : 'error.main', fontWeight: 900 }}>
+                      ₹{(row.pnl || 0).toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CustomTabPanel>
+      </Card>
+
+      {/* --- PROFESSIONAL FOOTER --- */}
+      <Card sx={{ p: 4, mt: 4, bgcolor: 'background.neutral', border: '1px solid', borderColor: 'divider' }}>
+        <Stack spacing={3}>
+           <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="overline" color="text.secondary">Regulatory Compliance & Disclaimer</Typography>
+              <Stack direction="row" spacing={1} alignItems="center">
+                 <Typography variant="caption">Language:</Typography>
+                 <Button 
+                   size="small" 
+                   variant={disclLang === 'en' ? 'contained' : 'outlined'} 
+                   onClick={() => setDisclLang('en')}
+                   sx={{ minWidth: 40, py: 0 }}
+                 >EN</Button>
+                 <Button 
+                   size="small" 
+                   variant={disclLang === 'hi' ? 'contained' : 'outlined'} 
+                   onClick={() => setDisclLang('hi')}
+                   sx={{ minWidth: 40, py: 0 }}
+                 >HI</Button>
+              </Stack>
+           </Stack>
+
+           <Box>
+           {disclLang === 'en' ? (
+              <Stack spacing={2}>
+                 <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
+                   <strong>THIS RESULTS IS VALID FOR TODAY ONLY</strong>. WE DO NOT DIRECTLY OR INDIRECTLY MAKE ANY REFERENCE TO THE PAST OR EXPECTED FUTURE RETURN/PERFORMANCE OF THE ALGORITHM.
+                 </Typography>
+                 <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
+                   All securities algorithmic trading systems are subject to market risks and no assurance can be given that the user's objectives will be achieved based on today's performance. This results is intended for informational purposes and should not be construed as financial advice.
+                 </Typography>
+              </Stack>
+           ) : (
+              <Stack spacing={2}>
+                 <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6, fontSize: '0.85rem' }}>
+                   <strong>यह परिणाम केवल आज के लिए मान्य है</strong>। हम प्रत्यक्ष या अप्रत्यक्ष रूप से एल्गोरिदम के पिछले या अपेक्षित भविष्य के लाभ/प्रदर्शन के बारे में कोई संदर्भ नहीं देते हैं।
+                 </Typography>
+                 <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6, fontSize: '0.85rem' }}>
+                   सभी प्रतिभूतियां एल्गो ट्रेडिंग सिस्टम बाजार जोखिमों के अधीन हैं और इस बात का कोई आश्वासन नहीं दिया जा सकता है कि उपयोगकर्ता के उद्देश्यों को आज के प्रदर्शन के आधार पर प्राप्त किया जाएगा। यह परिणाम केवल आज के लिए मान्य है।
+                 </Typography>
+              </Stack>
+           )}
+           </Box>
+
+           <Typography variant="caption" align="center" color="text.disabled" sx={{ pt: 2, borderTop: '1px dashed', borderColor: 'divider' }}>
+             © 2026 Trustifye Algos. All rights reserved. Precise Trading Solutions.
+           </Typography>
+        </Stack>
       </Card>
     </Container >
   );
