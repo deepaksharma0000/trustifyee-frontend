@@ -5,7 +5,6 @@ import {
     Card,
     Table,
     Button,
-    Divider,
     Container,
     TableRow,
     TableBody,
@@ -23,6 +22,8 @@ import { useSettingsContext } from 'src/components/settings';
 import { useSnackbar } from 'src/components/snackbar';
 import { HOST_API } from 'src/config-global';
 import { TableHeadCustom, TableNoData, TableSkeleton } from 'src/components/table';
+// hooks
+import { useAuthUser } from 'src/hooks/use-auth-user';
 //
 import GroupServiceNewForm from '../group-service-new-form';
 
@@ -40,6 +41,16 @@ const TABLE_HEAD = [
 export default function GroupServiceView() {
     const settings = useSettingsContext();
     const { enqueueSnackbar } = useSnackbar();
+    const { user: authUser } = useAuthUser();
+
+    const isMasterAdmin = authUser?.role === 'admin';
+
+    const p = {
+        all: !!authUser?.all_permission,
+        groupService: !!authUser?.group_service_permission,
+    };
+
+    const canManageGroups = isMasterAdmin || p.all || p.groupService;
 
     const [loading, setLoading] = useState(false);
     const [tableData, setTableData] = useState<any[]>([]);
@@ -78,13 +89,15 @@ export default function GroupServiceView() {
                     { name: 'Group Services' },
                 ]}
                 action={
-                    <Button
-                        variant="contained"
-                        startIcon={<Iconify icon={showAddForm ? 'eva:arrow-ios-back-fill' : 'mingcute:add-line'} />}
-                        onClick={() => setShowAddForm(!showAddForm)}
-                    >
-                        {showAddForm ? 'Back to List' : 'Add New Group Service'}
-                    </Button>
+                    canManageGroups && (
+                        <Button
+                            variant="contained"
+                            startIcon={<Iconify icon={showAddForm ? 'eva:arrow-ios-back-fill' : 'mingcute:add-line'} />}
+                            onClick={() => setShowAddForm(!showAddForm)}
+                        >
+                            {showAddForm ? 'Back to List' : 'Add New Group Service'}
+                        </Button>
+                    )
                 }
                 sx={{ mb: { xs: 3, md: 5 } }}
             />
@@ -104,7 +117,7 @@ export default function GroupServiceView() {
                                     ) : (
                                         <>
                                             {tableData.map((row) => (
-                                                <GroupTableRow key={row._id} row={row} onDelete={() => fetchGroups()} />
+                                                <GroupTableRow key={row._id} row={row} onDelete={() => fetchGroups()} canDelete={canManageGroups} />
                                             ))}
                                             <TableNoData notFound={!tableData.length} />
                                         </>
@@ -121,7 +134,7 @@ export default function GroupServiceView() {
 
 // ----------------------------------------------------------------------
 
-function GroupTableRow({ row, onDelete }: { row: any; onDelete: () => void }) {
+function GroupTableRow({ row, onDelete, canDelete }: { row: any; onDelete: () => void, canDelete: boolean }) {
     const { enqueueSnackbar } = useSnackbar();
 
     const handleDelete = async () => {
@@ -175,14 +188,16 @@ function GroupTableRow({ row, onDelete }: { row: any; onDelete: () => void }) {
                 </Typography>
             </TableCell>
             <TableCell align="right">
-                <Button
-                    size="small"
-                    color="error"
-                    startIcon={<Iconify icon="solar:trash-bin-trash-bold" />}
-                    onClick={handleDelete}
-                >
-                    Delete
-                </Button>
+                {canDelete && (
+                    <Button
+                        size="small"
+                        color="error"
+                        startIcon={<Iconify icon="solar:trash-bin-trash-bold" />}
+                        onClick={handleDelete}
+                    >
+                        Delete
+                    </Button>
+                )}
             </TableCell>
         </TableRow>
     );

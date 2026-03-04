@@ -108,7 +108,7 @@ export default function OptionChainPage() {
   const blinkTimers = useRef<Record<string, number>>({});
 
   const { user: authUser } = useAuthUser();
-  const isAdmin = authUser?.role === "admin";
+  const isAdmin = authUser?.role === "admin" || authUser?.role === "sub-admin" || authUser?.role === "subadmin";
   const token = localStorage.getItem("authToken");
   const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || "";
   const wsBase = API_BASE

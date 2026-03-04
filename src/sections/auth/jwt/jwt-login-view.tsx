@@ -1,7 +1,7 @@
 import * as Yup from 'yup';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { m } from 'framer-motion';
 import { useState, useRef } from 'react';
 
@@ -9,6 +9,7 @@ import { useState, useRef } from 'react';
 import LoadingButton from '@mui/lab/LoadingButton';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
+import Alert from '@mui/material/Alert';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -479,6 +480,8 @@ function PhoneVerifyModal({ open, phone, onVerify, onCancel }: PhoneVerifyModalP
 export default function ClassicLoginView() {
   const password = useBoolean();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionExpired = searchParams.get('reason') === 'session_expired';
   const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || '';
 
   // Pending session state — stored after credentials verified, before phone check
@@ -487,7 +490,7 @@ export default function ClassicLoginView() {
 
   // ✅ Validation
   const LoginSchema = Yup.object().shape({
-    email: Yup.string().required('Email is required'),
+    email: Yup.string().required('Login Identifier (Email, Mobile or Username) is required'),
     password: Yup.string().required('Password is required'),
   });
 
@@ -626,6 +629,24 @@ export default function ClassicLoginView() {
 
   const renderHead = (
     <Stack spacing={1} sx={{ mb: 2 }}>
+      {/* Session Expired Warning Banner */}
+      {sessionExpired && (
+        <Alert
+          severity="warning"
+          icon={<Iconify icon="solar:clock-circle-bold" width={20} />}
+          sx={{
+            mb: 1,
+            borderRadius: 1.5,
+            fontWeight: 600,
+            fontSize: 13,
+            bgcolor: 'warning.lighter',
+            border: '1px solid',
+            borderColor: 'warning.light',
+          }}
+        >
+          ⏱️ Your session has expired. Please login again to continue.
+        </Alert>
+      )}
       <m.div variants={varFade().inDown}>
         <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
           <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#00cc70' }} />
@@ -675,8 +696,8 @@ export default function ClassicLoginView() {
       <m.div variants={varFade().inUp}>
         <RHFTextField
           name="email"
-          label="Identifier"
-          placeholder="Email or Username"
+          label="Login Identifier"
+          placeholder="Email, Mobile or Username"
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">

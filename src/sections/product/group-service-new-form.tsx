@@ -30,6 +30,10 @@ import { HOST_API } from 'src/config-global';
 // ----------------------------------------------------------------------
 
 const SEGMENT_OPTIONS = [
+    { value: 'NIFTY', label: 'NIFTY' },
+    { value: 'BANKNIFTY', label: 'BANKNIFTY' },
+    { value: 'FINNIFTY', label: 'FINNIFTY' },
+    { value: 'SENSEX', label: 'SENSEX' },
     { value: 'C', label: 'CASH' },
     { value: 'F', label: 'FUTURE' },
     { value: 'O', label: 'OPTION' },
@@ -38,10 +42,6 @@ const SEGMENT_OPTIONS = [
     { value: 'CO', label: 'CURRENCY OPTION' },
     { value: 'CF', label: 'CURRENCY FUTURE' },
     { value: 'FO', label: 'FUTURE OPTION' },
-    { value: 'BC', label: 'BSE CASH' },
-    { value: 'BF', label: 'BSE FUTURE' },
-    { value: 'BO', label: 'BSE OPTION' },
-    { value: 'BFO', label: 'BSE FUTURE OPTION' },
 ];
 
 const BROKER_OPTIONS = [
@@ -85,9 +85,9 @@ export default function GroupServiceNewForm({ onSuccess }: Props) {
             {
                 service_id: Math.random().toString(36).substr(2, 9),
                 name: 'ANGELONE',
-                segment: 'OPTION',
-                group_qty: 0,
-                lotsize: '1',
+                segment: 'NIFTY',
+                group_qty: 1,
+                lotsize: '25',
                 product_type: 1,
             },
         ]);

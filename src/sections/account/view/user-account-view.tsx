@@ -316,7 +316,7 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
                 }
               }}
               sx={{ width: 160 }}
-              disabled={user?.role !== 'admin' && user?.role !== 'subadmin'}
+              disabled={user?.role !== 'admin' && user?.role !== 'sub-admin' && user?.role !== 'subadmin'}
             />
           </Box>
 
@@ -537,9 +537,9 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
                               handleUpdateAutoExit(row.orderid, val, true);
                             }
                           }}
-                          disabled={user?.role !== 'admin' && user?.role !== 'subadmin'}
+                          disabled={user?.role !== 'admin' && user?.role !== 'sub-admin' && user?.role !== 'subadmin'}
                         />
-                        {(user?.role === 'admin' || user?.role === 'subadmin') && row.autoSquareOffEnabled && (
+                        {(user?.role === 'admin' || user?.role === 'sub-admin' || user?.role === 'subadmin') && row.autoSquareOffEnabled && (
                           <IconButton
                             size="small"
                             color="error"
@@ -615,78 +615,78 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
         overflow: 'visible',
         mt: embed ? 3 : 0
       }}>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        alignItems="center"
-        spacing={2}
-        sx={{ p: 2.5 }}
-      >
-        <TextField
-          fullWidth
-          placeholder="Search positions..."
-          value={searchQuery}
-          onChange={handleSearch}
-          size="small"
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Iconify icon="eva:search-fill" sx={{ color: 'text.disabled' }} />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ maxWidth: 400 }}
-        />
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          alignItems="center"
+          spacing={2}
+          sx={{ p: 2.5 }}
+        >
+          <TextField
+            fullWidth
+            placeholder="Search positions..."
+            value={searchQuery}
+            onChange={handleSearch}
+            size="small"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Iconify icon="eva:search-fill" sx={{ color: 'text.disabled' }} />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ maxWidth: 400 }}
+          />
 
-        <Stack direction="row" spacing={1} sx={{ ml: 'auto' }}>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={fetchOpenPositions}
-            disabled={loading}
-            startIcon={<Iconify icon="eva:refresh-fill" />}
-          >
-            {loading ? 'Refreshing...' : 'Refresh'}
-          </Button>
-          <Button
-            variant={isMobile ? "contained" : "outlined"}
-            size="small"
-            startIcon={<Iconify icon="eva:filter-fill" />}
-          >
-            Filters
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<Iconify icon="eva:download-fill" />}
-          >
-            Export
-          </Button>
+          <Stack direction="row" spacing={1} sx={{ ml: 'auto' }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={fetchOpenPositions}
+              disabled={loading}
+              startIcon={<Iconify icon="eva:refresh-fill" />}
+            >
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </Button>
+            <Button
+              variant={isMobile ? "contained" : "outlined"}
+              size="small"
+              startIcon={<Iconify icon="eva:filter-fill" />}
+            >
+              Filters
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<Iconify icon="eva:download-fill" />}
+            >
+              Export
+            </Button>
+          </Stack>
         </Stack>
-      </Stack>
 
-      {loading && positions.length === 0 && (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Typography variant="body2" color="text.secondary">
-            Loading positions...
-          </Typography>
-        </Box>
-      )}
+        {loading && positions.length === 0 && (
+          <Box sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              Loading positions...
+            </Typography>
+          </Box>
+        )}
 
-      {error && (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Typography variant="body2" color="error">
-            {error}
-          </Typography>
-        </Box>
-      )}
+        {error && (
+          <Box sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="body2" color="error">
+              {error}
+            </Typography>
+          </Box>
+        )}
 
-      {isMobile ? (
-        <Box sx={{ p: 2 }}>
-          {positions.map(renderMobileCard)}
-        </Box>
-      ) : (
-        renderDesktopTable()
-      )}
+        {isMobile ? (
+          <Box sx={{ p: 2 }}>
+            {positions.map(renderMobileCard)}
+          </Box>
+        ) : (
+          renderDesktopTable()
+        )}
       </Card>
     </>
   );

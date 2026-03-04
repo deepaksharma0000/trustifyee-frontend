@@ -42,7 +42,7 @@ const ICONS = {
 };
 
 // ✅ Utility function to get current role
-const getUserRole = (): "admin" | "subadmin" | "user" => {
+const getUserRole = (): "admin" | "sub-admin" | "subadmin" | "user" => {
   try {
     const userData = localStorage.getItem("authUser");
     if (userData) {
@@ -72,6 +72,8 @@ export function useNavData() {
   const authUser = getAuthUser();
   const role = authUser?.role || "user";
   const isImpersonated = authUser?.impersonated || false;
+  // ✅ Admin/Sub-Admin helper (handles all role variations)
+  const isAdminRole = role === "admin" || role === "sub-admin" || role === "subadmin";
 
   const getUserLicence = (): string => authUser?.licence || "";
 
@@ -135,7 +137,8 @@ export function useNavData() {
             title: t("Sub Admin"),
             path: paths.dashboard.general.analytics,
             icon: <Iconify icon="solar:shield-user-bold-duotone" width={24} />,
-            show: role === "admin" || role === "subadmin",
+            // ✅ Only Master Admin manages Sub-Admins
+            show: role === "admin",
           },
           {
             title: t("Trade Details"),
@@ -150,15 +153,26 @@ export function useNavData() {
             show: role !== "user",
             children: [
               { title: t("All Services"), path: paths.dashboard.product.root },
-              { title: t("Group Services"), path: paths.dashboard.product.groupService },
-              { title: t("Strategis"), path: paths.dashboard.product.new },
-            ],
+              {
+                title: t("Group Services"),
+                path: paths.dashboard.product.groupService,
+                // ✅ Restricted for Sub-Admins without permission
+                show: role === "admin" || !!authUser?.all_permission || !!authUser?.group_service_permission
+              },
+              {
+                title: t("Strategis"),
+                path: paths.dashboard.product.new,
+                // ✅ Restricted for Sub-Admins without permission
+                show: role === "admin" || !!authUser?.all_permission || !!authUser?.strategy_permission
+              },
+            ].filter(child => child.show !== false),
           },
           {
             title: t("Open Position"),
             path: paths.dashboard.order.root,
             icon: <Iconify icon="solar:chart-2-bold-duotone" width={24} />,
-            show: licence !== "Demo", // 🔥 Hide for Demo Users
+            // ✅ Admin/Sub-Admin always see this. Demo users are hidden.
+            show: isAdminRole || licence !== "Demo",
             children: [
               { title: t("Option Chain"), path: paths.dashboard.order.root },
               { title: t("Open Position"), path: paths.dashboard.user.account },
@@ -170,15 +184,23 @@ export function useNavData() {
             icon: <Iconify icon="solar:key-minimalistic-square-bold-duotone" width={24} />,
             show: role !== "user",
             children: [
-              { title: t("Transaction License"), path: paths.dashboard.tour.root },
-              { title: t("Expired License"), path: paths.dashboard.invoice.root },
-            ],
+              {
+                title: t("Transaction License"),
+                path: paths.dashboard.tour.root,
+                show: role === "admin" || !!authUser?.all_permission || !!authUser?.licence_permission
+              },
+              {
+                title: t("Expired License"),
+                path: paths.dashboard.invoice.root,
+                show: role === "admin" || !!authUser?.all_permission || !!authUser?.licence_permission
+              },
+            ].filter(child => child.show !== false),
           },
           {
             title: t("More"),
             path: paths.dashboard.general.file,
             icon: <Iconify icon="solar:menu-dots-bold-duotone" width={24} />,
-            show: role === "admin",
+            show: role === 'admin', // ✅ Usually only for Master Admin
           },
           {
             title: t("Help Center"),
@@ -190,31 +212,35 @@ export function useNavData() {
             title: t("Message Center"),
             path: paths.dashboard.messageCenter,
             icon: <Iconify icon="solar:mailbox-bold-duotone" width={24} />,
-            show: role === "admin", // ✅ Only for Admins
+            show: role === "admin" || role === "sub-admin", // ✅ For Admin & Sub Admin
           },
           {
             title: t("Tickets"),
             path: paths.dashboard.tickets,
             icon: <Iconify icon="solar:ticket-bold-duotone" width={24} />,
-            show: role === "admin", // ✅ Only for Admins
+            show: role === "admin" || role === "sub-admin", // ✅ For Admin & Sub Admin
           },
           {
             title: t("Connect Broker"),
             path: paths.dashboard.brokerConnect,
             icon: <Iconify icon="solar:link-circle-bold-duotone" width={24} />,
-            show: role === "user" && !brokerConnected && licence === "Live",
+
+            show: isAdminRole
+              ? !brokerConnected
+              : (licence === "Live" && !brokerConnected),
           },
           {
             title: t("Broker Response"),
             path: paths.dashboard.brokerResponse,
             icon: <Iconify icon="solar:letter-opened-bold-duotone" width={24} />,
-            show: role === "user" && brokerConnected && licence === "Live",
+
+            show: !isAdminRole && role === "user",
           },
           {
             title: t("FAQ"),
             path: paths.dashboard.faq,
             icon: <Iconify icon="solar:question-circle-bold-duotone" width={24} />,
-            show: true, // ✅ Enabled for All Users (Live + Demo)
+            show: true,
           },
           {
             title: t("Api Info"),
@@ -225,10 +251,9 @@ export function useNavData() {
         ],
       },
     ],
-    [t, role, brokerConnected, licence]
+    [t, role, isAdminRole, brokerConnected, licence, authUser]
   );
 
-  // ✅ Filter items based on show condition & impersonation
   const filteredData = data.map((section) => ({
     ...section,
     items: section.items.filter((item) => {

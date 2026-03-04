@@ -30,7 +30,9 @@ import { useAuthUser } from 'src/hooks/use-auth-user';
 // components
 import Label from 'src/components/label';
 import Iconify from 'src/components/iconify';
-// config
+import { alpha } from '@mui/material/styles';
+import { RouterLink } from 'src/routes/components';
+import { paths } from 'src/routes/paths';
 import { HOST_API } from 'src/config-global';
 // local components
 import AlgoRiskDisclaimer from 'src/components/algo-risk-disclaimer/AlgoRiskDisclaimer';
@@ -88,6 +90,7 @@ interface ClientData {
   avatar_color?: string;
   is_login?: boolean;
   broker_verified?: boolean;
+  broker_session_active?: boolean;  // [NEW] Live broker token check
   is_star: boolean;
 }
 
@@ -99,11 +102,15 @@ const API_BASE_URL = HOST_API || '';
 
 const apiService = {
   registerClient: async (data: any): Promise<ApiResponse> => {
+    const token = localStorage.getItem('authToken');
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { _id, id, srNo, avatar_color, is_login, is_online, created_at, updated_at, updatedAt, __v, ...cleanData } = data;
     const res = await fetch(`${API_BASE_URL}/api/user/register`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-access-token': token || ''
+      },
       body: JSON.stringify(cleanData),
     });
     return res.json();
@@ -169,7 +176,8 @@ const apiService = {
 const getColumns = (
   handleEdit: (c: ClientData) => void,
   handleDelete: (c: ClientData) => void,
-  handleToggleStar: (id: string) => void
+  handleToggleStar: (id: string) => void,
+  p: { viewFull: boolean; canEdit: boolean; goToDashboard: boolean }
 ): GridColDef[] => [
     {
       field: 'is_star',
@@ -198,7 +206,9 @@ const getColumns = (
           </Avatar>
           <Box>
             <Typography variant="subtitle2" noWrap>{params.value}</Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }} noWrap>{params.row.email}</Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }} noWrap>
+              {p.viewFull ? params.row.email : "****@****.com"}
+            </Typography>
           </Box>
         </Box>
       )
@@ -209,10 +219,14 @@ const getColumns = (
       width: 140,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{params.value?.substring(0, 8)}...</Typography>
-          <IconButton size="small" onClick={() => navigator.clipboard.writeText(params.value)}>
-            <Iconify icon="eva:copy-fill" width={14} />
-          </IconButton>
+          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+            {p.viewFull ? `${params.value?.substring(0, 8)}...` : "****"}
+          </Typography>
+          {p.viewFull && (
+            <IconButton size="small" onClick={() => navigator.clipboard.writeText(params.value)}>
+              <Iconify icon="eva:copy-fill" width={14} />
+            </IconButton>
+          )}
         </Box>
       )
     },
@@ -228,17 +242,90 @@ const getColumns = (
     },
     {
       field: 'is_login',
-      headerName: 'Dashboard',
-      width: 100,
+      headerName: 'System Login',
+      width: 115,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => (
+        <Tooltip title={params.value ? 'User is logged into the System' : 'User is offline / Session expired'}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+            <Box sx={{
+              width: 10, height: 10, borderRadius: '50%',
+              bgcolor: params.value ? '#22c55e' : '#ff5630',
+              boxShadow: params.value ? '0 0 7px #22c55e' : 'none',
+              border: '2px solid white',
+              flexShrink: 0,
+            }} />
+            <Typography variant="caption" sx={{ color: params.value ? 'success.main' : 'text.disabled', fontWeight: 600 }}>
+              {params.value ? 'Online' : 'Offline'}
+            </Typography>
+          </Box>
+        </Tooltip>
+      )
+    },
+    {
+      field: 'broker_session_active',
+      headerName: 'Broker Session',
+      width: 130,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => {
+        const isLive = params.row.licence === 'Live';
+        if (!isLive) {
+          return (
+            <Tooltip title="Demo users do not require a broker session">
+              <Label color="default" variant="soft">Demo</Label>
+            </Tooltip>
+          );
+        }
+        const hasSession = !!params.value;
+        return (
+          <Tooltip title={hasSession
+            ? 'Broker is connected — Orders can be placed'
+            : 'No broker session found — User must login to broker first!'
+          }>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+              <Box sx={{
+                width: 10, height: 10, borderRadius: '50%',
+                bgcolor: hasSession ? '#22c55e' : '#ff9800',
+                boxShadow: hasSession ? '0 0 7px #22c55e' : '0 0 7px #ff9800',
+                border: '2px solid white',
+                flexShrink: 0,
+                animation: !hasSession ? 'pulse 1.5s ease-in-out infinite' : 'none',
+                '@keyframes pulse': {
+                  '0%': { opacity: 1 },
+                  '50%': { opacity: 0.4 },
+                  '100%': { opacity: 1 },
+                }
+              }} />
+              <Typography variant="caption" sx={{ color: hasSession ? 'success.main' : 'warning.main', fontWeight: 600 }}>
+                {hasSession ? 'Connected' : 'Login Needed'}
+              </Typography>
+            </Box>
+          </Tooltip>
+        );
+      }
+    },
+    {
+      field: 'review',
+      headerName: 'Go To Dashboard',
+      width: 130,
       align: 'center',
       renderCell: (params) => (
-        <Tooltip title={params.value ? 'Online' : 'Offline'}>
-          <Box sx={{
-            width: 12, height: 12, borderRadius: '50%',
-            bgcolor: params.value ? '#22c55e' : '#ff5630',
-            boxShadow: params.value ? '0 0 8px #22c55e' : 'none',
-            border: '2px solid white'
-          }} />
+        <Tooltip title="Review User Dashboard">
+          <IconButton
+            size="small"
+            color="primary"
+            component={RouterLink as any}
+            href={paths.dashboard.user.review(params.row.id)}
+            disabled={!p.goToDashboard}
+            sx={{
+              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+              '&:hover': { bgcolor: (theme) => alpha(theme.palette.primary.main, 0.16) }
+            }}
+          >
+            <Iconify icon="solar:round-alt-arrow-right-bold-duotone" width={22} />
+          </IconButton>
         </Tooltip>
       )
     },
@@ -263,16 +350,41 @@ const getColumns = (
       type: 'actions',
       headerName: 'Actions',
       width: 80,
-      getActions: (params) => [
-        <GridActionsCellItem key="edit" icon={<Iconify icon="eva:edit-fill" />} label="Edit" onClick={() => handleEdit(params.row)} />,
-        <GridActionsCellItem key="delete" icon={<Iconify icon="eva:trash-2-outline" />} label="Delete" onClick={() => handleDelete(params.row)} sx={{ color: 'error.main' }} />,
-      ]
+      hideable: true,
+      getActions: (params) => {
+        const actions = [];
+        if (p.canEdit) {
+          actions.push(<GridActionsCellItem key="edit" icon={<Iconify icon="eva:edit-fill" />} label="Edit" onClick={() => handleEdit(params.row)} />);
+          actions.push(<GridActionsCellItem key="delete" icon={<Iconify icon="eva:trash-2-outline" />} label="Delete" onClick={() => handleDelete(params.row)} sx={{ color: 'error.main' }} />);
+        }
+        return actions;
+      }
     }
   ];
 
 export default function DataGridCustom({ data = [] }: Props) {
   const { user: authUser } = useAuthUser();
-  const isAdmin = authUser?.role === 'admin';
+  const isMasterAdmin = authUser?.role === 'admin';
+  const isSubAdmin = authUser?.role === 'sub-admin' || authUser?.role === 'subadmin';
+  const isStaff = isMasterAdmin || isSubAdmin;
+
+  // ✅ Permissions Extraction
+  const p = {
+    all: !!authUser?.all_permission,
+    add: !!authUser?.add_client,
+    edit: !!authUser?.edit_client,
+    viewFull: !!authUser?.full_info_view || isMasterAdmin,
+    trade: !!authUser?.trade_history,
+    licence: !!authUser?.licence_permission,
+    strategy: !!authUser?.strategy_permission,
+    groupService: !!authUser?.group_service_permission,
+    apiKey: !!authUser?.update_client_api_key,
+    goToDashboard: !!authUser?.go_to_dashboard || isMasterAdmin,
+  };
+
+  const canShowPanel = isMasterAdmin || isSubAdmin;
+  const canAddClient = isMasterAdmin || p.all || p.add;
+  const canEditClient = isMasterAdmin || p.all || p.edit;
 
   const [clients, setClients] = useState<ClientData[]>(data);
   const [showForm, setShowForm] = useState(false);
@@ -283,12 +395,13 @@ export default function DataGridCustom({ data = [] }: Props) {
   const [clientToDelete, setClientToDelete] = useState<ClientData | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [editingClient, setEditingClient] = useState<ClientData | null>(null);
-  const [groups, setGroups] = useState<any[]>([]); // [NEW]
+  const [groups, setGroups] = useState<any[]>([]);
   const [strategiesList, setStrategiesList] = useState<string[]>(["Beta", "Alpha", "Gamma", "Delta", "Zeta", "Sigma"]);
+  const [subAdminsList, setSubAdminsList] = useState<any[]>([]); // [NEW]
 
   const [formData, setFormData] = useState<ClientFormData>({
     user_name: '', email: '', full_name: '', phone_number: '', broker: 'AngelOne', licence: 'Live',
-    sub_admin: 'admin1', group_service: 'service1', strategies: [], status: 'active', trading_status: 'enabled',
+    sub_admin: '', group_service: '', strategies: [], status: 'active', trading_status: 'enabled',
     api_key: '', client_key: '', start_date: new Date().toISOString().split('T')[0],
     end_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
   });
@@ -323,6 +436,19 @@ export default function DataGridCustom({ data = [] }: Props) {
     } catch (e) { console.error("Failed to fetch strategies"); }
   }, []);
 
+  const fetchSubAdmins = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE_URL}/api/admin/all`, {
+        headers: { 'x-access-token': token || '' }
+      });
+      const json = await res.json();
+      if (json.status) {
+        setSubAdminsList(json.results || []);
+      }
+    } catch (e) { console.error("Failed to fetch sub-admins"); }
+  }, []); // [NEW]
+
   const handleToggleStar = useCallback(async (id: string) => {
     try {
       const res = await apiService.toggleStarClient(id);
@@ -336,12 +462,13 @@ export default function DataGridCustom({ data = [] }: Props) {
   }, []);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (canShowPanel) {
       fetchClients();
-      fetchGroups(); // [NEW]
+      fetchGroups();
       fetchStrategies();
+      fetchSubAdmins();
     }
-  }, [isAdmin, fetchClients, fetchGroups, fetchStrategies]);
+  }, [canShowPanel, fetchClients, fetchGroups, fetchStrategies, fetchSubAdmins]);
 
   const handleEdit = useCallback((c: ClientData) => {
     setEditingClient(c);
@@ -399,23 +526,29 @@ export default function DataGridCustom({ data = [] }: Props) {
     }
   };
 
-  const columns = useMemo(() => getColumns(handleEdit, handleDelete, handleToggleStar), [handleEdit, handleDelete, handleToggleStar]);
+  const columns = useMemo(() => getColumns(handleEdit, handleDelete, handleToggleStar, {
+    viewFull: p.viewFull,
+    canEdit: canEditClient,
+    goToDashboard: p.goToDashboard
+  }), [handleEdit, handleDelete, handleToggleStar, p.viewFull, canEditClient, p.goToDashboard]);
 
   return (
     <Box sx={{ p: 3 }}>
       {/* 🚀 Dashboard for Live Users */}
-      {!isAdmin && authUser?.licence === 'Live' && (
+      {!isStaff && authUser?.licence === 'Live' && (
         <LiveTradingControl user={authUser} />
       )}
 
-      {/* 🛠️ Dashboard for Admin */}
-      {isAdmin && (
+      {/* 🛠️ Dashboard for Admin/Sub-Admin */}
+      {canShowPanel && (
         <>
           <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h4">Client Management</Typography>
-            <Button variant="contained" onClick={() => { setShowForm(!showForm); setEditMode(false); }} startIcon={<Iconify icon="eva:plus-fill" />}>
-              {showForm ? "Hide Form" : "Add New Client"}
-            </Button>
+            {canAddClient && (
+              <Button variant="contained" onClick={() => { setShowForm(!showForm); setEditMode(false); }} startIcon={<Iconify icon="eva:plus-fill" />}>
+                {showForm ? "Hide Form" : "Add New Client"}
+              </Button>
+            )}
           </Box>
 
           {showForm && (
@@ -423,13 +556,19 @@ export default function DataGridCustom({ data = [] }: Props) {
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 3 }}>{editMode ? 'Edit Client' : 'Create New Client'}</Typography>
                 <Grid container spacing={2.5}>
-                  <Grid item xs={12} sm={6}><TextField fullWidth label="Username" value={formData.user_name} onChange={(e) => setFormData({ ...formData, user_name: e.target.value })} /></Grid>
+                  <Grid item xs={12} sm={6}><TextField fullWidth label="Username" helperText="Primary login ID" value={formData.user_name} onChange={(e) => setFormData({ ...formData, user_name: e.target.value })} /></Grid>
                   <Grid item xs={12} sm={6}><TextField fullWidth label="Full Name" value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} /></Grid>
-                  <Grid item xs={12} sm={6}><TextField fullWidth label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></Grid>
-                  <Grid item xs={12} sm={6}><TextField fullWidth label="Mobile" value={formData.phone_number} onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })} /></Grid>
+                  <Grid item xs={12} sm={6}><TextField fullWidth label="Email" helperText="Can be used for login" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></Grid>
+                  <Grid item xs={12} sm={6}><TextField fullWidth label="Mobile" helperText="Can be used for login" value={formData.phone_number} onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })} /></Grid>
 
                   <Grid item xs={12} sm={6}>
-                    <TextField fullWidth select label="Licence" value={formData.licence} onChange={(e) => setFormData({ ...formData, licence: e.target.value })}>
+                    <TextField
+                      fullWidth select label="Licence"
+                      value={formData.licence}
+                      onChange={(e) => setFormData({ ...formData, licence: e.target.value })}
+                      disabled={!isMasterAdmin && !p.all && !p.licence}
+                      helperText={(!isMasterAdmin && !p.all && !p.licence) ? "Permission Required to change Licence" : ""}
+                    >
                       <MenuItem value="Live">Live</MenuItem>
                       <MenuItem value="Demo">Demo</MenuItem>
                     </TextField>
@@ -453,13 +592,19 @@ export default function DataGridCustom({ data = [] }: Props) {
 
                   <Grid item xs={12} sm={6}>
                     <TextField fullWidth select label="Sub-Admin" value={formData.sub_admin} onChange={(e) => setFormData({ ...formData, sub_admin: e.target.value })}>
-                      <MenuItem value="admin1">Admin 1</MenuItem>
-                      <MenuItem value="admin2">Admin 2</MenuItem>
+                      <MenuItem value=""><em>None (Master Admin)</em></MenuItem>
+                      {subAdminsList.map((a) => (
+                        <MenuItem key={a._id} value={a.full_name}>{a.full_name}</MenuItem>
+                      ))}
                     </TextField>
                   </Grid>
 
                   <Grid item xs={12} sm={6}>
-                    <TextField fullWidth select label="Group Service" value={formData.group_service} onChange={(e) => setFormData({ ...formData, group_service: e.target.value })}>
+                    <TextField
+                      fullWidth select label="Group Service" value={formData.group_service} onChange={(e) => setFormData({ ...formData, group_service: e.target.value })}
+                      disabled={!isMasterAdmin && !p.all && !p.groupService}
+                      helperText={(!isMasterAdmin && !p.all && !p.groupService) ? "Permission Required to assign Group Services" : ""}
+                    >
                       <MenuItem value=""><em>None</em></MenuItem>
                       {groups.map((g) => (
                         <MenuItem key={g._id} value={g.name}>{g.name}</MenuItem>
@@ -502,13 +647,23 @@ export default function DataGridCustom({ data = [] }: Props) {
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                       {strategiesList.map(s => (
                         <FormControlLabel key={s} control={
-                          <Checkbox size="small" checked={formData.strategies?.includes(s)} onChange={() => {
-                            const next = formData.strategies?.includes(s) ? formData.strategies.filter(x => x !== s) : [...(formData.strategies || []), s];
-                            setFormData({ ...formData, strategies: next });
-                          }} />
+                          <Checkbox
+                            size="small"
+                            checked={formData.strategies?.includes(s)}
+                            disabled={!isMasterAdmin && !p.all && !p.strategy}
+                            onChange={() => {
+                              const next = formData.strategies?.includes(s) ? formData.strategies.filter(x => x !== s) : [...(formData.strategies || []), s];
+                              setFormData({ ...formData, strategies: next });
+                            }}
+                          />
                         } label={s} />
                       ))}
                     </Box>
+                    {(!isMasterAdmin && !p.all && !p.strategy) && (
+                      <Typography variant="caption" sx={{ color: 'error.main', mt: 1, display: 'block' }}>
+                        * Permission Required to modify strategies
+                      </Typography>
+                    )}
                   </Grid>
 
                   <Grid item xs={12}>
@@ -563,7 +718,7 @@ export default function DataGridCustom({ data = [] }: Props) {
         </DialogActions>
       </Dialog>
 
-      {isAdmin && <AlgoRiskDisclaimer variant="footer" />}
+      {isStaff && <AlgoRiskDisclaimer variant="footer" />}
     </Box>
   );
 }

@@ -6,7 +6,7 @@ import { HOST_API } from 'src/config-global';
 
 const axiosInstance = axios.create({ baseURL: HOST_API });
 
-// ✅ REQUEST INTERCEPTOR (AUTO TOKEN)
+// REQUEST INTERCEPTOR (AUTO TOKEN)
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
@@ -14,6 +14,7 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
+      config.headers['x-access-token'] = token;
     }
 
     return config;
@@ -21,13 +22,35 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ✅ RESPONSE INTERCEPTOR (already present)
+// RESPONSE INTERCEPTOR — handles 401 TOKEN_EXPIRED globally
+let _sessionExpiredHandled = false;
+
 axiosInstance.interceptors.response.use(
   (res) => res,
-  (error) =>
-    Promise.reject(
+  (error) => {
+    const status = error?.response?.status;
+    const code = error?.response?.data?.code;
+
+    // 🔥 Auto-Logout when system session token expires
+    if (status === 401 && code === 'TOKEN_EXPIRED' && !_sessionExpiredHandled) {
+      _sessionExpiredHandled = true;
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      setTimeout(() => {
+        _sessionExpiredHandled = false;
+        // Fire a custom DOM event — App.tsx can listen and show a snackbar
+        window.dispatchEvent(new CustomEvent('session:expired', {
+          detail: { message: 'Your session has expired. Please login again.' }
+        }));
+        window.location.href = '/auth/jwt/login?reason=session_expired';
+      }, 300);
+    }
+
+    return Promise.reject(
       (error.response && error.response.data) || 'Something went wrong'
-    )
+    );
+  }
 );
 
 export default axiosInstance;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Tab,
   Tabs,
@@ -33,7 +33,7 @@ import {
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { LoadingButton } from '@mui/lab';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 // routes
 import { paths } from 'src/routes/paths';
@@ -90,7 +90,7 @@ export default function OverviewBankingView() {
   const navigate = useNavigate();
   const isMobile = useMediaQuery((theme: any) => theme.breakpoints.down('sm'));
   const theme = useTheme();
-  const isAdmin = user?.role === 'admin' || user?.role === 'subadmin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'subadmin' || user?.role === 'sub-admin';
   const isDemo = user?.licence === 'Demo';
 
   const [currentTab, setCurrentTab] = useState(0);
@@ -128,6 +128,29 @@ export default function OverviewBankingView() {
   const [activeUsers, setActiveUsers] = useState<any[]>([]);
   const [activeUsersLoading, setActiveUsersLoading] = useState(false);
   const [globalStatusLoading, setGlobalStatusLoading] = useState(false);
+  const [responses, setResponses] = useState([]);
+  const [responsesLoading, setResponsesLoading] = useState(false);
+
+  const { id: reviewUserId } = useParams();
+  const isReviewMode = !!reviewUserId;
+
+  const availableTabs = useMemo(() => [
+    { label: 'All Signals', icon: 'solar:bolt-bold-duotone', visible: !isReviewMode },
+    { label: 'Trade History', icon: 'solar:history-bold-duotone', visible: true },
+    { label: 'Order History', icon: 'solar:bill-list-bold-duotone', visible: true },
+    { label: 'Broker Response', icon: 'solar:chat-line-bold-duotone', visible: isReviewMode },
+    { label: 'Trading Status', icon: 'solar:shield-check-bold-duotone', visible: isAdmin && !isReviewMode },
+  ].filter((t) => t.visible), [isReviewMode, isAdmin]);
+
+  const getTabIndex = useCallback((label: string) =>
+    availableTabs.findIndex((t) => t.label === label), [availableTabs]);
+
+  useEffect(() => {
+    if (isReviewMode) {
+      const idx = getTabIndex('Trade History');
+      if (idx !== -1) setCurrentTab(idx); // Default to Trade History in Review Mode
+    }
+  }, [isReviewMode]);
 
   const fetchStrategies = useCallback(async () => {
     try {
@@ -140,6 +163,21 @@ export default function OverviewBankingView() {
       console.error('Failed to fetch strategies', err);
     }
   }, []);
+
+  const fetchResponses = useCallback(async () => {
+    try {
+      setResponsesLoading(true);
+      const params = isReviewMode ? { userId: reviewUserId } : {};
+      const res = await axiosInstance.get('/api/orders/broker-responses', { params });
+      if (res.data.status || res.data.ok) {
+        setResponses(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch responses', err);
+    } finally {
+      setResponsesLoading(false);
+    }
+  }, [isReviewMode, reviewUserId]);
 
   const fetchSignals = useCallback(async () => {
     try {
@@ -160,7 +198,8 @@ export default function OverviewBankingView() {
   const fetchHistory = useCallback(async () => {
     try {
       setHistoryLoading(true);
-      const params = { ...historyFilters };
+      const params: any = { ...historyFilters };
+
       // Map frontend labels to backend expected index values
       if (INDEX_MAP[params.indexSymbol]) {
         params.indexSymbol = INDEX_MAP[params.indexSymbol];
@@ -171,6 +210,11 @@ export default function OverviewBankingView() {
       if (params.strategy === 'All') delete (params as any).strategy;
       if (params.status === 'All') delete (params as any).status;
 
+      // [NEW] If in Review Mode, filter history by this client
+      if (isReviewMode) {
+        params.userId = reviewUserId;
+      }
+
       const res = await axiosInstance.get('/api/orders/history-all', { params });
       setHistory(res.data.data || []);
       setTotalPnl(res.data.totalRealisedPnl || 0);
@@ -179,7 +223,7 @@ export default function OverviewBankingView() {
     } finally {
       setHistoryLoading(false);
     }
-  }, [historyFilters]);
+  }, [historyFilters, isReviewMode, reviewUserId]);
 
   const handleBroadcastSignal = async (signalId: string) => {
     try {
@@ -273,14 +317,16 @@ export default function OverviewBankingView() {
 
   useEffect(() => {
     if (isAdmin) {
-      if (currentTab === 0) fetchSignals();
-      else if (currentTab === 1 || currentTab === 2) fetchHistory();
-      else if (currentTab === 3) {
+      const activeLabel = availableTabs[currentTab]?.label;
+      if (activeLabel === 'All Signals') fetchSignals();
+      else if (activeLabel === 'Trade History' || activeLabel === 'Order History') fetchHistory();
+      else if (activeLabel === 'Broker Response') fetchResponses();
+      else if (activeLabel === 'Trading Status') {
         fetchGlobalStatus();
         fetchActiveUsers();
       }
     }
-  }, [isAdmin, currentTab, fetchSignals, fetchHistory, fetchGlobalStatus, fetchActiveUsers]);
+  }, [isAdmin, currentTab, fetchSignals, fetchHistory, fetchGlobalStatus, fetchActiveUsers, fetchResponses, availableTabs]);
 
   const handleHandleExport = async () => {
     try {
@@ -292,6 +338,10 @@ export default function OverviewBankingView() {
       if (params.indexSymbol === 'All') delete (params as any).indexSymbol;
       if (params.strategy === 'All') delete (params as any).strategy;
       if (params.status === 'All') delete (params as any).status;
+
+      if (isReviewMode) {
+        (params as any).userId = reviewUserId;
+      }
 
       const exportUrl = `/api/orders/export-all`;
       const res = await axiosInstance.get(exportUrl, { params, responseType: 'blob' });
@@ -321,9 +371,11 @@ export default function OverviewBankingView() {
       <Card sx={{ p: 3, mb: 3 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
           <Box>
-            <Typography variant="h5" sx={{ mb: 1 }}>Trade Details</Typography>
+            <Typography variant="h5" sx={{ mb: 1 }}>
+              {isReviewMode ? `Client Review: ${reviewUserId}` : 'Trade Details'}
+            </Typography>
             <Typography variant="body2" color="text.secondary">
-              Professional trade analysis and execution logs.
+              {isReviewMode ? 'You are currently in read-only review mode for this client.' : 'Professional trade analysis and execution logs.'}
             </Typography>
           </Box>
           <Stack direction="row" spacing={1}>
@@ -357,32 +409,18 @@ export default function OverviewBankingView() {
             '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0' }
           }}
         >
-          <Tab
-            label="All Signals"
-            icon={<Iconify icon="solar:bolt-bold-duotone" width={22} />}
-            iconPosition="start"
-          />
-          <Tab
-            label="Trade History"
-            icon={<Iconify icon="solar:history-bold-duotone" width={22} />}
-            iconPosition="start"
-          />
-          <Tab
-            label="Order History"
-            icon={<Iconify icon="solar:bill-list-bold-duotone" width={22} />}
-            iconPosition="start"
-          />
-          {isAdmin && (
+          {availableTabs.map((tab, index) => (
             <Tab
-              label="Trading Status"
-              icon={<Iconify icon="solar:shield-check-bold-duotone" width={22} />}
+              key={tab.label}
+              label={tab.label}
+              icon={<Iconify icon={tab.icon} width={22} />}
               iconPosition="start"
             />
-          )}
+          ))}
         </Tabs>
 
         {/* --- LIVE OPERATION TAB --- */}
-        <CustomTabPanel value={currentTab} index={0}>
+        <CustomTabPanel value={currentTab} index={getTabIndex('All Signals')}>
           <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
             <TextField
               sx={{ flexGrow: 1 }}
@@ -495,7 +533,7 @@ export default function OverviewBankingView() {
         </CustomTabPanel>
 
         {/* --- TRADE HISTORY TAB (REINSTATED) --- */}
-        <CustomTabPanel value={currentTab} index={1}>
+        <CustomTabPanel value={currentTab} index={getTabIndex('Trade History')}>
           <Box sx={{ mb: 3, p: 2, bgcolor: 'background.neutral', borderRadius: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Stack direction="row" spacing={1} alignItems="center">
               <Iconify icon="solar:history-bold-duotone" width={28} color="info.main" />
@@ -555,7 +593,7 @@ export default function OverviewBankingView() {
         </CustomTabPanel>
 
         {/* --- ORDER HISTORY TAB (ADVANCED) --- */}
-        <CustomTabPanel value={currentTab} index={2}>
+        <CustomTabPanel value={currentTab} index={getTabIndex('Order History')}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
             <TextField type="date" label="From Date" size="small" InputLabelProps={{ shrink: true }} value={historyFilters.fromDate} onChange={(e) => setHistoryFilters({ ...historyFilters, fromDate: e.target.value })} />
             <TextField type="date" label="To Date" size="small" InputLabelProps={{ shrink: true }} value={historyFilters.toDate} onChange={(e) => setHistoryFilters({ ...historyFilters, toDate: e.target.value })} />
@@ -651,9 +689,52 @@ export default function OverviewBankingView() {
           </TableContainer>
         </CustomTabPanel>
 
+        {/* --- BROKER RESPONSE TAB --- */}
+        <CustomTabPanel value={currentTab} index={getTabIndex('Broker Response')}>
+          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">Broker Execution Logs</Typography>
+            <Button size="small" variant="soft" color="info" onClick={fetchResponses}>Refresh Logs</Button>
+          </Box>
+
+          <TableContainer component={Paper} elevation={0} variant="outlined" sx={{ borderRadius: 1.5 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Time</TableCell>
+                  <TableCell>Action</TableCell>
+                  <TableCell>Symbol</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Message</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {responsesLoading && (
+                  <TableRow><TableCell colSpan={5} align="center" sx={{ py: 6 }}>Fetching logs...</TableCell></TableRow>
+                )}
+                {!responsesLoading && responses.length === 0 && (
+                  <TableRow><TableCell colSpan={5} align="center" sx={{ py: 6 }}>No responses found.</TableCell></TableRow>
+                )}
+                {!responsesLoading && responses.map((row: any) => (
+                  <TableRow key={row._id} hover>
+                    <TableCell sx={{ fontSize: '0.85rem' }}>{format(new Date(row.createdAt), 'dd/MM HH:mm:ss')}</TableCell>
+                    <TableCell><Label variant="soft" color="info">{row.action}</Label></TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{row.tradingsymbol}</TableCell>
+                    <TableCell>
+                      <Label variant="filled" color={row.status === 'SUCCESS' ? 'success' : (row.status === 'REJECTED' ? 'warning' : 'error')}>
+                        {row.status}
+                      </Label>
+                    </TableCell>
+                    <TableCell sx={{ color: row.status !== 'SUCCESS' ? 'error.main' : 'inherit' }}>{row.message}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CustomTabPanel>
+
         {/* --- TRADING STATUS TAB (GLOBAL KILL SWITCH) --- */}
-        {isAdmin && (
-          <CustomTabPanel value={currentTab} index={3}>
+        {isAdmin && !isReviewMode && (
+          <CustomTabPanel value={currentTab} index={getTabIndex('Trading Status')}>
             <Grid container spacing={3}>
               {/* Global Switch Card */}
               <Grid item xs={12} md={4}>

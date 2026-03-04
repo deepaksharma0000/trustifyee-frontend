@@ -30,7 +30,7 @@ const BROKERS = [
         icon: 'simple-icons:angelone',
         color: '#0052cc',
         officialUrl: 'https://smartapi.angelbroking.com/',
-        redirectUrl: 'https://trustifye.co.in/dashboard/banking',
+        redirectUrl: 'https://trustifye.cloud/dashboard/banking',
         steps: [
             { title: 'Login to SmartAPI', description: 'Go to AngelOne SmartAPI portal and login with your credentials.' },
             { title: 'Create New App', description: 'Click on "Create App" button to start the process.' },
@@ -43,7 +43,7 @@ const BROKERS = [
         icon: 'simple-icons:upstox',
         color: '#340f4b',
         officialUrl: 'https://developer.upstox.com/',
-        redirectUrl: 'https://trustifye.co.in/dashboard/banking',
+        redirectUrl: 'https://trustifye.cloud/dashboard/banking',
         steps: [
             { title: 'Visit Developer Hub', description: 'Open Upstox Developer Hub and sign in.' },
             { title: 'App Management', description: 'Go to "My Apps" section.' },
@@ -56,7 +56,7 @@ const BROKERS = [
         icon: 'solar:bank-bold-duotone',
         color: '#e31a2c',
         officialUrl: 'https://neo.kotak.com/',
-        redirectUrl: 'https://trustifye.co.in/dashboard/banking',
+        redirectUrl: 'https://trustifye.cloud/dashboard/banking',
         steps: [
             { title: 'Login Neo Portal', description: 'Go to Kotak Neo developer portal.' },
             { title: 'API Management', description: 'Navigate to API Management tab.' },
@@ -101,7 +101,7 @@ export default function ApiInfoView() {
 
     // ✅ Filter BROKERS based on role and licence
     const filteredBrokers = useMemo(() => {
-        if (role === 'admin' || role === 'subadmin') {
+        if (role === 'admin' || role === 'subadmin' || role === 'sub-admin') {
             return BROKERS;
         }
         if (licence === 'Demo') {
@@ -117,7 +117,7 @@ export default function ApiInfoView() {
 
     // ✅ Dynamic Heading
     const pageHeading = useMemo(() => {
-        if (role === 'admin' || role === 'subadmin') return "Broker Integration";
+        if (role === 'admin' || role === 'subadmin' || role === 'sub-admin') return "Broker Integration";
         if (licence === 'Demo') return "Demo Account Info";
         return connectedBroker ? `${connectedBroker} Integration` : "Broker Integration";
     }, [role, licence, connectedBroker]);

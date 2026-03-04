@@ -372,6 +372,7 @@ export default function SubAdminManagementView() {
                         fullWidth
                         required
                         label="Mobile Number"
+                        helperText="Used as a login identifier"
                         placeholder="10-digit mobile"
                         value={formData.mobile}
                         onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
@@ -383,6 +384,7 @@ export default function SubAdminManagementView() {
                         required
                         type="email"
                         label="Email Address"
+                        helperText="Used as a login identifier"
                         placeholder="rahul@trustifye.com"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}

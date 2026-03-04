@@ -190,7 +190,7 @@ export default function OverviewAppView() {
                 <Button
                   variant="contained" color="error" size="large" fullWidth
                   startIcon={<Iconify icon="mdi:whatsapp" />}
-                  onClick={() => { window.location.href = "https://wa.me/91XXXXXXXXXX?text=Hi, I want to subscribe to Trustifye"; }}
+                  onClick={() => { window.location.href = "https://wa.me/91XXXXXXXXXX?text=Hi, I want to subscribe to Finvesta"; }}
                   sx={{ borderRadius: 2, py: 1.5, fontWeight: 700, fontSize: '1rem', boxShadow: `0 4px 16px ${alpha(theme.palette.error.main, 0.4)}` }}
                 >
                   Upgrade to Live Plan
@@ -283,7 +283,7 @@ export default function OverviewAppView() {
               color: theme.palette.success.main,
               sub: 'Real-time algo trading',
               clickable: true,
-              onClick: () => { window.location.href = "https://wa.me/91XXXXXXXXXX?text=Hi, I want to upgrade to Live on Trustifye"; }
+              onClick: () => { window.location.href = "https://wa.me/91XXXXXXXXXX?text=Hi, I want to upgrade to Live on Finvesta"; }
             },
           ].map((card) => (
             <Grid key={card.label} xs={12} sm={6} md={3}>
