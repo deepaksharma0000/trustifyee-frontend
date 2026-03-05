@@ -150,7 +150,7 @@ export default function OverviewBankingView() {
       const idx = getTabIndex('Trade History');
       if (idx !== -1) setCurrentTab(idx); // Default to Trade History in Review Mode
     }
-  }, [isReviewMode]);
+  }, [isReviewMode, getTabIndex]);
 
   const fetchStrategies = useCallback(async () => {
     try {
@@ -720,7 +720,14 @@ export default function OverviewBankingView() {
                     <TableCell><Label variant="soft" color="info">{row.action}</Label></TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>{row.tradingsymbol}</TableCell>
                     <TableCell>
-                      <Label variant="filled" color={row.status === 'SUCCESS' ? 'success' : (row.status === 'REJECTED' ? 'warning' : 'error')}>
+                      <Label
+                        variant="filled"
+                        color={
+                          (row.status === 'SUCCESS' && 'success') ||
+                          (row.status === 'REJECTED' && 'warning') ||
+                          'error'
+                        }
+                      >
                         {row.status}
                       </Label>
                     </TableCell>

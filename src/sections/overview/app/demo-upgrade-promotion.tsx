@@ -78,7 +78,7 @@ export default function DemoUpgradePromotion() {
                             Go Live. Trade Real.
                         </Typography>
                         <Typography variant="body1" sx={{ opacity: 0.8, fontSize: '1.1rem', lineHeight: 1.6 }}>
-                            You have seen the power of our Algo Trading in Demo mode. Now it's time to put your capital to work with
+                            You have seen the power of our Algo Trading in Demo mode. Now it&apos;s time to put your capital to work with
                             <strong> Real-time execution</strong> and <strong>Premium Signals</strong>.
                         </Typography>
                     </Box>
@@ -101,7 +101,7 @@ export default function DemoUpgradePromotion() {
                             onClick={() => setOpen(false)}
                             sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)', '&:hover': { borderColor: 'white', bgcolor: alpha('#fff', 0.05) } }}
                         >
-                            I'll Continue with Demo
+                            I&apos;ll Continue with Demo
                         </Button>
                     </Stack>
 

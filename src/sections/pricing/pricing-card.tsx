@@ -72,7 +72,9 @@ export default function PricingCard({ card, index, onClick, sx, ...other }: Prop
           typography: 'body2',
         }}
       >
-        {subscription.includes('Yearly') ? '/ year' : subscription.includes('Pro') ? '/ 3 mo' : '/ mo'}
+        {(subscription.includes('Yearly') && '/ year') ||
+          (subscription.includes('Pro') && '/ 3 mo') ||
+          '/ mo'}
       </Typography>
     </Stack>
   );
