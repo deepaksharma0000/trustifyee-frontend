@@ -357,14 +357,14 @@ export default function OverviewBankingView() {
     }
   };
 
-  if (isDemo) {
-    return (
-      <Container maxWidth="xl">
-        <Typography variant="h4" sx={{ mb: 3 }}>Trade Details</Typography>
-        <DemoTradeDetailsView />
-      </Container>
-    );
-  }
+  // if (isDemo) {
+  //   return (
+  //     <Container maxWidth="xl">
+  //       <Typography variant="h4" sx={{ mb: 3 }}>Trade Details</Typography>
+  //       <DemoTradeDetailsView />
+  //     </Container>
+  //   );
+  // }
 
   return (
     <Container maxWidth="xl">

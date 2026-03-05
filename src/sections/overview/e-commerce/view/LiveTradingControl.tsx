@@ -173,7 +173,7 @@ export default function LiveTradingControl({ user }: { user: any }) {
         }
     };
 
-    const isConnected = !!user.broker_connected || localStorage.getItem('angel_jwt') !== null;
+    const isConnected = user.licence === 'Demo' || !!user.broker_connected || localStorage.getItem('angel_jwt') !== null;
 
     if (!isConnected) {
         return (

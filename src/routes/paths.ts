@@ -103,6 +103,7 @@ export const paths = {
     helpCenter: `${ROOTS.DASHBOARD}/help-center`,
     tickets: `${ROOTS.DASHBOARD}/tickets`,
     messageCenter: `${ROOTS.DASHBOARD}/message-center`,
+    subscriptionRequests: `${ROOTS.DASHBOARD}/subscription-requests`,
     faq: `${ROOTS.DASHBOARD}/faq`, // [NEW]
     apiCreate: `${ROOTS.DASHBOARD}/api-create`, // [NEW]
     apiInfo: `${ROOTS.DASHBOARD}/api-info`, // [NEW]

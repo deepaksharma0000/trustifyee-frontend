@@ -73,6 +73,7 @@ const ApiInfoPage = lazy(() => import('src/pages/dashboard/api-info'));
 const BrokerResponsePage = lazy(() => import('src/pages/dashboard/broker-response'));
 const MessageCenterPage = lazy(() => import('src/pages/dashboard/message-center'));
 const TicketsPage = lazy(() => import('src/pages/dashboard/tickets'));
+const SubscriptionRequestsPage = lazy(() => import('src/pages/dashboard/subscription-requests'));
 
 
 // ----------------------------------------------------------------------
@@ -183,6 +184,7 @@ export const dashboardRoutes = [
       { path: 'api-create', element: <ApiCreatePage /> }, // [NEW]
       { path: 'api-info', element: <ApiInfoPage /> }, // [NEW]
       { path: 'broker-response', element: <BrokerResponsePage /> }, // [NEW]
+      { path: 'subscription-requests', element: <SubscriptionRequestsPage /> }, // [NEW]
       { path: 'message-center', element: <MessageCenterPage /> }, // [NEW]
       { path: 'tickets', element: <TicketsPage /> }, // [NEW]
       { path: 'blank', element: <BlankPage /> },

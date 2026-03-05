@@ -169,39 +169,41 @@ export const _homePlans = [...Array(3)].map((_, index) => ({
 
 export const _pricingPlans = [
   {
-    subscription: 'basic',
-    price: 0,
-    caption: 'Forever',
-    lists: ['3 Prototypes', '3 Boards', 'Up To 5 Team Members'],
-    labelAction: 'Current Plan',
+    subscription: 'Lite',
+    price: 1499,
+    caption: 'Best for beginners',
+    lists: ['1 Active Strategy', 'Up to 5 Lots', 'Live Trading Active', 'Market Analysis Access', 'Email Support'],
+    labelAction: 'Get Lite Plan',
+    duration: 1, // month
   },
   {
-    subscription: 'starter',
-    price: 4.99,
-    caption: 'Saving $24 a year',
+    subscription: 'Pro (Most Popular)',
+    price: 3999,
+    caption: 'Designed for serious traders',
     lists: [
-      '3 Prototypes',
-      '3 Boards',
-      'Up To 5 Team Members',
-      'Advanced Security',
-      'Issue Escalation',
+      '3 Active Strategies',
+      'Unlimited Lots',
+      'Priority Signal Execution',
+      'WhatsApp Support',
+      'Custom Strategy Request',
     ],
-    labelAction: 'Choose Starter',
+    labelAction: 'Upgrade to Pro',
+    duration: 3, // 3 months
   },
   {
-    subscription: 'premium',
-    price: 9.99,
-    caption: 'Saving $124 a year',
+    subscription: 'Ultra (Yearly)',
+    price: 11999,
+    caption: 'Built for professionals',
     lists: [
-      '3 Prototypes',
-      '3 Boards',
-      'Up To 5 Team Members',
-      'Advanced Security',
-      'Issue Escalation',
-      'Issue Development license',
-      'Permissions & workflows',
+      'All Strategies Enabled',
+      'Dedicated Account Manager',
+      'Sub-Admin Feature Access',
+      '24/7 Phone Support',
+      'Zero Slippage Priority',
+      'Cloud Server Hosting',
     ],
-    labelAction: 'Choose Premium',
+    labelAction: 'Go Ultra Now',
+    duration: 12, // 12 months
   },
 ];
 

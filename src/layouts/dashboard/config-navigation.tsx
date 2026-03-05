@@ -171,8 +171,8 @@ export function useNavData() {
             title: t("Open Position"),
             path: paths.dashboard.order.root,
             icon: <Iconify icon="solar:chart-2-bold-duotone" width={24} />,
-            // ✅ Admin/Sub-Admin always see this. Demo users are hidden.
-            show: isAdminRole || licence !== "Demo",
+            // ✅ Enabled for all users to see their live/paper positions
+            show: true,
             children: [
               { title: t("Option Chain"), path: paths.dashboard.order.root },
               { title: t("Open Position"), path: paths.dashboard.user.account },
@@ -219,6 +219,12 @@ export function useNavData() {
             path: paths.dashboard.tickets,
             icon: <Iconify icon="solar:ticket-bold-duotone" width={24} />,
             show: role === "admin" || role === "sub-admin", // ✅ For Admin & Sub Admin
+          },
+          {
+            title: t("Subscriptions"),
+            path: paths.dashboard.subscriptionRequests,
+            icon: <Iconify icon="solar:round-transfer-horizontal-bold-duotone" width={24} />,
+            show: role === "admin" || role === "sub-admin",
           },
           {
             title: t("Connect Broker"),

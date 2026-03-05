@@ -37,6 +37,7 @@ import Iconify from 'src/components/iconify';
 import OpenPositionView from 'src/sections/account/view/user-account-view';
 import LiveTradingControl from 'src/sections/overview/e-commerce/view/LiveTradingControl';
 import AlgoRiskDisclaimer from 'src/components/algo-risk-disclaimer/AlgoRiskDisclaimer';
+import DemoUpgradePromotion from '../demo-upgrade-promotion';
 
 // ----------------------------------------------------------------------
 
@@ -189,11 +190,11 @@ export default function OverviewAppView() {
                 </Stack>
                 <Button
                   variant="contained" color="error" size="large" fullWidth
-                  startIcon={<Iconify icon="mdi:whatsapp" />}
-                  onClick={() => { window.location.href = "https://wa.me/91XXXXXXXXXX?text=Hi, I want to subscribe to Finvesta"; }}
+                  startIcon={<Iconify icon="mdi:rocket-launch" />}
+                  onClick={() => { navigate(paths.pricing); }}
                   sx={{ borderRadius: 2, py: 1.5, fontWeight: 700, fontSize: '1rem', boxShadow: `0 4px 16px ${alpha(theme.palette.error.main, 0.4)}` }}
                 >
-                  Upgrade to Live Plan
+                  View Plans & Upgrade
                 </Button>
               </CardContent>
             </Card>
@@ -205,6 +206,9 @@ export default function OverviewAppView() {
     // ── ACTIVE DEMO USER DASHBOARD ──────────────────────────────────────
     return (
       <Container maxWidth="xl" sx={{ pt: 2 }}>
+        {user.licence === 'Demo' && (
+          <DemoUpgradePromotion />
+        )}
         {/* Hero Banner */}
         <Card sx={{
           mb: 3, borderRadius: 3, overflow: 'hidden', position: 'relative',
@@ -283,7 +287,7 @@ export default function OverviewAppView() {
               color: theme.palette.success.main,
               sub: 'Real-time algo trading',
               clickable: true,
-              onClick: () => { window.location.href = "https://wa.me/91XXXXXXXXXX?text=Hi, I want to upgrade to Live on Finvesta"; }
+              onClick: () => { navigate(paths.pricing); }
             },
           ].map((card) => (
             <Grid key={card.label} xs={12} sm={6} md={3}>
@@ -349,6 +353,11 @@ export default function OverviewAppView() {
             />
           </CardContent>
         </Card>
+
+        {/* Live Trading Control (Manual Orders) */}
+        <Box sx={{ mb: 3 }}>
+          <LiveTradingControl user={user} />
+        </Box>
 
         {/* Open Positions */}
         <OpenPositionView embed />

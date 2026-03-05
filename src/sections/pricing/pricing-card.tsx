@@ -24,9 +24,10 @@ type Props = CardProps & {
     lists: string[];
   };
   index: number;
+  onClick?: VoidFunction;
 };
 
-export default function PricingCard({ card, sx, ...other }: Props) {
+export default function PricingCard({ card, index, onClick, sx, ...other }: Props) {
   const { subscription, price, caption, lists, labelAction } = card;
 
   const basic = subscription === 'basic';
@@ -56,11 +57,9 @@ export default function PricingCard({ card, sx, ...other }: Props) {
     </Stack>
   );
 
-  const renderPrice = basic ? (
-    <Typography variant="h2">Free</Typography>
-  ) : (
+  const renderPrice = (
     <Stack direction="row">
-      <Typography variant="h4">$</Typography>
+      <Typography variant="h4">₹</Typography>
 
       <Typography variant="h2">{price}</Typography>
 
@@ -73,7 +72,7 @@ export default function PricingCard({ card, sx, ...other }: Props) {
           typography: 'body2',
         }}
       >
-        / mo
+        {subscription.includes('Yearly') ? '/ year' : subscription.includes('Pro') ? '/ 3 mo' : '/ mo'}
       </Typography>
     </Stack>
   );
@@ -147,8 +146,8 @@ export default function PricingCard({ card, sx, ...other }: Props) {
         fullWidth
         size="large"
         variant="contained"
-        disabled={basic}
         color={starter ? 'primary' : 'inherit'}
+        onClick={onClick}
       >
         {labelAction}
       </Button>

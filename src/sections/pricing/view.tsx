@@ -1,3 +1,4 @@
+import { useState } from 'react';
 // @mui
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -8,6 +9,7 @@ import Typography from '@mui/material/Typography';
 import { _pricingPlans } from 'src/_mock';
 //
 import PricingCard from './pricing-card';
+import SubscriptionPaymentDialog from './subscription-payment-dialog';
 
 // ----------------------------------------------------------------------
 
@@ -27,6 +29,14 @@ const arrow = (
 );
 
 export default function PricingView() {
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const [openPayment, setOpenPayment] = useState(false);
+
+  const handleSelectPlan = (plan: any) => {
+    setSelectedPlan(plan);
+    setOpenPayment(true);
+  };
+
   return (
     <Container
       sx={{
@@ -35,6 +45,11 @@ export default function PricingView() {
         minHeight: 1,
       }}
     >
+      <SubscriptionPaymentDialog
+        open={openPayment}
+        onClose={() => setOpenPayment(false)}
+        plan={selectedPlan}
+      />
       <Typography variant="h3" align="center" sx={{ mb: 2 }}>
         Flexible plans for your
         <br /> {`community's size and needs`}
@@ -77,7 +92,12 @@ export default function PricingView() {
         gridTemplateColumns={{ md: 'repeat(3, 1fr)' }}
       >
         {_pricingPlans.map((card, index) => (
-          <PricingCard key={card.subscription} card={card} index={index} />
+          <PricingCard
+            key={card.subscription}
+            card={card}
+            index={index}
+            onClick={() => handleSelectPlan(card)}
+          />
         ))}
       </Box>
     </Container>
