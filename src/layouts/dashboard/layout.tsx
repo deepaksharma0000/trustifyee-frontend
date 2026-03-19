@@ -5,13 +5,13 @@ import { useBoolean } from 'src/hooks/use-boolean';
 import { useResponsive } from 'src/hooks/use-responsive';
 // components
 import { useSettingsContext } from 'src/components/settings';
+import InactivityTimer from 'src/components/inactivity-timer/InactivityTimer';
 //
 import Main from './main';
 import Header from './header';
 import NavMini from './nav-mini';
 import NavVertical from './nav-vertical';
 import NavHorizontal from './nav-horizontal';
-import InactivityTimer from 'src/components/inactivity-timer/InactivityTimer';
 
 // ----------------------------------------------------------------------
 
