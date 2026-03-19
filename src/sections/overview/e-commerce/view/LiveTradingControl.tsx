@@ -40,6 +40,7 @@ const SYMBOL_COLORS: Record<string, string> = {
 
 export default function LiveTradingControl({ user }: { user: any }) {
     const theme = useTheme();
+    const isAdminRole = user?.role === 'admin' || user?.role === 'sub-admin' || user?.role === 'subadmin';
     const [rows, setRows] = useState<TradingRow[]>([]);
     const [signals, setSignals] = useState<any[]>([]);
     const [brokerResponse, setBrokerResponse] = useState<any>(null);
@@ -448,7 +449,7 @@ export default function LiveTradingControl({ user }: { user: any }) {
                             <TableRow sx={{
                                 background: 'linear-gradient(90deg, rgba(99,102,241,0.06) 0%, rgba(139,92,246,0.04) 100%)',
                             }}>
-                                {['S.No', 'Symbol', 'Lot Size', 'Max Qty', 'Lots', 'Quantity', 'Strategy', 'Order Type', 'Product', 'Action'].map((h) => (
+                                {['S.No', 'Symbol', 'Lot Size', 'Max Qty', 'Lots', 'Quantity', 'Strategy', 'Order Type', 'Product', ...(isAdminRole ? ['Action'] : [])].map((h) => (
                                     <TableCell
                                         key={h}
                                         align={['Lot Size', 'Max Qty', 'Lots', 'Quantity', 'Action'].includes(h) ? 'center' : 'left'}
@@ -554,48 +555,50 @@ export default function LiveTradingControl({ user }: { user: any }) {
                                                 {['MIS', 'CNC', 'BO', 'CO'].map(opt => <MenuItem key={opt} value={opt} sx={{ fontSize: '0.78rem' }}>{opt}</MenuItem>)}
                                             </TextField>
                                         </TableCell>
-                                        <TableCell align="center">
-                                            <Stack direction="row" spacing={0.75} justifyContent="center">
-                                                <Tooltip title={user.trading_status !== 'enabled' ? 'Trading disabled' : `Buy ${row.symbol} CE`}>
-                                                    <span>
-                                                        <Button
-                                                            variant="contained"
-                                                            size="small"
-                                                            onClick={() => handleExecute(row, 'CE')}
-                                                            disabled={user.trading_status !== 'enabled'}
-                                                            sx={{
-                                                                minWidth: 68, fontWeight: 800, fontSize: '0.7rem',
-                                                                background: user.trading_status === 'enabled' ? 'linear-gradient(135deg, #10b981, #059669)' : undefined,
-                                                                boxShadow: user.trading_status === 'enabled' ? `0 2px 8px ${alpha('#10b981', 0.4)}` : 'none',
-                                                                borderRadius: 1.5,
-                                                                '&:hover': { boxShadow: `0 4px 14px ${alpha('#10b981', 0.5)}` }
-                                                            }}
-                                                        >
-                                                            BUY CE
-                                                        </Button>
-                                                    </span>
-                                                </Tooltip>
-                                                <Tooltip title={user.trading_status !== 'enabled' ? 'Trading disabled' : `Buy ${row.symbol} PE`}>
-                                                    <span>
-                                                        <Button
-                                                            variant="contained"
-                                                            size="small"
-                                                            onClick={() => handleExecute(row, 'PE')}
-                                                            disabled={user.trading_status !== 'enabled'}
-                                                            sx={{
-                                                                minWidth: 68, fontWeight: 800, fontSize: '0.7rem',
-                                                                background: user.trading_status === 'enabled' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : undefined,
-                                                                boxShadow: user.trading_status === 'enabled' ? `0 2px 8px ${alpha('#ef4444', 0.4)}` : 'none',
-                                                                borderRadius: 1.5,
-                                                                '&:hover': { boxShadow: `0 4px 14px ${alpha('#ef4444', 0.5)}` }
-                                                            }}
-                                                        >
-                                                            BUY PE
-                                                        </Button>
-                                                    </span>
-                                                </Tooltip>
-                                            </Stack>
-                                        </TableCell>
+                                        {isAdminRole && (
+                                            <TableCell align="center">
+                                                <Stack direction="row" spacing={0.75} justifyContent="center">
+                                                    <Tooltip title={user.trading_status !== 'enabled' ? 'Trading disabled' : `Buy ${row.symbol} CE`}>
+                                                        <span>
+                                                            <Button
+                                                                variant="contained"
+                                                                size="small"
+                                                                onClick={() => handleExecute(row, 'CE')}
+                                                                disabled={user.trading_status !== 'enabled'}
+                                                                sx={{
+                                                                    minWidth: 68, fontWeight: 800, fontSize: '0.7rem',
+                                                                    background: user.trading_status === 'enabled' ? 'linear-gradient(135deg, #10b981, #059669)' : undefined,
+                                                                    boxShadow: user.trading_status === 'enabled' ? `0 2px 8px ${alpha('#10b981', 0.4)}` : 'none',
+                                                                    borderRadius: 1.5,
+                                                                    '&:hover': { boxShadow: `0 4px 14px ${alpha('#10b981', 0.5)}` }
+                                                                }}
+                                                            >
+                                                                BUY CE
+                                                            </Button>
+                                                        </span>
+                                                    </Tooltip>
+                                                    <Tooltip title={user.trading_status !== 'enabled' ? 'Trading disabled' : `Buy ${row.symbol} PE`}>
+                                                        <span>
+                                                            <Button
+                                                                variant="contained"
+                                                                size="small"
+                                                                onClick={() => handleExecute(row, 'PE')}
+                                                                disabled={user.trading_status !== 'enabled'}
+                                                                sx={{
+                                                                    minWidth: 68, fontWeight: 800, fontSize: '0.7rem',
+                                                                    background: user.trading_status === 'enabled' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : undefined,
+                                                                    boxShadow: user.trading_status === 'enabled' ? `0 2px 8px ${alpha('#ef4444', 0.4)}` : 'none',
+                                                                    borderRadius: 1.5,
+                                                                    '&:hover': { boxShadow: `0 4px 14px ${alpha('#ef4444', 0.5)}` }
+                                                                }}
+                                                            >
+                                                                BUY PE
+                                                            </Button>
+                                                        </span>
+                                                    </Tooltip>
+                                                </Stack>
+                                            </TableCell>
+                                        )}
                                     </TableRow>
                                 );
                             })}
