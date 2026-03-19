@@ -392,7 +392,7 @@ export default function UserListView() {
 
         <Box sx={{ mt: 5, py: 3, textAlign: 'center', borderTop: (theme) => `dashed 1px ${theme.palette.divider}` }}>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            CopyRight Finvesta 2026 - 27 . All Rights Reserved
+            CopyRight Trustifye 2026 - 27 . All Rights Reserved
           </Typography>
         </Box>
       </Container>

@@ -613,6 +613,7 @@ export default function ClassicLoginView() {
     if (!pendingSession) return;
     localStorage.setItem('authToken', pendingSession.token);
     localStorage.setItem('authUser', JSON.stringify(pendingSession.authUser));
+    localStorage.setItem('shouldReload', 'true');
     setVerifyOpen(false);
     setPendingSession(null);
     navigate('/dashboard');
@@ -838,7 +839,7 @@ export default function ClassicLoginView() {
                 fontSize: 10
               }}
             >
-              NETWORK SECURE // FINVESTA_ALGO_V5
+              NETWORK SECURE // Trustifye_ALGO_V5
             </Typography>
           </m.div>
         </Box>

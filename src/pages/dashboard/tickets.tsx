@@ -7,7 +7,7 @@ export default function TicketsPage() {
     return (
         <>
             <Helmet>
-                <title> Dashboard: Tickets | Finvesta</title>
+                <title> Dashboard: Tickets | Trustifye</title>
             </Helmet>
 
             <TicketsView />

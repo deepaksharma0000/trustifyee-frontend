@@ -11,6 +11,7 @@ import Header from './header';
 import NavMini from './nav-mini';
 import NavVertical from './nav-vertical';
 import NavHorizontal from './nav-horizontal';
+import InactivityTimer from 'src/components/inactivity-timer/InactivityTimer';
 
 // ----------------------------------------------------------------------
 
@@ -38,9 +39,10 @@ export default function DashboardLayout({ children }: Props) {
   if (isHorizontal) {
     return (
       <>
-        <Header onOpenNav={nav.onTrue} />
+      <InactivityTimer />
+      <Header onOpenNav={nav.onTrue} />
 
-        {lgUp ? renderHorizontal : renderNavVertical}
+      {lgUp ? renderHorizontal : renderNavVertical}
 
         <Main>{children}</Main>
       </>
@@ -50,6 +52,7 @@ export default function DashboardLayout({ children }: Props) {
   if (isMini) {
     return (
       <>
+        <InactivityTimer />
         <Header onOpenNav={nav.onTrue} />
 
         <Box
@@ -69,6 +72,7 @@ export default function DashboardLayout({ children }: Props) {
 
   return (
     <>
+      <InactivityTimer />
       <Header onOpenNav={nav.onTrue} />
 
       <Box

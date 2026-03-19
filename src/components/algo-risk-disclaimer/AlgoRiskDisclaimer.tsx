@@ -36,9 +36,9 @@ function SimpleVariant({ sx }: { sx?: object }) {
         <Box component="span" sx={{ color: 'error.main', fontWeight: 800 }}>Awareness: </Box>
         Investments in securities market are subject to market risks. Read all the related documents carefully before investing.
       </Typography>
-      
+
       <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: 10 }}>
-        © {new Date().getFullYear()} Finvesta Algo Solutions Pvt. Ltd. All rights reserved.
+        © {new Date().getFullYear()} Trustifye Algo Solutions Pvt. Ltd. All rights reserved.
       </Typography>
     </Box>
   );
@@ -72,7 +72,7 @@ function FullFooterVariant({ sx }: { sx?: object }) {
       </Box>
 
       <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1 }}>
-        Finvesta Algo Solutions Pvt. Ltd.
+        Trustifye Algo Solutions Pvt. Ltd.
       </Typography>
       <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mb: 3 }}>
         SEBI Registered Research Analyst · Member: NSE / BSE / MCX · SEBI Reg: INH000XXXXXX
@@ -84,7 +84,7 @@ function FullFooterVariant({ sx }: { sx?: object }) {
       </Typography>
 
       <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: 10 }}>
-        © {new Date().getFullYear()} Finvesta Algo Solutions Pvt. Ltd. All rights reserved.
+        © {new Date().getFullYear()} Trustifye Algo Solutions Pvt. Ltd. All rights reserved.
       </Typography>
     </Box>
   );

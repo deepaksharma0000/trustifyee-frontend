@@ -8,7 +8,7 @@ export default function ApiInfoPage() {
     return (
         <>
             <Helmet>
-                <title> Dashboard: Api Info | Finvesta</title>
+                <title> Dashboard: Api Info | Trustifye</title>
             </Helmet>
 
             <ApiInfoView />

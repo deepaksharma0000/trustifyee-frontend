@@ -7,7 +7,7 @@ export default function MessageCenterPage() {
     return (
         <>
             <Helmet>
-                <title> Dashboard: Message Center | Finvesta</title>
+                <title> Dashboard: Message Center | Trustifye</title>
             </Helmet>
 
             <MessageCenterView />

@@ -22,7 +22,7 @@ import Iconify from 'src/components/iconify';
 
 const LINKS = [
   {
-    headline: 'Finvesta',
+    headline: 'Trustifye',
     children: [
       { name: 'About us', href: paths.about },
       { name: 'Contact us', href: paths.contact },
@@ -38,7 +38,7 @@ const LINKS = [
   },
   {
     headline: 'Contact',
-    children: [{ name: 'support@finvesta.com', href: '#' }],
+    children: [{ name: 'support@Trustifye.com', href: '#' }],
   },
 ];
 
@@ -63,7 +63,7 @@ export default function Footer() {
         <Logo single={false} sx={{ mb: 1, mx: 'auto', height: 40, width: 'auto' }} />
 
         <Typography variant="caption" component="div">
-          © All rights reserved made by Finvesta
+          © All rights reserved made by Trustifye
         </Typography>
       </Container>
     </Box>
@@ -103,8 +103,8 @@ export default function Footer() {
                 mx: { xs: 'auto', md: 'unset' },
               }}
             >
-              The starting point for your next project with Finvesta, built on the newest
-              version of Finvesta ©, ready to be customized to your style.
+              The starting point for your next project with Trustifye, built on the newest
+              version of Trustifye ©, ready to be customized to your style.
             </Typography>
 
             <Stack

@@ -246,7 +246,7 @@ export default function JwtRegisterView() {
               fontSize: 9
             }}
           >
-            NETWORK SECURE // FINVESTA_ALGO_V5
+            NETWORK SECURE // Trustifye_ALGO_V5
           </Typography>
         </m.div>
       </Box>

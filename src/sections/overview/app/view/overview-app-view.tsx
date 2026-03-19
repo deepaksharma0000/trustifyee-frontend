@@ -58,6 +58,19 @@ export default function OverviewAppView() {
   const settings = useSettingsContext();
   const navigate = useNavigate();
   const { user } = useAuthUser() as any;
+
+  // 🔄 1-SECOND RELOAD AFTER LOGIN HANDLER
+  useEffect(() => {
+    const shouldReload = localStorage.getItem('shouldReload');
+    if (shouldReload === 'true') {
+      const timer = setTimeout(() => {
+        localStorage.removeItem('shouldReload');
+        window.location.reload();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, []);
   const isAdmin = user?.role === 'admin' || user?.role === 'sub-admin';
   const isBrokerConnected = !!user?.broker_connected || localStorage.getItem('angel_jwt') !== null;
   const canViewDashboard = isAdmin || isBrokerConnected;

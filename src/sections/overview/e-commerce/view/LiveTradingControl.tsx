@@ -25,9 +25,9 @@ interface TradingRow {
 }
 
 const SYMBOL_LOT_SIZES = {
-    BankNifty: 15,
-    FINNIFTY: 40,
-    NIFTY: 25,
+    BankNifty: 30,
+    FINNIFTY: 60,
+    NIFTY: 65,
     SENSEX: 10
 };
 
@@ -61,22 +61,73 @@ export default function LiveTradingControl({ user }: { user: any }) {
         fetchSignals();
         const interval = setInterval(fetchSignals, 5000);
 
-        const initialRows: TradingRow[] = (['BankNifty', 'FINNIFTY', 'NIFTY', 'SENSEX'] as const).map((sym, idx) => ({
-            id: idx.toString(),
-            symbol: sym,
-            lotSize: SYMBOL_LOT_SIZES[sym],
-            maxQty: SYMBOL_LOT_SIZES[sym] * 40,
-            noOfLots: 1,
-            quantity: SYMBOL_LOT_SIZES[sym],
-            strategy: user.strategies && user.strategies.length > 0 ? user.strategies[0] : 'None',
-            orderType: 'Market',
-            productType: 'MIS',
-            isActive: true
-        }));
+        const initialRows: TradingRow[] = (['BankNifty', 'FINNIFTY', 'NIFTY', 'SENSEX'] as const).map((sym, idx) => {
+            // ✅ Load saved multiplier from user data if it exists
+            const savedMultiplier = (user.lot_multipliers && user.lot_multipliers[sym]) || 1;
+            
+            return {
+                id: idx.toString(),
+                symbol: sym,
+                lotSize: SYMBOL_LOT_SIZES[sym],
+                maxQty: SYMBOL_LOT_SIZES[sym] * 40,
+                noOfLots: savedMultiplier,
+                quantity: savedMultiplier * SYMBOL_LOT_SIZES[sym],
+                strategy: user.strategies && user.strategies.length > 0 ? user.strategies[0] : 'None',
+                orderType: 'Market',
+                productType: 'MIS',
+                isActive: true
+            };
+        });
         setRows(initialRows);
 
         return () => clearInterval(interval);
     }, [user]);
+
+    const handleUpdateMultipliers = async () => {
+        setBrokerResponse(null);
+        try {
+            const token = localStorage.getItem('authToken');
+            
+            // Map current rows to a multiplier object
+            const multipliers: Record<string, number> = {};
+            rows.forEach(row => {
+                multipliers[row.symbol] = row.noOfLots;
+            });
+
+            const response = await fetch(`${HOST_API}/api/user/lot-multipliers/${user._id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-access-token': token || ''
+                },
+                body: JSON.stringify({ lot_multipliers: multipliers })
+            });
+
+            const data = await response.json();
+            if (data.status) {
+                setBrokerResponse({
+                    status: 'success',
+                    message: 'Lot Multipliers updated successfully! All future Admin signals will use these lots.',
+                    time: new Date().toLocaleTimeString()
+                });
+                
+                // Update local user data in localStorage to keep it in sync
+                const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
+                authUser.lot_multipliers = multipliers;
+                localStorage.setItem('authUser', JSON.stringify(authUser));
+
+                // 🔄 Force reload to sync with AuthContext and avoid stale data
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+                
+            } else {
+                throw new Error(data.error || 'Failed to update multipliers');
+            }
+        } catch (err: any) {
+            setBrokerResponse({ status: 'error', message: err.message, time: new Date().toLocaleTimeString() });
+        }
+    };
 
     const handleExecuteSignal = async (signalId: string, lots: number) => {
         setBrokerResponse(null);
@@ -356,18 +407,38 @@ export default function LiveTradingControl({ user }: { user: any }) {
                         </Box>
                     </Stack>
 
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.78rem' }}>Trading:</Typography>
-                        <Chip
-                            label={user.trading_status === 'enabled' ? 'ACTIVE' : 'DISABLED'}
+                    <Stack direction="row" spacing={2} alignItems="center">
+                        <Button
+                            variant="contained"
+                            color="info"
                             size="small"
+                            onClick={handleUpdateMultipliers}
+                            startIcon={<Iconify icon="mdi:content-save-cog" width={16} />}
                             sx={{
-                                fontWeight: 800, fontSize: '0.65rem', letterSpacing: 0.8,
-                                bgcolor: user.trading_status === 'enabled' ? alpha('#22c55e', 0.15) : alpha('#ef4444', 0.15),
-                                color: user.trading_status === 'enabled' ? '#22c55e' : '#ef4444',
-                                border: `1px solid ${user.trading_status === 'enabled' ? alpha('#22c55e', 0.35) : alpha('#ef4444', 0.35)}`,
+                                borderRadius: 1.5,
+                                fontWeight: 800,
+                                fontSize: '0.72rem',
+                                background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                                boxShadow: `0 2px 8px ${alpha('#3b82f6', 0.4)}`,
+                                '&:hover': { boxShadow: `0 4px 14px ${alpha('#3b82f6', 0.5)}` }
                             }}
-                        />
+                        >
+                            Update Multiplier
+                        </Button>
+
+                        <Stack direction="row" spacing={1} alignItems="center">
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.78rem' }}>Trading:</Typography>
+                            <Chip
+                                label={user.trading_status === 'enabled' ? 'ACTIVE' : 'DISABLED'}
+                                size="small"
+                                sx={{
+                                    fontWeight: 800, fontSize: '0.65rem', letterSpacing: 0.8,
+                                    bgcolor: user.trading_status === 'enabled' ? alpha('#22c55e', 0.15) : alpha('#ef4444', 0.15),
+                                    color: user.trading_status === 'enabled' ? '#22c55e' : '#ef4444',
+                                    border: `1px solid ${user.trading_status === 'enabled' ? alpha('#22c55e', 0.35) : alpha('#ef4444', 0.35)}`,
+                                }}
+                            />
+                        </Stack>
                     </Stack>
                 </Box>
 

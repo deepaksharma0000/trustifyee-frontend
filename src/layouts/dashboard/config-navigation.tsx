@@ -144,7 +144,15 @@ export function useNavData() {
             title: t("Trade Details"),
             path: paths.dashboard.general.banking,
             icon: <Iconify icon="solar:bill-list-bold-duotone" width={24} />,
-            show: true, // ✅ Enabled for All Users (Live + Demo + Admin)
+            show: true, // ✅ Enabled for All Users
+            children: [
+              { title: t("Trade Details"), path: paths.dashboard.general.banking },
+              { 
+                title: t("Open Position"), 
+                path: paths.dashboard.user.account,
+                show: licence === "Live" || licence === "Demo"
+              },
+            ].filter(child => child.show !== false),
           },
           {
             title: t("Script Management"),
@@ -168,11 +176,11 @@ export function useNavData() {
             ].filter(child => child.show !== false),
           },
           {
-            title: t("Open Position"),
+            title: t("Option Chain"),
             path: paths.dashboard.order.root,
             icon: <Iconify icon="solar:chart-2-bold-duotone" width={24} />,
-            // ✅ Enabled for all users to see their live/paper positions
-            show: true,
+            // ✅ Only Master Admin manages Option Chain
+            show: role === "admin",
             children: [
               { title: t("Option Chain"), path: paths.dashboard.order.root },
               { title: t("Open Position"), path: paths.dashboard.user.account },
@@ -195,12 +203,6 @@ export function useNavData() {
                 show: role === "admin" || !!authUser?.all_permission || !!authUser?.licence_permission
               },
             ].filter(child => child.show !== false),
-          },
-          {
-            title: t("More"),
-            path: paths.dashboard.general.file,
-            icon: <Iconify icon="solar:menu-dots-bold-duotone" width={24} />,
-            show: role === 'admin', // ✅ Usually only for Master Admin
           },
           {
             title: t("Help Center"),
