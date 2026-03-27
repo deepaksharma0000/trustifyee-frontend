@@ -211,6 +211,12 @@ export function useNavData() {
             ].filter(child => child.show !== false),
           },
           {
+            title: t("Market Analysis"),
+            path: paths.dashboard.marketAnalysis,
+            icon: <Iconify icon="solar:presentation-graph-bold-duotone" width={24} />,
+            show: role === "admin",
+          },
+          {
             title: t("Help Center"),
             path: paths.dashboard.helpCenter,
             icon: <Iconify icon="solar:help-bold-duotone" width={24} />,
