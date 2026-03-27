@@ -32,6 +32,7 @@ import {
   Tabs,
   Tab,
   Divider,
+  LinearProgress,
 } from "@mui/material";
 import { Link as RouterLink } from 'react-router-dom';
 import { paths } from 'src/routes/paths';
@@ -104,6 +105,14 @@ export default function OptionChainPage() {
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [selectedOrderOption, setSelectedOrderOption] = useState<OptionItem | null>(null);
   const [orderSide, setOrderSide] = useState<'BUY' | 'SELL'>('BUY');
+
+  /* ---------------- BROADCAST RESULTS MODAL STATE ---------------- */
+  const [broadcastResults, setBroadcastResults] = useState<{
+    ok: boolean;
+    totalUsers: number;
+    results: any[];
+  } | null>(null);
+  const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
 
   const blinkTimers = useRef<Record<string, number>>({});
 
@@ -592,29 +601,32 @@ export default function OptionChainPage() {
         const json = await res.json();
 
         if (!json.ok) {
-          return { success: false, error: `${opt.tradingsymbol}: ${json.error || "Broadcast failed"}` };
+          return { success: false, error: `${opt.tradingsymbol}: ${json.error || "Broadcast failed"}`, results: [] };
         }
-        return { success: true, totalUsers: json.totalUsers };
+        return { success: true, totalUsers: json.totalUsers, results: json.results || [] };
       } catch (err: any) {
-        return { success: false, error: `${opt.tradingsymbol}: ${err.message || "Network error"}` };
+        return { success: false, error: `${opt.tradingsymbol}: ${err.message || "Network error"}`, results: [] };
       }
     });
 
     const results = await Promise.all(orderPromises);
-    const successCount = results.filter((r) => r.success).length;
-    const failCount = results.filter((r) => !r.success).length;
-    const totalTargeted = results[0]?.success ? results[0].totalUsers : 0;
-    const errors = results.filter((r) => !r.success).map((r) => r.error || "Unknown error");
+    const totalTargeted = results[0]?.totalUsers || 0;
+
+    // Combine all user results from multiple symbols if any
+    const allUserResults: any[] = results.flatMap(r => (r as any).results || []);
 
     // Clear selection after execution
     setSelectedOptions([]);
     setStopLoss("");
     setTarget("");
 
-    // Show results
-    const resultMsg = `✅ Broadcast Success: ${successCount} symbols\n👥 Total Users Processed: ${totalTargeted}\n❌ Failed Symbols: ${failCount}${errors.length > 0 ? `\n\nErrors:\n${errors.join("\n")}` : ""
-      }`;
-    alert(resultMsg);
+    // Open Professional Results Modal
+    setBroadcastResults({
+      ok: results.every(r => r.success),
+      totalUsers: totalTargeted,
+      results: allUserResults
+    });
+    setBroadcastModalOpen(true);
   };
 
   const handleOpenOrderDialog = (opt: OptionItem, side: 'BUY' | 'SELL') => {
@@ -656,56 +668,106 @@ export default function OptionChainPage() {
           `}
         </style>
 
-        {/* Premium Header Summary */}
+        {/* Advanced Market Intelligence Header */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
+          {/* Index Value Card */}
           <Grid item xs={12} md={4}>
-            <Card sx={{ p: 2, display: 'flex', alignItems: 'center', bgcolor: 'primary.darker', color: 'common.white' }}>
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography variant="overline" sx={{ opacity: 0.8 }}>Current Index Value</Typography>
-                <Stack direction="row" spacing={1} alignItems="baseline">
-                  <Typography variant="h3" fontWeight="bold">{indexLtp.toFixed(2)}</Typography>
-                  <Typography variant="subtitle2" sx={{
-                    color: (quoteMap[Object.keys(quoteMap).find(k => ["99926000", "99926009", "99926037"].includes(k)) || '']?.percentChange || 0) >= 0 ? 'success.light' : 'error.light'
-                  }}>
+            <Card sx={{
+              p: 2,
+              display: 'flex',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #021B79 0%, #0575E6 100%)',
+              color: 'common.white',
+              boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.3)',
+              position: 'relative',
+              overflow: 'hidden',
+              minHeight: 110
+            }}>
+              <Box sx={{ flexGrow: 1, zIndex: 1 }}>
+                <Typography variant="overline" sx={{ opacity: 0.8, letterSpacing: 1, fontWeight: '900', fontSize: 10 }}>LIVE INDEX PRICE</Typography>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <Typography variant="h3" fontWeight="900" sx={{ letterSpacing: -1 }}>
+                    {quoteMap[Object.keys(quoteMap).find(k => ["99926000", "99926009", "99926037"].includes(k)) || '']?.ltp?.toFixed(2) || '0.00'}
+                  </Typography>
+                  <Box 
+                    sx={{ 
+                      px: 0.8, py: 0.3, borderRadius: 0.5, fontSize: 12, fontWeight: '900',
+                      bgcolor: (quoteMap[Object.keys(quoteMap).find(k => ["99926000", "99926009", "99926037"].includes(k)) || '']?.percentChange || 0) >= 0 ? 'success.main' : 'error.main',
+                      animation: 'pulse 2s infinite',
+                      mb: 0.5
+                    }}
+                  >
                     {(quoteMap[Object.keys(quoteMap).find(k => ["99926000", "99926009", "99926037"].includes(k)) || '']?.percentChange || 0) >= 0 ? '+' : ''}
                     {quoteMap[Object.keys(quoteMap).find(k => ["99926000", "99926009", "99926037"].includes(k)) || '']?.percentChange?.toFixed(2) || '0.00'}%
-                  </Typography>
+                  </Box>
                 </Stack>
-                <Typography variant="caption" sx={{ opacity: 0.6 }}>Updated: {new Date().toLocaleTimeString()}</Typography>
+                <Typography variant="caption" sx={{ opacity: 0.6, fontSize: 10 }}>Sync: Live Tick Data • {new Date().toLocaleTimeString()}</Typography>
               </Box>
-              <Iconify icon="eva:activity-fill" width={48} sx={{ opacity: 0.2 }} />
             </Card>
           </Grid>
+
+          {/* Market Sentiment Card (Analytics) */}
           <Grid item xs={12} md={4}>
-            <Card sx={{ p: 2, display: 'flex', alignItems: 'center', height: '100%' }}>
+            {(() => {
+              const totalCeOi = marketData.reduce((acc, curr) => {
+                const token = curr.CE?.symboltoken || '';
+                return acc + (quoteMap[token]?.oi || 0);
+              }, 0);
+              const totalPeOi = marketData.reduce((acc, curr) => {
+                const token = curr.PE?.symboltoken || '';
+                return acc + (quoteMap[token]?.oi || 0);
+              }, 0);
+              const pcr = totalCeOi > 0 ? (totalPeOi / totalCeOi).toFixed(2) : "0.00";
+              const isBullish = Number(pcr) > 1;
+              return (
+                <Card sx={{ p: 2, minHeight: 110, display: 'flex', flexDirection: 'column', justifyContent: 'center', border: '1px solid', borderColor: 'divider', bgcolor: 'background.neutral' }}>
+                  <Typography variant="overline" color="text.secondary" sx={{ fontWeight: '900', fontSize: 10 }}>OI SENTIMENT (PCR)</Typography>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Box>
+                      <Typography variant="h4" color={isBullish ? 'success.main' : 'error.main'} fontWeight="900">
+                        {pcr}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontWeight: 800, fontSize: 9 }}>
+                        {isBullish ? 'BULLISH BIAS' : 'BEARISH BIAS'}
+                      </Typography>
+                    </Box>
+                    <Iconify
+                      icon={isBullish ? "solar:round-alt-arrow-up-bold-duotone" : "solar:round-alt-arrow-down-bold-duotone"}
+                      width={32}
+                      color={isBullish ? 'success.main' : 'error.main'}
+                      sx={{ animation: 'float 2s infinite' }}
+                    />
+                  </Stack>
+                  <LinearProgress
+                    variant="determinate"
+                    value={Math.min(100, (totalPeOi / (totalPeOi + totalCeOi || 1)) * 100)}
+                    sx={{ mt: 1, height: 4, borderRadius: 5, bgcolor: 'error.lighter', '& .MuiLinearProgress-bar': { bgcolor: 'success.main' } }}
+                  />
+                </Card>
+              );
+            })()}
+          </Grid>
+
+          {/* Market Status Card */}
+          <Grid item xs={12} md={4}>
+            <Card sx={{ p: 2, minHeight: 110, display: 'flex', alignItems: 'center', border: '1px solid', borderColor: 'divider' }}>
               <Box sx={{ flexGrow: 1 }}>
-                <Typography variant="overline" color="text.secondary">Market Status</Typography>
+                <Typography variant="overline" color="text.secondary" sx={{ fontWeight: '900', fontSize: 10 }}>EXCHANGE STATUS</Typography>
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: marketStatus?.isOpen ? 'success.main' : 'error.main' }} />
-                  <Typography variant="h6" color={marketStatus?.isOpen ? 'success.main' : 'error.main'}>
-                    {marketStatus?.isOpen ? 'MARKET OPEN' : 'MARKET CLOSED'}
+                  <Box sx={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    bgcolor: marketStatus?.isOpen ? 'success.main' : 'error.main',
+                    boxShadow: (theme) => `0 0 10px ${marketStatus?.isOpen ? theme.palette.success.main : theme.palette.error.main}`
+                  }} />
+                  <Typography variant="subtitle1" fontWeight="900" sx={{ textTransform: 'uppercase' }}>
+                    {marketStatus?.isOpen ? 'MARKET OPEN' : 'SYSTEM CLOSED'}
                   </Typography>
                 </Stack>
-                <Typography variant="caption" color="text.secondary">{marketStatus?.message || 'Exchange status updated live'}</Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.2, fontSize: 9 }}>
+                  {marketStatus?.message || 'Data feed active • No Latency'}
+                </Typography>
               </Box>
-              <Iconify icon={marketStatus?.isOpen ? 'eva:trending-up-fill' : 'eva:moon-fill'} width={40} color="text.disabled" />
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Card sx={{ p: 2, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Button
-                  variant="contained"
-                  color="primary"
-                  size="large"
-                  disabled={selectedOptions.length === 0}
-                  onClick={executeSelectedOrders}
-                  startIcon={<Iconify icon="eva:flash-fill" />}
-                  sx={{ px: 4, height: 48, fontWeight: 'bold' }}
-                >
-                  PLACE ORDERS ({selectedOptions.length})
-                </Button>
-              </Stack>
+              <Iconify icon="solar:globus-bold-duotone" width={32} color="text.disabled" />
             </Card>
           </Grid>
         </Grid>
@@ -938,75 +1000,75 @@ export default function OptionChainPage() {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 3 }}>
-      <Card sx={{ p: 3 }}>
-        <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2} sx={{ mb: 3 }}>
-          <Typography variant="h4">
-            📊 {symbol} Option Chain
-          </Typography>
+    <Container maxWidth="xl" sx={{ mt: 1 }}>
+      {/* 🌐 100% REAL-TIME GLOBAL MARKET TICKER (NO MOCK DATA) */}
+      <Box sx={{ mb: 2, height: 46, bgcolor: 'background.neutral', borderRadius: 1, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
+        <iframe 
+          title="global-ticker-tape"
+          src="https://www.tradingview-widget.com/embed-widget/ticker-tape/?locale=in#%7B%22symbols%22%3A%5B%7B%22proName%22%3A%22FOREXCOM%3ASPX500%22%2C%22title%22%3A%22S%26P%20500%22%7D%2C%7B%22proName%22%3A%22FOREXCOM%3ANSXUSD%22%2C%22title%22%3A%22Nasdaq%20100%22%7D%2C%7B%22proName%22%3A%22FX_IDC%3AUSDINR%22%2C%22title%22%3A%22USD%2FINR%22%7D%2C%7B%22proName%22%3A%22BITSTAMP%3ABTCUSD%22%2C%22title%22%3A%22BTC%2FUSD%22%7D%2C%7B%22proName%22%3A%22NSE%3ANIFTY%22%2C%22title%22%3A%22NIFTY%2050%22%7D%2C%7B%22proName%22%3A%22NSE%3ABANKNIFTY%22%2C%22title%22%3A%22BANK%20NIFTY%22%7D%5D%2C%22showSymbolLogo%22%3Atrue%2C%22colorTheme%22%3A%22light%22%2C%22isTransparent%22%3Atrue%2C%22displayMode%22%3A%22adaptive%22%7D"
+          style={{ width: '100%', height: '100%', border: 'none' }}
+        />
+      </Box>
 
-          {isAdmin && (
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Chip
-                color={selectedOptions.length > 0 ? "primary" : "default"}
-                label={`Selected: ${selectedOptions.length}`}
+      <Card sx={{ p: 2 }}>
+        <Box
+          sx={{
+            mb: 4,
+            p: 2.5,
+            borderRadius: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'linear-gradient(90deg, #001529 0%, #003366 100%)',
+            color: 'common.white',
+            boxShadow: '0 4px 20px 0 rgba(0,0,0,0.4)',
+            border: '1px solid rgba(255,255,255,0.1)'
+          }}
+        >
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Box sx={{ position: 'relative', display: 'flex' }}>
+              <Box 
+                component="img" 
+                src="/logo/logo_single.png" 
+                sx={{ 
+                  width: 42, 
+                  height: 42, 
+                  bgcolor: 'common.white', 
+                  borderRadius: '20%',
+                  p: 0.5,
+                  boxShadow: (theme) => theme.customShadows.z8,
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' 
+                }} 
               />
-              <FormControl size="small" sx={{ minWidth: 120 }}>
-                <InputLabel>Quantity</InputLabel>
-                <Select
-                  value={orderQuantity}
-                  label="Quantity"
-                  onChange={(e) => setOrderQuantity(Number(e.target.value))}
-                >
-                  <MenuItem value={1}>1 Lot</MenuItem>
-                  <MenuItem value={2}>2 Lots</MenuItem>
-                  <MenuItem value={3}>3 Lots</MenuItem>
-                  <MenuItem value={5}>5 Lots</MenuItem>
-                  <MenuItem value={10}>10 Lots</MenuItem>
-                </Select>
-              </FormControl>
+              <Box sx={{ 
+                width: 10, height: 10, borderRadius: '50%', bgcolor: 'success.main', 
+                position: 'absolute', bottom: -4, right: -4, border: '2px solid #001529',
+                animation: 'pulse 1.5s infinite'
+              }} />
+            </Box>
+            <Box>
+              <Typography variant="h4" fontWeight="900" sx={{ letterSpacing: 2, textTransform: 'uppercase' }}>
+                {symbol} <span style={{ opacity: 0.6, fontWeight: 400 }}>Option Chain</span>
+              </Typography>
+              <Typography variant="caption" sx={{ opacity: 0.5, letterSpacing: 1 }}>REAL-TIME ALGO TERMINAL v2.0</Typography>
+            </Box>
+          </Stack>
 
-              <TextField
-                label="Stop Loss"
-                size="small"
-                type="number"
-                value={stopLoss}
-                onChange={(e) => setStopLoss(e.target.value)}
-                sx={{ width: 100 }}
-              />
-              <TextField
-                label="Target"
-                size="small"
-                type="number"
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-                sx={{ width: 100 }}
-              />
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Box sx={{
+              bgcolor: 'rgba(255,255,255,0.05)', px: 2, py: 1, borderRadius: 1.5, border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              <Typography variant="overline" sx={{ display: 'block', lineHeight: 1.2, opacity: 0.6 }}>Active Strategy</Typography>
+              <Typography variant="subtitle2" sx={{ color: 'primary.light', fontWeight: 'bold' }}>{strategy || 'MANUAL'}</Typography>
+            </Box>
 
-              <Box sx={{ border: '1px dashed grey', p: 1, borderRadius: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={autoSquareOffEnabled}
-                      onChange={(e) => setAutoSquareOffEnabled(e.target.checked)}
-                      size="small"
-                    />
-                  }
-                  label="Auto Exit"
-                />
-                {autoSquareOffEnabled && (
-                  <TextField
-                    type="datetime-local"
-                    size="small"
-                    value={exitTime}
-                    onChange={(e) => setExitTime(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    label="Exit Time"
-                  />
-                )}
-              </Box>
-            </Stack>
-          )}
+            <Box sx={{
+              bgcolor: 'rgba(255,255,255,0.05)', px: 2, py: 1, borderRadius: 1.5, border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              <Typography variant="overline" sx={{ display: 'block', lineHeight: 1.2, opacity: 0.6 }}>Chain Expiry</Typography>
+              <Typography variant="subtitle2" sx={{ color: 'warning.light', fontWeight: 'bold' }}>{selectedExpiry || 'NOT SELECTED'}</Typography>
+            </Box>
+          </Stack>
         </Box>
 
         <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
@@ -1039,27 +1101,18 @@ export default function OptionChainPage() {
           </FormControl>
 
           {isAdmin && (
-            <>
-              <FormControl size="small" sx={{ minWidth: 200 }}>
-                <InputLabel>Strategy</InputLabel>
-                <Select
-                  label="Strategy"
-                  value={strategy}
-                  onChange={(e) => setStrategy(e.target.value)}
-                >
-                  {strategiesList.map((s) => (
-                    <MenuItem key={s} value={s}>{s}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Button
-                variant="outlined"
-                onClick={handleAutoSelectStrategy}
-                disabled={autoSelecting || !selectedExpiry}
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Strategy</InputLabel>
+              <Select
+                label="Strategy"
+                value={strategy}
+                onChange={(e) => setStrategy(e.target.value)}
               >
-                Auto-Select
-              </Button>
-            </>
+                {strategiesList.map((s) => (
+                  <MenuItem key={s} value={s}>{s}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           )}
         </Stack>
 
@@ -1083,6 +1136,16 @@ export default function OptionChainPage() {
         indexSymbol={symbol}
         lotSize={lotSizeMap[symbol] || 25}
         strategy={strategy}
+        onComplete={(results) => {
+          setBroadcastResults(results);
+          setBroadcastModalOpen(true);
+        }}
+      />
+
+      <BroadcastResultModal
+        open={broadcastModalOpen}
+        onClose={() => setBroadcastModalOpen(false)}
+        data={broadcastResults}
       />
     </Container>
   );
@@ -1101,9 +1164,10 @@ interface OrderDialogProps {
   indexSymbol: string;
   lotSize: number;
   strategy: string;
+  onComplete: (data: any) => void;
 }
 
-function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange, indexSymbol, lotSize, strategy }: OrderDialogProps) {
+function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange, indexSymbol, lotSize, strategy, onComplete }: OrderDialogProps) {
   const [tab, setTab] = useState(0);
   const [productType, setProductType] = useState<'INTRADAY' | 'CARRYFORWARD'>('INTRADAY');
   const [lots, setLots] = useState(1);
@@ -1160,8 +1224,8 @@ function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange,
 
       const json = await res.json();
       if (json.ok) {
-        alert(`✅ Broadcast Complete!\nProcessed for ${json.totalUsers} users.`);
         onClose();
+        onComplete(json);
       } else {
         alert(`❌ Order Failed: ${json.error || "Unknown error"}`);
       }
@@ -1179,73 +1243,76 @@ function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange,
       fullWidth
       maxWidth="xs"
       PaperProps={{
-        sx: { borderRadius: 1.5, overflow: 'hidden' }
+        sx: { 
+          borderRadius: 2, 
+          overflow: 'hidden',
+          boxShadow: (theme) => theme.customShadows.z24,
+          maxHeight: '95vh',
+          width: 440 // Consistent professional width
+        }
       }}
     >
-      <Box sx={{ p: 2, bgcolor: side === 'BUY' ? 'rgba(76, 175, 80, 0.08)' : 'rgba(244, 67, 54, 0.08)' }}>
+      {/* 🚀 Compact Header */}
+      <Box sx={{ 
+        p: 2, 
+        borderBottom: '1px solid', 
+        borderColor: 'divider',
+        bgcolor: side === 'BUY' ? 'rgba(0, 167, 111, 0.05)' : 'rgba(255, 86, 48, 0.05)'
+      }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between">
-          <Stack spacing={0.5}>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="h6" fontWeight="bold" sx={{ color: 'text.primary' }}>
-                {indexSymbol}
+          <Box>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.2 }}>
+              <Typography variant="subtitle1" fontWeight="900">{indexSymbol}</Typography>
+              <Typography variant="caption" sx={{ bgcolor: 'grey.200', px: 0.8, py: 0.2, borderRadius: 0.5, fontWeight: 'bold', fontSize: 10 }}>
+                {new Date(option.expiry).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }).toUpperCase()}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {new Date(option.expiry).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+              <Typography variant="caption" sx={{ bgcolor: option.optiontype === 'CE' ? 'success.lighter' : 'error.lighter', color: option.optiontype === 'CE' ? 'success.darker' : 'error.darker', px: 0.8, py: 0.2, borderRadius: 0.5, fontWeight: '900', fontSize: 10 }}>
+                {option.strike} {option.optiontype}
               </Typography>
-              <Chip
-                label={option.strike}
-                size="small"
-                sx={{ bgcolor: 'grey.200', fontWeight: 'bold' }}
-              />
-              <Chip
-                label={option.optiontype}
-                size="small"
-                color={option.optiontype === 'CE' ? 'success' : 'error'}
-                sx={{ fontWeight: 'bold' }}
-              />
             </Stack>
+            
             <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="h5" color={percentChange >= 0 ? 'success.main' : 'error.main'} fontWeight="bold">
+              <Typography variant="h4" color={side === 'BUY' ? 'success.main' : 'error.main'} fontWeight="800">
                 {ltp.toFixed(2)}
               </Typography>
-              <Typography variant="caption" sx={{ color: percentChange >= 0 ? 'success.main' : 'error.main', fontWeight: 'bold' }}>
-                {percentChange >= 0 ? '▲' : '▼'} {Math.abs(percentChange).toFixed(2)}%
+              <Typography variant="caption" sx={{ color: percentChange >= 0 ? 'success.main' : 'error.main', fontWeight: 'bold', display: 'flex', alignItems: 'center', fontSize: 11 }}>
+                {percentChange >= 0 ? '+' : ''} {percentChange.toFixed(2)}%
+                <Iconify icon={percentChange >= 0 ? "solar:arrow-right-up-bold" : "solar:arrow-right-down-bold"} width={14} sx={{ ml: 0.2 }} />
               </Typography>
             </Stack>
-          </Stack>
+          </Box>
 
           <Stack spacing={1} alignItems="flex-end">
-            <Stack direction="row" spacing={1}>
-              {/* Fullscreen icon mock */}
-              <IconButton size="small" sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
-                <Iconify icon="eva:expand-fill" width={16} />
-              </IconButton>
-              <IconButton size="small" onClick={onClose} sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
-                <Iconify icon="eva:close-fill" width={16} />
-              </IconButton>
-            </Stack>
+            <IconButton size="small" onClick={onClose} sx={{ mb: 0.5 }}>
+               <Iconify icon="eva:close-fill" width={18} />
+            </IconButton>
             <ToggleButtonGroup
               value={side}
               exclusive
               onChange={(e, next) => next && setSide(next)}
               size="small"
-              sx={{ height: 32 }}
+              sx={{ 
+                bgcolor: 'background.neutral',
+                p: 0.3,
+                borderRadius: 1,
+                height: 30,
+                '& .MuiToggleButton-root': { border: 0, px: 2, fontWeight: 'bold', fontSize: 12 }
+              }}
             >
-              <ToggleButton value="BUY" sx={{
-                px: 2,
-                fontWeight: 'bold',
-                '&.Mui-selected': { bgcolor: 'success.main', color: 'common.white', '&:hover': { bgcolor: 'success.dark' } }
+              <ToggleButton value="BUY" sx={{ 
+                borderRadius: '6px !important',
+                '&.Mui-selected': { bgcolor: 'success.main', color: 'common.white', '&:hover': { bgcolor: 'success.dark' } } 
               }}>B</ToggleButton>
-              <ToggleButton value="SELL" sx={{
-                px: 2,
-                fontWeight: 'bold',
-                '&.Mui-selected': { bgcolor: 'error.main', color: 'common.white', '&:hover': { bgcolor: 'error.dark' } }
+              <ToggleButton value="SELL" sx={{ 
+                borderRadius: '6px !important',
+                '&.Mui-selected': { bgcolor: 'error.main', color: 'common.white', '&:hover': { bgcolor: 'error.dark' } } 
               }}>S</ToggleButton>
             </ToggleButtonGroup>
           </Stack>
         </Stack>
       </Box>
 
+      {/* 📑 Compact Tabs */}
       <Tabs
         value={tab}
         onChange={(e, v) => setTab(v)}
@@ -1253,20 +1320,20 @@ function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange,
           px: 2,
           borderBottom: 1,
           borderColor: 'divider',
-          '& .MuiTab-root': { minWidth: 80, fontWeight: 'bold', fontSize: 13 }
+          minHeight: 40,
+          '& .MuiTab-root': { minWidth: 70, fontWeight: 'bold', fontSize: 12, py: 1.5, minHeight: 40 }
         }}
       >
         <Tab label="Regular" />
         <Tab label="Stop Loss" />
         <Tab label="GTT" />
-        <Tab label="SIP" disabled />
       </Tabs>
 
-      <DialogContent sx={{ p: 2.5 }}>
-        <Grid container spacing={2.5}>
-          <Grid item xs={12} sm={4}>
-            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block', fontWeight: 'bold' }}>
-              Product Type
+      <DialogContent sx={{ p: 2 }}>
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.8, display: 'block', fontWeight: '800', fontSize: 10 }}>
+              PRODUCT TYPE
             </Typography>
             <ToggleButtonGroup
               value={productType}
@@ -1274,53 +1341,66 @@ function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange,
               onChange={(e, next) => next && setProductType(next)}
               fullWidth
               size="small"
-              sx={{ height: 36 }}
+              sx={{ 
+                bgcolor: 'background.neutral', 
+                p: 0.3, 
+                borderRadius: 1,
+                height: 32,
+                '& .MuiToggleButton-root': { border: 0, fontWeight: 'bold', fontSize: 11 }
+              }}
             >
-              <ToggleButton value="INTRADAY" sx={{ fontWeight: 'bold' }}>INT</ToggleButton>
-              <ToggleButton value="CARRYFORWARD" sx={{ fontWeight: 'bold' }}>CF</ToggleButton>
+              <ToggleButton value="INTRADAY" sx={{ borderRadius: '6px !important' }}>INT (Intraday)</ToggleButton>
+              <ToggleButton value="CARRYFORWARD" sx={{ borderRadius: '6px !important' }}>CF (Overnight)</ToggleButton>
             </ToggleButtonGroup>
           </Grid>
 
-          <Grid item xs={6} sm={4}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>Lots</Typography>
-              <Typography variant="caption" color="text.disabled" sx={{ fontSize: 10 }}>1 Lot = {lotSize} Qty</Typography>
+          <Grid item xs={6}>
+            <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.5 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: '800', fontSize: 10 }}>LOTS</Typography>
+              <Typography variant="caption" sx={{ bgcolor: 'grey.100', px: 0.5, borderRadius: 0.5, fontSize: 8, fontWeight: 'bold' }}>
+                1 LOT = {lotSize} QTY
+              </Typography>
             </Stack>
             <TextField
               fullWidth
+              variant="outlined"
               size="small"
               type="number"
               value={lots}
               onChange={(e) => setLots(Number(e.target.value))}
-              sx={{ mt: 0.5 }}
+              InputProps={{
+                sx: { fontWeight: 'bold', height: 40 }
+              }}
             />
           </Grid>
 
-          <Grid item xs={6} sm={4}>
-            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block', fontWeight: 'bold' }}>
-              Price
-            </Typography>
+          <Grid item xs={6}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: '800', fontSize: 10 }}>PRICE</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Switch
+                        size="small"
+                        checked={!isLimit}
+                        onChange={() => setIsLimit(!isLimit)}
+                    />
+                    <Typography variant="caption" fontWeight="bold" sx={{ fontSize: 9 }} color={!isLimit ? "primary" : "text.disabled"}>MARKET</Typography>
+                </Box>
+            </Stack>
             <TextField
               fullWidth
+              variant="outlined"
               size="small"
-              value={price}
+              value={isLimit ? price : 'MARKET'}
               onChange={(e) => setPrice(e.target.value)}
               disabled={!isLimit}
-              sx={{ mt: 0.5 }}
+              InputProps={{
+                sx: { fontWeight: 'bold', height: 40, bgcolor: !isLimit ? 'background.neutral' : 'transparent', fontSize: 14 }
+              }}
             />
-            <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 1 }}>
-              <Typography variant="caption" sx={{ fontWeight: isLimit ? 'bold' : 'normal', color: isLimit ? 'primary.main' : 'text.disabled' }}>Limit</Typography>
-              <Switch
-                size="small"
-                checked={!isLimit}
-                onChange={() => setIsLimit(!isLimit)}
-              />
-              <Typography variant="caption" sx={{ fontWeight: !isLimit ? 'bold' : 'normal', color: !isLimit ? 'primary.main' : 'text.disabled' }}>Market</Typography>
-            </Stack>
           </Grid>
         </Grid>
 
-        <Box sx={{ mt: 3 }}>
+        <Box sx={{ mt: 2 }}>
           <FormControlLabel
             control={
               <Switch
@@ -1329,30 +1409,30 @@ function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange,
                 onChange={(e) => setSlTargetEnabled(e.target.checked)}
               />
             }
-            label={<Typography variant="body2" fontWeight="bold">Set Stop Loss / Target</Typography>}
+            label={<Typography variant="caption" fontWeight="bold">Set Stop Loss / Target</Typography>}
           />
           {slTargetEnabled && (
-            <Grid container spacing={2} sx={{ mt: 1, p: 1.5, bgcolor: 'grey.100', borderRadius: 1 }}>
+            <Grid container spacing={1.5} sx={{ mt: 1, p: 1.5, bgcolor: 'background.neutral', borderRadius: 1, border: '1px dashed', borderColor: 'divider' }}>
               <Grid item xs={6}>
-                <Typography variant="caption" fontWeight="bold">Stop Loss</Typography>
+                <Typography variant="caption" fontWeight="800" color="text.secondary" sx={{ fontSize: 9 }}>STOP LOSS</Typography>
                 <TextField
                   fullWidth
                   size="small"
                   value={stopLoss}
                   onChange={(e) => setStopLoss(e.target.value)}
-                  placeholder="SL Price"
-                  sx={{ bgcolor: 'background.paper', mt: 0.5 }}
+                  placeholder="Price"
+                  sx={{ bgcolor: 'background.paper', mt: 0.5, '& .MuiInputBase-root': { height: 32, fontSize: 12 } }}
                 />
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="caption" fontWeight="bold">Target</Typography>
+                <Typography variant="caption" fontWeight="800" color="text.secondary" sx={{ fontSize: 9 }}>TARGET</Typography>
                 <TextField
                   fullWidth
                   size="small"
                   value={target}
                   onChange={(e) => setTarget(e.target.value)}
-                  placeholder="Target Price"
-                  sx={{ bgcolor: 'background.paper', mt: 0.5 }}
+                  placeholder="Price"
+                  sx={{ bgcolor: 'background.paper', mt: 0.5, '& .MuiInputBase-root': { height: 32, fontSize: 12 } }}
                 />
               </Grid>
             </Grid>
@@ -1360,31 +1440,169 @@ function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange,
         </Box>
       </DialogContent>
 
-      <Divider />
+      <Box sx={{ p: 2, bgcolor: 'background.neutral', borderTop: '1px solid', borderColor: 'divider' }}>
+        {(() => {
+            const totalQty = lots * lotSize;
+            const marginRequired = totalQty * ltp;
+            const estimatedCharges = marginRequired > 0 ? 20 + (marginRequired * 0.0006) : 0;
 
-      <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
-        <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
-          <Stack>
-            <Typography variant="caption" color="text.secondary" fontWeight="bold">Available Margin</Typography>
-            <Typography variant="subtitle2" fontWeight="bold">₹ 0.00</Typography>
-          </Stack>
-          <Stack alignItems="flex-end">
-            <Typography variant="caption" color="text.secondary" fontWeight="bold">Charges</Typography>
-            <Typography variant="subtitle2" fontWeight="bold">₹ 0</Typography>
-          </Stack>
-        </Stack>
+            return (
+                <Stack direction="row" justifyContent="space-between" sx={{ mb: 1.5 }}>
+                    <Stack>
+                        <Typography variant="caption" color="text.secondary" fontWeight="800" sx={{ letterSpacing: 0.5, fontSize: 9 }}>MARGIN REQUIRED</Typography>
+                        <Typography variant="h6" fontWeight="900" color="text.primary">
+                            ₹ {marginRequired.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Typography>
+                    </Stack>
+                    <Stack alignItems="flex-end">
+                        <Typography variant="caption" color="text.secondary" fontWeight="800" sx={{ letterSpacing: 0.5, fontSize: 9 }}>EST. CHARGES</Typography>
+                        <Typography variant="subtitle2" fontWeight="bold" color="text.primary">
+                            ₹ {estimatedCharges.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Typography>
+                    </Stack>
+                </Stack>
+            );
+        })()}
 
         <Button
           fullWidth
           variant="contained"
-          size="large"
+          size="medium"
           color={side === 'BUY' ? 'success' : 'error'}
           onClick={handleExecute}
           disabled={executing}
-          sx={{ height: 48, fontWeight: 'bold', fontSize: 16 }}
+          sx={{ 
+            height: 48, 
+            fontWeight: '900', 
+            fontSize: 16, 
+            letterSpacing: 1,
+            boxShadow: (theme) => theme.customShadows[side === 'BUY' ? 'success' : 'error']
+          }}
         >
-          {executing ? <CircularProgress size={24} /> : `PLACE ${side} ORDER`}
+          {executing ? <CircularProgress size={20} color="inherit" /> : `PLACE ${side} ORDER`}
         </Button>
+        <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', mt: 1, opacity: 0.5, fontSize: 9 }}>
+            Trading involves risk. System Generated Order via {strategy || 'Manual'}
+        </Typography>
+      </Box>
+    </Dialog>
+  );
+}
+
+/* ---------------- BROADCAST RESULT MODAL ---------------- */
+
+function BroadcastResultModal({ open, onClose, data }: { open: boolean, onClose: () => void, data: any }) {
+  if (!data) return null;
+
+  const results = data.results || [];
+  const total = data.totalUsers || 0;
+
+  const successCount = results.filter((r: any) => r.status === 'ok').length;
+  const paperCount = results.filter((r: any) => r.status === 'paper').length;
+  const skippedCount = results.filter((r: any) => r.status === 'skipped').length;
+  const errorCount = results.filter((r: any) => r.status === 'error').length;
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+      <Box sx={{ p: 3 }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Box sx={{ width: 40, height: 40, borderRadius: 1.5, bgcolor: 'primary.lighter', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Iconify icon="eva:flash-fill" width={24} color="primary.main" />
+            </Box>
+            <Box>
+              <Typography variant="h5" fontWeight="bold">Broadcast Execution Summary</Typography>
+              <Typography variant="caption" color="text.secondary">Order processed for {total} targeted users</Typography>
+            </Box>
+          </Stack>
+          <IconButton onClick={onClose}>
+            <Iconify icon="eva:close-fill" />
+          </IconButton>
+        </Stack>
+
+        <Grid container spacing={2} sx={{ mb: 4 }}>
+          <Grid item xs={6} md={3}>
+            <Card sx={{ p: 2, textAlign: 'center', bgcolor: 'success.lighter', border: '1px solid', borderColor: 'success.light' }}>
+              <Typography variant="h4" color="success.darker" fontWeight="bold">{successCount}</Typography>
+              <Typography variant="overline" color="success.darker">Live Placed</Typography>
+            </Card>
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <Card sx={{ p: 2, textAlign: 'center', bgcolor: 'info.lighter', border: '1px solid', borderColor: 'info.light' }}>
+              <Typography variant="h4" color="info.darker" fontWeight="bold">{paperCount}</Typography>
+              <Typography variant="overline" color="info.darker">Demo/Paper</Typography>
+            </Card>
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <Card sx={{ p: 2, textAlign: 'center', bgcolor: 'warning.lighter', border: '1px solid', borderColor: 'warning.light' }}>
+              <Typography variant="h4" color="warning.darker" fontWeight="bold">{skippedCount}</Typography>
+              <Typography variant="overline" color="warning.darker">Offline/Skipped</Typography>
+            </Card>
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <Card sx={{ p: 2, textAlign: 'center', bgcolor: 'error.lighter', border: '1px solid', borderColor: 'error.light' }}>
+              <Typography variant="h4" color="error.darker" fontWeight="bold">{errorCount}</Typography>
+              <Typography variant="overline" color="error.darker">Errors</Typography>
+            </Card>
+          </Grid>
+        </Grid>
+
+        <Typography variant="subtitle2" sx={{ mb: 1.5, px: 0.5 }}>Individual User Status</Typography>
+
+        <TableContainer component={Paper} sx={{ maxHeight: 400, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', overflow: 'auto' }}>
+          <Table stickyHeader size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ bgcolor: 'background.neutral' }}>User Name</TableCell>
+                <TableCell sx={{ bgcolor: 'background.neutral' }}>Licence</TableCell>
+                <TableCell sx={{ bgcolor: 'background.neutral' }} align="center">Online</TableCell>
+                <TableCell sx={{ bgcolor: 'background.neutral' }} align="center">Broker</TableCell>
+                <TableCell sx={{ bgcolor: 'background.neutral' }}>Status</TableCell>
+                <TableCell sx={{ bgcolor: 'background.neutral' }}>Message/ID</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {results.map((r: any, i: number) => (
+                <TableRow key={i} hover>
+                  <TableCell>
+                    <Typography variant="subtitle2">{r.userName}</Typography>
+                    <Typography variant="caption" color="text.secondary">{r.userId?.slice(-6) || 'N/A'}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip size="small" label={r.licence} color={r.licence === 'Live' ? 'primary' : 'default'} sx={{ fontWeight: 'bold' }} />
+                  </TableCell>
+                  <TableCell align="center">
+                    <Iconify icon={r.isOnline ? "eva:checkmark-circle-fill" : "eva:close-circle-fill"}
+                      color={r.isOnline ? "success.main" : "text.disabled"} width={20} />
+                  </TableCell>
+                  <TableCell align="center">
+                    <Iconify icon={r.brokerConnected ? "eva:checkmark-circle-fill" : "eva:close-circle-fill"}
+                      color={r.brokerConnected ? "success.main" : "text.disabled"} width={20} />
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={r.status?.toUpperCase()}
+                      color={r.status === 'ok' || r.status === 'paper' ? 'success' : r.status === 'skipped' ? 'warning' : 'error'}
+                      sx={{ fontWeight: 'bold', fontSize: 10 }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="caption" sx={{ color: r.status === 'error' ? 'error.main' : 'text.secondary' }}>
+                      {r.orderid || r.reason || r.error || "-"}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <Box sx={{ mt: 3, textAlign: 'right' }}>
+          <Button variant="contained" onClick={onClose} sx={{ px: 4 }}>
+            Done
+          </Button>
+        </Box>
       </Box>
     </Dialog>
   );

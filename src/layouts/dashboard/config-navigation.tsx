@@ -187,6 +187,12 @@ export function useNavData() {
             ],
           },
           {
+            title: t("Market Intelligence"),
+            path: paths.dashboard.marketIntelligence,
+            icon: <Iconify icon="solar:chart-line-duotone-bold" width={24} />,
+            show: isAdminRole, // Only for Admin/Sub-Admin
+          },
+          {
             title: t("Licence"),
             path: paths.dashboard.tour.root,
             icon: <Iconify icon="solar:key-minimalistic-square-bold-duotone" width={24} />,

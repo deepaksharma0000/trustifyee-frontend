@@ -322,6 +322,9 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
 
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
             <Chip label={row.tradeType || 'Manual'} size="small" variant="soft" color="info" />
+            {row.isSystemGenerated && (
+              <Chip label="System" size="small" color="warning" variant="filled" sx={{ fontWeight: 'bold' }} />
+            )}
             <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
               {(row.signalTime || row.createdAt) ? new Date(row.signalTime || row.createdAt).toLocaleString() : '-'}
             </Typography>
@@ -423,12 +426,24 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
                 return (
                   <TableRow key={row.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                     <TableCell>
-                      <Chip
-                        label={row.tradeType || 'Manual'}
-                        size="small"
-                        color="info"
-                        variant="soft"
-                      />
+                      <Stack direction="row" spacing={0.5}>
+                        <Chip
+                          label={row.tradeType || 'Manual'}
+                          size="small"
+                          color="info"
+                          variant="soft"
+                        />
+                        {row.isSystemGenerated && (
+                          <Chip
+                            label="System"
+                            size="small"
+                            color="warning"
+                            variant="filled"
+                            icon={<Iconify icon="eva:shield-fill" width={14} />}
+                            sx={{ fontWeight: 'bold' }}
+                          />
+                        )}
+                      </Stack>
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>
@@ -514,15 +529,22 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
                         {row.targetPrice || '-'}
                       </Typography>
                     </TableCell>
-                    <TableCell align="right">
-                      <Typography
-                        variant="subtitle2"
-                        fontWeight="bold"
-                        color={isProfit ? 'success.main' : 'error.main'}
-                      >
-                        {isProfit ? '+' : ''}{total}
-                      </Typography>
-                    </TableCell>
+                      <TableCell align="right">
+                        <Stack direction="column" alignItems="flex-end">
+                            <Typography
+                            variant="subtitle2"
+                            fontWeight="bold"
+                            color={isProfit ? 'success.main' : 'error.main'}
+                          >
+                            {isProfit ? '+' : ''}{total}
+                          </Typography>
+                          {row.isSystemGenerated && (
+                             <Typography variant="caption" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>
+                                (Admin Profit)
+                             </Typography>
+                          )}
+                        </Stack>
+                      </TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={1} alignItems="center">
                         <TextField

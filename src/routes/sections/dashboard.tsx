@@ -74,6 +74,7 @@ const BrokerResponsePage = lazy(() => import('src/pages/dashboard/broker-respons
 const MessageCenterPage = lazy(() => import('src/pages/dashboard/message-center'));
 const TicketsPage = lazy(() => import('src/pages/dashboard/tickets'));
 const SubscriptionRequestsPage = lazy(() => import('src/pages/dashboard/subscription-requests'));
+const MarketIntelligencePage = lazy(() => import('src/pages/dashboard/market-intelligence'));
 
 
 // ----------------------------------------------------------------------
@@ -187,6 +188,7 @@ export const dashboardRoutes = [
       { path: 'subscription-requests', element: <SubscriptionRequestsPage /> }, // [NEW]
       { path: 'message-center', element: <MessageCenterPage /> }, // [NEW]
       { path: 'tickets', element: <TicketsPage /> }, // [NEW]
+      { path: 'market-intelligence', element: <MarketIntelligencePage /> }, // [NEW]
       { path: 'blank', element: <BlankPage /> },
     ],
   },

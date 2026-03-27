@@ -102,6 +102,7 @@ export const paths = {
     permission: `${ROOTS.DASHBOARD}/permission`,
     helpCenter: `${ROOTS.DASHBOARD}/help-center`,
     tickets: `${ROOTS.DASHBOARD}/tickets`,
+    marketIntelligence: `${ROOTS.DASHBOARD}/market-intelligence`,
     messageCenter: `${ROOTS.DASHBOARD}/message-center`,
     subscriptionRequests: `${ROOTS.DASHBOARD}/subscription-requests`,
     faq: `${ROOTS.DASHBOARD}/faq`, // [NEW]
