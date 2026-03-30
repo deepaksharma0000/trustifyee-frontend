@@ -8,15 +8,29 @@ export function useLocalStorage<ValueType>(key: string, defaultValue: ValueType)
   const storageAvailable = localStorageAvailable();
 
   const [value, setValue] = useState(() => {
-    const storedValue = storageAvailable ? localStorage.getItem(key) : null;
+    let storedValue = storageAvailable ? localStorage.getItem(key) : null;
 
-    return storedValue === null ? defaultValue : JSON.parse(storedValue);
+    if (storedValue) {
+      try {
+        if (storedValue === 'undefined' || !storedValue.trim()) return defaultValue;
+        return JSON.parse(storedValue);
+      } catch (error) {
+        console.error('Error parsing localStorage key:', key, error);
+        return defaultValue;
+      }
+    }
+
+    return defaultValue;
   });
 
   useEffect(() => {
     const listener = (e: StorageEvent) => {
       if (e.storageArea === localStorage && e.key === key) {
-        setValue(e.newValue ? JSON.parse(e.newValue) : e.newValue);
+        try {
+          setValue(e.newValue ? JSON.parse(e.newValue) : e.newValue);
+        } catch (error) {
+          setValue(defaultValue);
+        }
       }
     };
     window.addEventListener('storage', listener);
