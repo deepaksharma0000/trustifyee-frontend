@@ -24,6 +24,9 @@
     "useUnknownInCatchVariables": false,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "lightweight-charts": ["./node_modules/lightweight-charts/dist/typings.d.ts"]
+    }
   },
   "exclude": [
     "node_modules"
