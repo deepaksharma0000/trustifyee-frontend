@@ -710,12 +710,12 @@ export default function OptionChainPage() {
           <Grid item xs={12} md={4}>
             {(() => {
               const totalCeOi = marketData.reduce((acc, curr) => {
-                const token = curr.CE?.symboltoken || '';
-                return acc + (quoteMap[token]?.oi || 0);
+                const symbolToken = curr.CE?.symboltoken || '';
+                return acc + (quoteMap[symbolToken]?.oi || 0);
               }, 0);
               const totalPeOi = marketData.reduce((acc, curr) => {
-                const token = curr.PE?.symboltoken || '';
-                return acc + (quoteMap[token]?.oi || 0);
+                const symbolToken = curr.PE?.symboltoken || '';
+                return acc + (quoteMap[symbolToken]?.oi || 0);
               }, 0);
               const pcr = totalCeOi > 0 ? (totalPeOi / totalCeOi).toFixed(2) : "0.00";
               const isBullish = Number(pcr) > 1;
@@ -1583,7 +1583,11 @@ function BroadcastResultModal({ open, onClose, data }: { open: boolean, onClose:
                     <Chip
                       size="small"
                       label={r.status?.toUpperCase()}
-                      color={r.status === 'ok' || r.status === 'paper' ? 'success' : r.status === 'skipped' ? 'warning' : 'error'}
+                      color={
+                        ((r.status === 'ok' || r.status === 'paper') && 'success') ||
+                        (r.status === 'skipped' && 'warning') ||
+                        'error'
+                      }
                       sx={{ fontWeight: 'bold', fontSize: 10 }}
                     />
                   </TableCell>

@@ -8,7 +8,7 @@ export function useLocalStorage<ValueType>(key: string, defaultValue: ValueType)
   const storageAvailable = localStorageAvailable();
 
   const [value, setValue] = useState(() => {
-    let storedValue = storageAvailable ? localStorage.getItem(key) : null;
+    const storedValue = storageAvailable ? localStorage.getItem(key) : null;
 
     if (storedValue) {
       try {

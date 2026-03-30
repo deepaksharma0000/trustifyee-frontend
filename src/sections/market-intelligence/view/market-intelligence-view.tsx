@@ -71,7 +71,7 @@ export default function MarketIntelligenceView() {
         <Typography variant="h2" fontWeight="1000" sx={{ letterSpacing: -1, background: 'linear-gradient(90deg, #1C252E 0%, #007AFF 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
           TFY EXPLORER
         </Typography>
-        <Typography variant="subtitle1" color="text.secondary" sx={{ opacity: 0.7, mt: -0.5 }}>India's Real-Time Stock Analysis & Depth Engine</Typography>
+        <Typography variant="subtitle1" color="text.secondary" sx={{ opacity: 0.7, mt: -0.5 }}>India&apos;s Real-Time Stock Analysis & Depth Engine</Typography>
       </Box>
 
       {/* 🔍 Search Bar */}
@@ -106,22 +106,24 @@ export default function MarketIntelligenceView() {
                 <Typography variant="h6" fontWeight="900">MARKET DEPTH & REAL-TIME QUOTES</Typography>
               </Stack>
 
-              {loading ? (
-                <Stack alignItems="center" justifyContent="center" sx={{ height: 150 }}><CircularProgress /></Stack>
-              ) : error ? (
+              {loading && <Stack alignItems="center" justifyContent="center" sx={{ height: 150 }}><CircularProgress /></Stack>}
+
+              {!loading && error && (
                 <Stack alignItems="center" justifyContent="center" sx={{ height: 150, textAlign: 'center', p: 2 }}>
                   <Iconify icon="solar:shield-warning-bold-duotone" width={48} color="warning.main" />
                   <Typography variant="caption" sx={{ mt: 1, color: 'text.secondary' }}>{error}</Typography>
                 </Stack>
-              ) : quote ? (
+              )}
+              
+              {!loading && !error && quote && (
                 <Box sx={{ px: 1 }}>
                   <Grid container spacing={4}>
                     <Grid item xs={12} md={4}>
                       <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
                         <Typography variant="h3" color="success.main" fontWeight="900">₹{quote.lastPrice || quote.ltp}</Typography>
                         <Box sx={{ textAlign: 'right' }}>
-                          <Typography variant="h6" color={quote.change >= 0 ? 'success.main' : 'error.main'} fontWeight="bold">
-                            {quote.change >= 0 ? '+' : ''}{quote.change} ({quote.pChange}%)
+                          <Typography variant="h6" color={(quote.lastPrice - quote.open) >= 0 ? 'success.main' : 'error.main'} fontWeight="bold">
+                            {(quote.lastPrice - quote.open) >= 0 ? '+' : ''}{(quote.lastPrice - quote.open).toFixed(2)}
                           </Typography>
                         </Box>
                       </Stack>
@@ -160,7 +162,9 @@ export default function MarketIntelligenceView() {
                     </Grid>
                   </Grid>
                 </Box>
-              ) : (
+              )}
+
+              {!loading && !error && !quote && (
                 <Typography variant="caption">Search a symbol to see depth</Typography>
               )}
             </Card>

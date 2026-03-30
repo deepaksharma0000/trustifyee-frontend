@@ -19,92 +19,93 @@ export default function TrustifyeChart({ data, chartType = 'candle', symbol = 'N
   const [legendData, setLegendData] = useState<any>(null);
 
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    if (chartContainerRef.current) {
+      const chartOptions = {
+        layout: {
+          background: { type: ColorType.Solid, color: '#ffffff' },
+          textColor: '#333',
+          fontFamily: 'Inter, sans-serif',
+        },
+        grid: {
+          vertLines: { color: 'rgba(238, 238, 238, 0.4)' },
+          horzLines: { color: 'rgba(238, 238, 238, 0.4)' },
+        },
+        crosshair: {
+          mode: CrosshairMode.Normal,
+          vertLine: { color: '#2196F3', style: 2, labelBackgroundColor: '#2196F3' },
+          horzLine: { color: '#2196F3', style: 2, labelBackgroundColor: '#2196F3' },
+        },
+        rightPriceScale: {
+          borderColor: '#f0f0f0',
+          visible: true,
+          autoScale: true,
+        },
+        timeScale: {
+          borderColor: '#f0f0f0',
+          timeVisible: true,
+        },
+        width: chartContainerRef.current.clientWidth,
+        height: 420,
+        watermark: {
+          visible: true,
+          fontSize: 34,
+          horzAlign: 'center' as const,
+          vertAlign: 'center' as const,
+          color: 'rgba(28, 37, 46, 0.12)',
+          text: 'Trustifye Algo Solution',
+        },
+      };
 
-    const chartOptions = {
-      layout: {
-        background: { type: ColorType.Solid, color: '#ffffff' },
-        textColor: '#333',
-        fontFamily: 'Inter, sans-serif',
-      },
-      grid: {
-        vertLines: { color: 'rgba(238, 238, 238, 0.4)' },
-        horzLines: { color: 'rgba(238, 238, 238, 0.4)' },
-      },
-      crosshair: {
-        mode: CrosshairMode.Normal,
-        vertLine: { color: '#2196F3', style: 2, labelBackgroundColor: '#2196F3' },
-        horzLine: { color: '#2196F3', style: 2, labelBackgroundColor: '#2196F3' },
-      },
-      rightPriceScale: {
-        borderColor: '#f0f0f0',
-        visible: true,
-        autoScale: true,
-      },
-      timeScale: {
-        borderColor: '#f0f0f0',
-        timeVisible: true,
-      },
-      width: chartContainerRef.current.clientWidth,
-      height: 420,
-      watermark: {
-        visible: true,
-        fontSize: 34,
-        horzAlign: 'center' as const,
-        vertAlign: 'center' as const,
-        color: 'rgba(28, 37, 46, 0.12)',
-        text: 'Trustifye Algo Solution',
-      },
-    };
+      const chart = createChart(chartContainerRef.current, chartOptions as any);
+      chartRef.current = chart;
 
-    const chart = createChart(chartContainerRef.current, chartOptions as any);
-    chartRef.current = chart;
+      if (chartType === 'candle') {
+        seriesRef.current = chart.addSeries(CandlestickSeries, {
+          upColor: '#26a69a',
+          downColor: '#ef5350',
+          borderVisible: false,
+          wickUpColor: '#26a69a',
+          wickDownColor: '#ef5350',
+        });
+      } else {
+        seriesRef.current = chart.addSeries(LineSeries, {
+          color: '#2196F3',
+          lineWidth: 3,
+        });
+      }
 
-    if (chartType === 'candle') {
-      seriesRef.current = chart.addSeries(CandlestickSeries, {
-        upColor: '#26a69a',
-        downColor: '#ef5350',
-        borderVisible: false,
-        wickUpColor: '#26a69a',
-        wickDownColor: '#ef5350',
+      // Volume Series configuration
+      volumeSeriesRef.current = chart.addSeries(HistogramSeries, {
+        color: '#26a69a',
+        priceFormat: { type: 'volume' },
+        priceScaleId: 'volume',
       });
-    } else {
-      seriesRef.current = chart.addSeries(LineSeries, {
-        color: '#2196F3',
-        lineWidth: 3,
-      });
-    }
 
-    // Volume Series configuration
-    volumeSeriesRef.current = chart.addSeries(HistogramSeries, {
-      color: '#26a69a',
-      priceFormat: { type: 'volume' },
-      priceScaleId: 'volume',
-    });
-
-    chart.priceScale('volume').applyOptions({
+      chart.priceScale('volume').applyOptions({
         scaleMargins: { top: 0.8, bottom: 0 },
         visible: false,
-    });
+      });
 
-    chart.subscribeCrosshairMove((param: any) => {
+      chart.subscribeCrosshairMove((param: any) => {
         if (param.time && param.seriesData.get(seriesRef.current)) {
-            const candle = param.seriesData.get(seriesRef.current);
-            const volumeVal = param.seriesData.get(volumeSeriesRef.current);
-            setLegendData({ ...candle, volume: volumeVal?.value || 0, time: param.time });
+          const candle = param.seriesData.get(seriesRef.current);
+          const volumeVal = param.seriesData.get(volumeSeriesRef.current);
+          setLegendData({ ...candle, volume: volumeVal?.value || 0, time: param.time });
         }
-    });
+      });
 
-    const handleResize = () => {
-      chart.applyOptions({ width: chartContainerRef.current?.clientWidth });
-    };
+      const handleResize = () => {
+        chart.applyOptions({ width: chartContainerRef.current?.clientWidth });
+      };
 
-    window.addEventListener('resize', handleResize);
+      window.addEventListener('resize', handleResize);
 
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      chart.remove();
-    };
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        chart.remove();
+      };
+    }
+    return undefined;
   }, [chartType]);
 
   useEffect(() => {
