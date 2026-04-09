@@ -41,14 +41,35 @@ export default function BrokerConnect() {
 
   const isConnected = user.broker_connected;
 
+  React.useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        client_code: user.client_code === '********' ? '********' : (user.client_key || ''),
+        password: user.broker_password === '********' ? '********' : '',
+        api_key: user.api_key === '********' ? '********' : '',
+        totp_secret: user.broker_totp_secret === '********' ? '********' : '',
+      }));
+    }
+  }, [user]);
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setSuccess('');
 
+    // If field is '********', send empty string so backend uses saved value
+    const payload = {
+      ...formData,
+      client_code: formData.client_code === '********' ? '' : formData.client_code,
+      password: formData.password === '********' ? '' : formData.password,
+      api_key: formData.api_key === '********' ? '' : formData.api_key,
+      totp_secret: formData.totp_secret === '********' ? '' : formData.totp_secret,
+    };
+
     try {
-      const res = await axios.post('/api/angelone/auth/generate-session', formData);
+      const res = await axios.post('/api/angelone/auth/generate-session', payload);
 
       if (res.data.status) {
         setSuccess('Broker connected successfully! Redirecting...');
@@ -95,34 +116,34 @@ export default function BrokerConnect() {
             value={formData.client_code}
             onChange={(e) => setFormData({ ...formData, client_code: e.target.value.toUpperCase() })}
             sx={{ mb: 2 }}
-            required
             disabled={loading}
+            helperText={formData.client_code === '********' ? "Using saved Client ID" : ""}
           />
           <TextField
             fullWidth
             label="Password"
-            type="password"
+            type={formData.password === '********' ? "text" : "password"}
             autoComplete="current-password"
             value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             sx={{ mb: 2.5 }}
-            required
             disabled={loading}
+            helperText={formData.password === '********' ? "Using saved Password" : ""}
           />
-          {isSuperAdmin && (
+          {isAdmin && (
             <TextField
               fullWidth
-              label="SmartAPI Key (Required for 1.1 April Rule)"
+              label="SmartAPI Key"
               placeholder="e.g. iSYTk7nA"
               value={formData.api_key}
               onChange={(e) => setFormData({ ...formData, api_key: e.target.value.trim() })}
               sx={{ mb: 2.5 }}
               disabled={loading}
-              helperText="Every customer must use their own API Key registered with their Client ID."
+              helperText={formData.api_key === '********' ? "Using saved API Key" : "Required for 1.1 April Rule"}
             />
           )}
 
-          {isSuperAdmin && (
+          {isAdmin && (
             <Divider sx={{ mb: 2.5, borderStyle: 'dashed' }}>
               <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 700, textTransform: 'uppercase' }}>
                 TOTP Method
@@ -130,17 +151,17 @@ export default function BrokerConnect() {
             </Divider>
           )}
 
-          {isSuperAdmin && (
+          {isAdmin && (
             <>
               <TextField
                 fullWidth
                 label="TOTP Secret Key (Auto-Login)"
-                placeholder="16-character secret from AngelOne (Recommended)"
+                placeholder="16-character secret from AngelOne"
                 value={formData.totp_secret}
                 onChange={(e) => setFormData({ ...formData, totp_secret: e.target.value.trim().toUpperCase() })}
                 sx={{ mb: 2 }}
                 disabled={loading}
-                helperText="Provide this to enable one-click login without your phone."
+                helperText={formData.totp_secret === '********' ? "Using saved TOTP Secret" : "Provide this to enable one-click login"}
               />
 
               <Box sx={{ textAlign: 'center', mb: 2 }}>
@@ -158,6 +179,7 @@ export default function BrokerConnect() {
             sx={{ mb: 4 }}
             disabled={loading}
             inputProps={{ maxLength: 6 }}
+            helperText="Leave empty if using TOTP Secret Key"
           />
 
           <LoadingButton

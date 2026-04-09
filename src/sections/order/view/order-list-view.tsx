@@ -128,8 +128,24 @@ export default function OptionChainPage() {
   /* ---------------- HELPERS ---------------- */
 
   const getExpiryValue = useCallback(
-    (dateValue: string) =>
-      new Date(dateValue).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
+    (dateValue: string) => {
+      if (!dateValue) return "";
+      
+      // If it's already a simple date string (YYYY-MM-DD), use it directly
+      if (dateValue.length === 10 && !dateValue.includes('T')) {
+        return dateValue;
+      }
+
+      try {
+        const date = new Date(dateValue);
+        // Backend stores expiries in UTC. In India, 18:30 UTC is 00:00 IST of the next day.
+        // We shift by 5.5 hours to align with the IST date string in the expiries array.
+        const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+        return istDate.toISOString().split('T')[0];
+      } catch (e) {
+        return dateValue.slice(0, 10);
+      }
+    },
     []
   );
 
@@ -199,7 +215,7 @@ export default function OptionChainPage() {
       /* Expiry dropdown */
       const expiryList = expiries.length
         ? expiries.map((value) => ({
-          value,
+          value: getExpiryValue(value),
           label: getExpiryLabel(value),
           timestamp: value,
         }))
@@ -687,7 +703,7 @@ export default function OptionChainPage() {
                 <Typography variant="overline" sx={{ opacity: 0.8, letterSpacing: 1, fontWeight: '900', fontSize: 10 }}>LIVE INDEX PRICE</Typography>
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   <Typography variant="h3" fontWeight="900" sx={{ letterSpacing: -1 }}>
-                    {quoteMap[Object.keys(quoteMap).find(k => ["99926000", "99926009", "99926037"].includes(k)) || '']?.ltp?.toFixed(2) || '0.00'}
+                    {quoteMap[Object.keys(quoteMap).find(k => ["99926000", "99926009", "99926037"].includes(k)) || '']?.ltp?.toFixed(2) || indexLtp?.toFixed(2) || '0.00'}
                   </Typography>
                   <Box 
                     sx={{ 
