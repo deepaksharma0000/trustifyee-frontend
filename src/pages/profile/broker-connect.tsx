@@ -22,6 +22,18 @@ export default function BrokerConnect() {
     totp_secret: ''
   });
 
+  React.useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        client_code: user.client_code === '********' ? '********' : (user.client_key || ''),
+        password: user.broker_password === '********' ? '********' : '',
+        api_key: user.api_key === '********' ? '********' : '',
+        totp_secret: user.broker_totp_secret === '********' ? '********' : '',
+      }));
+    }
+  }, [user]);
+
   if (!user) {
     return <Alert severity="error">Session expired. Please login again.</Alert>;
   }
@@ -40,18 +52,6 @@ export default function BrokerConnect() {
   }
 
   const isConnected = user.broker_connected;
-
-  React.useEffect(() => {
-    if (user) {
-      setFormData((prev) => ({
-        ...prev,
-        client_code: user.client_code === '********' ? '********' : (user.client_key || ''),
-        password: user.broker_password === '********' ? '********' : '',
-        api_key: user.api_key === '********' ? '********' : '',
-        totp_secret: user.broker_totp_secret === '********' ? '********' : '',
-      }));
-    }
-  }, [user]);
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
