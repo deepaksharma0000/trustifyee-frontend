@@ -147,8 +147,8 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
 
             {/* Safety Switch Card */}
             <Grid item xs={12}>
-              <Card sx={{ p: 2.5, display: 'flex', alignItems: 'center', gap: 3, border: (theme) => `1px solid ${data?.trading_paused ? theme.palette.error.main : theme.palette.divider}`, boxShadow: 'none' }}>
-                <Box sx={{ p: 2, borderRadius: '50%', bgcolor: (theme) => alpha(data?.trading_paused ? theme.palette.error.main : theme.palette.success.main, 0.1), color: data?.trading_paused ? 'error.main' : 'success.main' }}>
+              <Card sx={{ p: 2.5, display: 'flex', alignItems: 'center', gap: 3, border: (th) => `1px solid ${data?.trading_paused ? th.palette.error.main : th.palette.divider}`, boxShadow: 'none' }}>
+                <Box sx={{ p: 2, borderRadius: '50%', bgcolor: (th) => alpha(data?.trading_paused ? th.palette.error.main : th.palette.success.main, 0.1), color: data?.trading_paused ? 'error.main' : 'success.main' }}>
                   <Iconify icon={data?.trading_paused ? "solar:shield-cross-bold" : "solar:shield-check-bold"} width={32} />
                 </Box>
                 <Box sx={{ flexGrow: 1 }}>
@@ -171,8 +171,12 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
                   <LinearProgress
                     variant="determinate"
                     value={marginPercent}
-                    color={marginPercent > 70 ? 'error' : marginPercent > 50 ? 'warning' : 'success'}
-                    sx={{ height: 10, borderRadius: 5, bgcolor: (theme) => alpha(theme.palette.grey[500], 0.1) }}
+                    color={
+                      (marginPercent > 70 && 'error') ||
+                      (marginPercent > 50 && 'warning') ||
+                      'success'
+                    }
+                    sx={{ height: 10, borderRadius: 5, bgcolor: (th) => alpha(th.palette.grey[500], 0.1) }}
                   />
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1.5 }}>
                     <Typography variant="h6" sx={{ fontSize: 15 }}>{marginPercent.toFixed(1)}% Capacity Used</Typography>
@@ -224,7 +228,10 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
                       sx={{ 
                         fontSize: '0.8rem', 
                         lineHeight: 1.5,
-                        color: log.type === 'error' ? 'error.main' : log.type === 'warning' ? 'warning.main' : log.type === 'success' ? 'success.main' : 'text.primary'
+                        color: (log.type === 'error' && 'error.main') ||
+                               (log.type === 'warning' && 'warning.main') ||
+                               (log.type === 'success' && 'success.main') ||
+                               'text.primary'
                       }}
                     >
                       {log.message}
@@ -278,7 +285,10 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
 
 function MetricCard({ title, subtitle, value, caption, status, icon }: any) {
   const theme = useTheme();
-  const color = status === 'success' ? theme.palette.success.main : status === 'warning' ? theme.palette.warning.main : theme.palette.error.main;
+
+  let color = theme.palette.error.main;
+  if (status === 'success') color = theme.palette.success.main;
+  else if (status === 'warning') color = theme.palette.warning.main;
 
   return (
     <Card sx={{ p: 2.5, height: '100%', boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>

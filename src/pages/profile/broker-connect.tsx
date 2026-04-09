@@ -79,7 +79,7 @@ export default function BrokerConnect() {
 
         {isConnected && (
           <Alert severity="success" sx={{ mb: 3 }} icon={<Iconify icon="solar:check-circle-bold" />}>
-            Broker is currently active for today's session.
+            Broker is currently active for today&apos;s session.
           </Alert>
         )}
 
