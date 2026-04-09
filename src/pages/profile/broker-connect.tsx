@@ -14,16 +14,19 @@ export default function BrokerConnect() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [broker, setBroker] = useState<'AngelOne' | 'AliceBlue'>(user?.broker as any || 'AngelOne');
+  
   const [formData, setFormData] = useState({
     client_code: '',
     password: '',
-    api_key: '', // [NEW] Individual API Key
+    api_key: '', 
     totp: '',
     totp_secret: ''
   });
 
   React.useEffect(() => {
     if (user) {
+      if (user.broker) setBroker(user.broker as any);
       setFormData((prev) => ({
         ...prev,
         client_code: user.client_code === '********' ? '********' : (user.client_key || ''),
@@ -41,8 +44,7 @@ export default function BrokerConnect() {
   const isSuperAdmin = user?.role === 'admin';
   const isSubAdmin = user?.role === 'sub-admin';
   const isAdmin = isSuperAdmin || isSubAdmin;
-  const isUser = user?.role === 'user';
-
+  
   if (!isAdmin && user.licence !== 'Live') {
     return (
       <Alert severity="info" sx={{ mt: 3, maxWidth: 600, mx: 'auto' }}>
@@ -53,13 +55,32 @@ export default function BrokerConnect() {
 
   const isConnected = user.broker_connected;
 
-  const handleSubmit = async (e: any) => {
+  const handleAliceConnect = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const clientCodeToUse = formData.client_code === '********' ? user.client_key : formData.client_code;
+      if (!clientCodeToUse) throw new Error("Please enter your Alice Blue Client Code first");
+      
+      const res = await axios.get(`/api/alice/auth/login-url?clientcode=${clientCodeToUse}`);
+      if (res.data.url) {
+        window.location.href = res.data.url;
+      } else {
+        throw new Error("Could not generate login URL");
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAngelSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setSuccess('');
 
-    // If field is '********', send empty string so backend uses saved value
     const payload = {
       ...formData,
       client_code: formData.client_code === '********' ? '' : formData.client_code,
@@ -73,7 +94,6 @@ export default function BrokerConnect() {
 
       if (res.data.status) {
         setSuccess('Broker connected successfully! Redirecting...');
-        // Save clientcode locally for session checks
         localStorage.setItem('angel_clientcode', res.data.clientcode);
         localStorage.setItem('angel_jwt', 'connected_manually');
 
@@ -95,8 +115,40 @@ export default function BrokerConnect() {
       <Card sx={{ p: 4, boxShadow: (theme) => theme.customShadows.z20 }}>
         <Stack spacing={0.5} sx={{ mb: 3, textAlign: 'center' }}>
           <Typography variant="h4" sx={{ fontWeight: 800 }}>Connect Broker</Typography>
-          <Typography variant="body2" color="text.secondary">Angel One SmartAPI v2 Authentication</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {broker === 'AngelOne' ? 'Angel One SmartAPI v2 Authentication' : 'Alice Blue ANT API Authentication'}
+          </Typography>
         </Stack>
+
+        <Box sx={{ mb: 3 }}>
+           <Typography variant="overline" sx={{ color: 'text.disabled', fontWeight: 700, mb: 1, display: 'block' }}>
+             SELECT BROKER
+           </Typography>
+           <Stack direction="row" spacing={1}>
+              <Box 
+                onClick={() => setBroker('AngelOne')}
+                sx={{ 
+                  flex: 1, p: 1.5, borderRadius: 1.5, cursor: 'pointer', textAlign: 'center',
+                  border: '2px solid', borderColor: broker === 'AngelOne' ? 'primary.main' : 'divider',
+                  bgcolor: broker === 'AngelOne' ? 'primary.lighter' : 'transparent',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <Typography variant="subtitle2" sx={{ color: broker === 'AngelOne' ? 'primary.dark' : 'text.secondary' }}>Angel One</Typography>
+              </Box>
+              <Box 
+                onClick={() => setBroker('AliceBlue')}
+                sx={{ 
+                  flex: 1, p: 1.5, borderRadius: 1.5, cursor: 'pointer', textAlign: 'center',
+                  border: '2px solid', borderColor: broker === 'AliceBlue' ? 'primary.main' : 'divider',
+                  bgcolor: broker === 'AliceBlue' ? 'primary.lighter' : 'transparent',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <Typography variant="subtitle2" sx={{ color: broker === 'AliceBlue' ? 'primary.dark' : 'text.secondary' }}>Alice Blue</Typography>
+              </Box>
+           </Stack>
+        </Box>
 
         {isConnected && (
           <Alert severity="success" sx={{ mb: 3 }} icon={<Iconify icon="solar:check-circle-bold" />}>
@@ -107,95 +159,124 @@ export default function BrokerConnect() {
         {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
         {success && <Alert severity="success" sx={{ mb: 3 }}>{success}</Alert>}
 
-        <Box component="form" onSubmit={handleSubmit}>
-          <TextField
-            fullWidth
-            label="Client Code"
-            autoComplete="username"
-            placeholder="e.g. A123456"
-            value={formData.client_code}
-            onChange={(e) => setFormData({ ...formData, client_code: e.target.value.toUpperCase() })}
-            sx={{ mb: 2 }}
-            disabled={loading}
-            helperText={formData.client_code === '********' ? "Using saved Client ID" : ""}
-          />
-          <TextField
-            fullWidth
-            label="Password"
-            type={formData.password === '********' ? "text" : "password"}
-            autoComplete="current-password"
-            value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            sx={{ mb: 2.5 }}
-            disabled={loading}
-            helperText={formData.password === '********' ? "Using saved Password" : ""}
-          />
-          {isAdmin && (
+        {broker === 'AliceBlue' ? (
+          <Box>
+             <TextField
+              fullWidth
+              label="Alice Blue Client ID"
+              placeholder="e.g. 123456"
+              value={formData.client_code}
+              onChange={(e) => setFormData({ ...formData, client_code: e.target.value.toUpperCase() })}
+              sx={{ mb: 3 }}
+              disabled={loading}
+              helperText={formData.client_code === '********' ? "Using saved Client ID" : "Your Alice Blue login ID"}
+            />
+            <LoadingButton
+              fullWidth
+              variant="contained"
+              onClick={handleAliceConnect}
+              loading={loading}
+              color="primary"
+              size="large"
+              sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
+              startIcon={<Iconify icon="solar:link-bold" />}
+            >
+              Connect Alice Blue
+            </LoadingButton>
+            <Typography variant="caption" sx={{ mt: 2, display: 'block', textAlign: 'center', color: 'text.secondary' }}>
+              You will be redirected to Alice Blue for secure login
+            </Typography>
+          </Box>
+        ) : (
+          <Box component="form" onSubmit={handleAngelSubmit}>
             <TextField
               fullWidth
-              label="SmartAPI Key"
-              placeholder="e.g. iSYTk7nA"
-              value={formData.api_key}
-              onChange={(e) => setFormData({ ...formData, api_key: e.target.value.trim() })}
+              label="Client Code"
+              autoComplete="username"
+              placeholder="e.g. A123456"
+              value={formData.client_code}
+              onChange={(e) => setFormData({ ...formData, client_code: e.target.value.toUpperCase() })}
+              sx={{ mb: 2 }}
+              disabled={loading}
+              helperText={formData.client_code === '********' ? "Using saved Client ID" : ""}
+            />
+            <TextField
+              fullWidth
+              label="Password"
+              type={formData.password === '********' ? "text" : "password"}
+              autoComplete="current-password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               sx={{ mb: 2.5 }}
               disabled={loading}
-              helperText={formData.api_key === '********' ? "Using saved API Key" : "Required for 1.1 April Rule"}
+              helperText={formData.password === '********' ? "Using saved Password" : ""}
             />
-          )}
-
-          {isAdmin && (
-            <Divider sx={{ mb: 2.5, borderStyle: 'dashed' }}>
-              <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 700, textTransform: 'uppercase' }}>
-                TOTP Method
-              </Typography>
-            </Divider>
-          )}
-
-          {isAdmin && (
-            <>
+            {isAdmin && (
               <TextField
                 fullWidth
-                label="TOTP Secret Key (Auto-Login)"
-                placeholder="16-character secret from AngelOne"
-                value={formData.totp_secret}
-                onChange={(e) => setFormData({ ...formData, totp_secret: e.target.value.trim().toUpperCase() })}
-                sx={{ mb: 2 }}
+                label="SmartAPI Key"
+                placeholder="e.g. iSYTk7nA"
+                value={formData.api_key}
+                onChange={(e) => setFormData({ ...formData, api_key: e.target.value.trim() })}
+                sx={{ mb: 2.5 }}
                 disabled={loading}
-                helperText={formData.totp_secret === '********' ? "Using saved TOTP Secret" : "Provide this to enable one-click login"}
+                helperText={formData.api_key === '********' ? "Using saved API Key" : "Required for 1.1 April Rule"}
               />
+            )}
 
-              <Box sx={{ textAlign: 'center', mb: 2 }}>
-                <Typography variant="caption" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>— OR —</Typography>
-              </Box>
-            </>
-          )}
+            {isAdmin && (
+              <Divider sx={{ mb: 2.5, borderStyle: 'dashed' }}>
+                <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 700, textTransform: 'uppercase' }}>
+                  TOTP Method
+                </Typography>
+              </Divider>
+            )}
 
-          <TextField
-            fullWidth
-            label="Manual 6-Digit TOTP"
-            placeholder="Enter code from Google Authenticator"
-            value={formData.totp}
-            onChange={(e) => setFormData({ ...formData, totp: e.target.value })}
-            sx={{ mb: 4 }}
-            disabled={loading}
-            inputProps={{ maxLength: 6 }}
-            helperText="Leave empty if using TOTP Secret Key"
-          />
+            {isAdmin && (
+              <>
+                <TextField
+                  fullWidth
+                  label="TOTP Secret Key (Auto-Login)"
+                  placeholder="16-character secret from AngelOne"
+                  value={formData.totp_secret}
+                  onChange={(e) => setFormData({ ...formData, totp_secret: e.target.value.trim().toUpperCase() })}
+                  sx={{ mb: 2 }}
+                  disabled={loading}
+                  helperText={formData.totp_secret === '********' ? "Using saved TOTP Secret" : "Provide this to enable one-click login"}
+                />
 
-          <LoadingButton
-            fullWidth
-            variant="contained"
-            type="submit"
-            loading={loading}
-            color="primary"
-            size="large"
-            sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
-            startIcon={<Iconify icon="solar:bolt-bold" />}
-          >
-            {isConnected ? 'Re-Sync Session' : 'Login & Connect'}
-          </LoadingButton>
-        </Box>
+                <Box sx={{ textAlign: 'center', mb: 2 }}>
+                  <Typography variant="caption" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>— OR —</Typography>
+                </Box>
+              </>
+            )}
 
+            <TextField
+              fullWidth
+              label="Manual 6-Digit TOTP"
+              placeholder="Enter code from Google Authenticator"
+              value={formData.totp}
+              onChange={(e) => setFormData({ ...formData, totp: e.target.value })}
+              sx={{ mb: 4 }}
+              disabled={loading}
+              inputProps={{ maxLength: 6 }}
+              helperText="Leave empty if using TOTP Secret Key"
+            />
+
+            <LoadingButton
+              fullWidth
+              variant="contained"
+              type="submit"
+              loading={loading}
+              color="primary"
+              size="large"
+              sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
+              startIcon={<Iconify icon="solar:bolt-bold" />}
+            >
+              {isConnected ? 'Re-Sync Session' : 'Login & Connect'}
+            </LoadingButton>
+          </Box>
+        )}
         <Stack spacing={1.5} sx={{ mt: 4, p: 2, bgcolor: 'background.neutral', borderRadius: 1.5 }}>
           <Stack direction="row" spacing={1} alignItems="center">
             <Iconify icon="solar:info-circle-bold" sx={{ color: 'info.main' }} width={18} />
