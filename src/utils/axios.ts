@@ -78,6 +78,9 @@ export const endpoints = {
     adminLogout: '/api/admin/logout',
     userLogout: '/api/user/logout',
   },
+  user: {
+    riskStatus: (id: string) => `/api/user/risk-status/${id}`,
+  },
   mail: {
     list: '/api/mail/list',
     details: '/api/mail/details',

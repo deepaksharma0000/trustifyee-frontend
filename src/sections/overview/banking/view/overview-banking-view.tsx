@@ -48,6 +48,8 @@ import Label from 'src/components/label';
 import DemoTradeDetailsView from 'src/sections/overview/app/view/demo-trade-details-view';
 // hooks
 import { useAuthUser } from 'src/hooks/use-auth-user';
+// components
+import RiskHealthView from 'src/sections/risk-health/view/risk-health-view';
 
 // ----------------------------------------------------------------------
 
@@ -139,6 +141,7 @@ export default function OverviewBankingView() {
     { label: 'Trade History', icon: 'solar:history-bold-duotone', visible: true },
     { label: 'Order History', icon: 'solar:bill-list-bold-duotone', visible: true },
     { label: 'Broker Response', icon: 'solar:chat-line-bold-duotone', visible: isReviewMode },
+    { label: 'Risk Health', icon: 'solar:shield-warning-bold-duotone', visible: isReviewMode },
     { label: 'Trading Status', icon: 'solar:shield-check-bold-duotone', visible: isAdmin && !isReviewMode },
   ].filter((t) => t.visible), [isReviewMode, isAdmin]);
 
@@ -737,6 +740,11 @@ export default function OverviewBankingView() {
               </TableBody>
             </Table>
           </TableContainer>
+        </CustomTabPanel>
+
+        {/* --- RISK HEALTH TAB (REVIEW MODE) --- */}
+        <CustomTabPanel value={currentTab} index={getTabIndex('Risk Health')}>
+          <RiskHealthView userId={reviewUserId} disablePadding />
         </CustomTabPanel>
 
         {/* --- TRADING STATUS TAB (GLOBAL KILL SWITCH) --- */}

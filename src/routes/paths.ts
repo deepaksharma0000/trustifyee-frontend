@@ -112,6 +112,7 @@ export const paths = {
     starClients: `${ROOTS.DASHBOARD}/user/star`, // [NEW]
     brokerConnect: `${ROOTS.DASHBOARD}/broker-connect`,
     brokerResponse: `${ROOTS.DASHBOARD}/broker-response`, // [NEW]
+    riskHealth: `${ROOTS.DASHBOARD}/risk-health`, // [NEW] Pre-Trade Validation
     general: {
       app: `${ROOTS.DASHBOARD}/app`,
       ecommerce: `${ROOTS.DASHBOARD}/ecommerce`,

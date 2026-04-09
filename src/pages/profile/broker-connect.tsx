@@ -1,11 +1,12 @@
 import * as React from 'react';
 import { useState } from 'react';
-import { Alert, Card, Typography, Box, Link, TextField } from '@mui/material';
+import { Alert, Card, Typography, Box, TextField, Divider, Stack } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import { useAuthUser } from 'src/hooks/use-auth-user';
-import { HOST_API } from 'src/config-global';
 import Iconify from 'src/components/iconify';
 import axios from 'src/utils/axios';
+
+// ----------------------------------------------------------------------
 
 export default function BrokerConnect() {
   const { user } = useAuthUser();
@@ -16,24 +17,28 @@ export default function BrokerConnect() {
   const [formData, setFormData] = useState({
     client_code: '',
     password: '',
-    totp: ''
+    api_key: '', // [NEW] Individual API Key
+    totp: '',
+    totp_secret: ''
   });
 
   if (!user) {
     return <Alert severity="error">Session expired. Please login again.</Alert>;
   }
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'sub-admin';
+  const isSuperAdmin = user?.role === 'admin';
+  const isSubAdmin = user?.role === 'sub-admin';
+  const isAdmin = isSuperAdmin || isSubAdmin;
+  const isUser = user?.role === 'user';
 
   if (!isAdmin && user.licence !== 'Live') {
     return (
-      <Alert severity="info" sx={{ mt: 3 }}>
+      <Alert severity="info" sx={{ mt: 3, maxWidth: 600, mx: 'auto' }}>
         Demo users cannot connect broker. Please upgrade to Live license.
       </Alert>
     );
   }
 
-  // Check if broker is connected for today
   const isConnected = user.broker_connected;
 
   const handleSubmit = async (e: any) => {
@@ -65,53 +70,92 @@ export default function BrokerConnect() {
   };
 
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', mt: 5 }}>
-      <Card sx={{ p: 4 }}>
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', mb: 1, textAlign: 'center' }}>
-          Connect AngelOne
-        </Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, textAlign: 'center' }}>
-          SmartAPI v2 Manual Login (Password + TOTP)
-        </Typography>
+    <Box sx={{ maxWidth: 500, mx: 'auto', mt: 4, px: 2 }}>
+      <Card sx={{ p: 4, boxShadow: (theme) => theme.customShadows.z20 }}>
+        <Stack spacing={0.5} sx={{ mb: 3, textAlign: 'center' }}>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>Connect Broker</Typography>
+          <Typography variant="body2" color="text.secondary">Angel One SmartAPI v2 Authentication</Typography>
+        </Stack>
 
         {isConnected && (
-          <Alert severity="success" sx={{ mb: 3 }} icon={<Iconify icon="eva:checkmark-circle-2-fill" />}>
-            Your broker is already connected and active for today!
+          <Alert severity="success" sx={{ mb: 3 }} icon={<Iconify icon="solar:check-circle-bold" />}>
+            Broker is currently active for today's session.
           </Alert>
         )}
 
         {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
         {success && <Alert severity="success" sx={{ mb: 3 }}>{success}</Alert>}
 
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
+        <Box component="form" onSubmit={handleSubmit}>
           <TextField
             fullWidth
-            label="Angel Client Code"
+            label="Client Code"
+            autoComplete="username"
             placeholder="e.g. A123456"
             value={formData.client_code}
-            onChange={(e) => setFormData({ ...formData, client_code: e.target.value })}
+            onChange={(e) => setFormData({ ...formData, client_code: e.target.value.toUpperCase() })}
             sx={{ mb: 2 }}
             required
             disabled={loading}
           />
           <TextField
             fullWidth
-            label="Trading Password"
+            label="Password"
             type="password"
+            autoComplete="current-password"
             value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            sx={{ mb: 2 }}
+            sx={{ mb: 2.5 }}
             required
             disabled={loading}
           />
+          {isSuperAdmin && (
+            <TextField
+              fullWidth
+              label="SmartAPI Key (Required for 1.1 April Rule)"
+              placeholder="e.g. iSYTk7nA"
+              value={formData.api_key}
+              onChange={(e) => setFormData({ ...formData, api_key: e.target.value.trim() })}
+              sx={{ mb: 2.5 }}
+              disabled={loading}
+              helperText="Every customer must use their own API Key registered with their Client ID."
+            />
+          )}
+
+          {isSuperAdmin && (
+            <Divider sx={{ mb: 2.5, borderStyle: 'dashed' }}>
+              <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 700, textTransform: 'uppercase' }}>
+                TOTP Method
+              </Typography>
+            </Divider>
+          )}
+
+          {isSuperAdmin && (
+            <>
+              <TextField
+                fullWidth
+                label="TOTP Secret Key (Auto-Login)"
+                placeholder="16-character secret from AngelOne (Recommended)"
+                value={formData.totp_secret}
+                onChange={(e) => setFormData({ ...formData, totp_secret: e.target.value.trim().toUpperCase() })}
+                sx={{ mb: 2 }}
+                disabled={loading}
+                helperText="Provide this to enable one-click login without your phone."
+              />
+
+              <Box sx={{ textAlign: 'center', mb: 2 }}>
+                <Typography variant="caption" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>— OR —</Typography>
+              </Box>
+            </>
+          )}
+
           <TextField
             fullWidth
-            label="TOTP Code"
-            placeholder="Enter code from Authenticator App"
+            label="Manual 6-Digit TOTP"
+            placeholder="Enter code from Google Authenticator"
             value={formData.totp}
             onChange={(e) => setFormData({ ...formData, totp: e.target.value })}
-            sx={{ mb: 3 }}
-            required
+            sx={{ mb: 4 }}
             disabled={loading}
             inputProps={{ maxLength: 6 }}
           />
@@ -123,25 +167,24 @@ export default function BrokerConnect() {
             loading={loading}
             color="primary"
             size="large"
-            sx={{ py: 1.5, fontWeight: 'bold' }}
-            startIcon={<Iconify icon="eva:flash-fill" />}
+            sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
+            startIcon={<Iconify icon="solar:bolt-bold" />}
           >
-            {isConnected ? 'Re-Connect Session' : 'Generate Session'}
+            {isConnected ? 'Re-Sync Session' : 'Login & Connect'}
           </LoadingButton>
         </Box>
 
-        <Box sx={{ mt: 4, p: 2, bgcolor: 'background.neutral', borderRadius: 1 }}>
-          <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Iconify icon="eva:info-fill" sx={{ color: 'info.main' }} />
-            Security Note:
+        <Stack spacing={1.5} sx={{ mt: 4, p: 2, bgcolor: 'background.neutral', borderRadius: 1.5 }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Iconify icon="solar:info-circle-bold" sx={{ color: 'info.main' }} width={18} />
+            <Typography variant="subtitle2">Security Guide</Typography>
+          </Stack>
+          <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+            • <b>TOTP Secret:</b> Stored encrypted. Used for automated login at trade start.<br />
+            • <b>Auth Tokens:</b> We only save session tokens to execute trades on your behalf.<br />
+            • <b>Session:</b> Broker sessions expire daily at midnight.
           </Typography>
-          <Typography variant="caption" color="text.secondary" display="block">
-            • Your Password and TOTP are used only for authentication and are <strong>NEVER</strong> stored in our database.
-          </Typography>
-          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-            • We only store the encrypted Access Token provided by the broker to execute your trades.
-          </Typography>
-        </Box>
+        </Stack>
       </Card>
     </Box>
   );

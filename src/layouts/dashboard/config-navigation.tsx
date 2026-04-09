@@ -257,6 +257,12 @@ export function useNavData() {
             show: !isAdminRole && role === "user",
           },
           {
+            title: t("Risk Health"),
+            path: paths.dashboard.riskHealth,
+            icon: <Iconify icon="solar:shield-warning-bold-duotone" width={24} />,
+            show: role === "user" || role === "admin",
+          },
+          {
             title: t("FAQ"),
             path: paths.dashboard.faq,
             icon: <Iconify icon="solar:question-circle-bold-duotone" width={24} />,
@@ -278,7 +284,17 @@ export function useNavData() {
     ...section,
     items: section.items.filter((item) => {
       if (isImpersonated) {
-        return item.title === t("Dashboard") || item.title === t("Api Info");
+        // Allow specific items for Admin when impersonating a user
+        const allowedForImpersonation = [
+          t("Dashboard"),
+          t("Api Info"),
+          t("Risk Health"),
+          t("Trade Details"),
+          t("Broker Response"),
+          t("FAQ"),
+          t("Help Center")
+        ];
+        return allowedForImpersonation.includes(item.title);
       }
       return item.show !== false;
     }),

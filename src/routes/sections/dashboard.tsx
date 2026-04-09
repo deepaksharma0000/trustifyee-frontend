@@ -76,6 +76,7 @@ const TicketsPage = lazy(() => import('src/pages/dashboard/tickets'));
 const SubscriptionRequestsPage = lazy(() => import('src/pages/dashboard/subscription-requests'));
 const MarketIntelligencePage = lazy(() => import('src/pages/dashboard/market-intelligence'));
 const MarketAnalysisPage = lazy(() => import('src/pages/dashboard/market-analysis'));
+const RiskHealthPage = lazy(() => import('../../pages/dashboard/risk-health'));
 
 
 // ----------------------------------------------------------------------
@@ -191,6 +192,7 @@ export const dashboardRoutes = [
       { path: 'tickets', element: <TicketsPage /> }, // [NEW]
       { path: 'market-intelligence', element: <MarketIntelligencePage /> }, // [NEW]
       { path: 'market-analysis', element: <MarketAnalysisPage /> }, // [NEW]
+      { path: 'risk-health', element: <RiskHealthPage /> }, // [NEW]
       { path: 'blank', element: <BlankPage /> },
     ],
   },
