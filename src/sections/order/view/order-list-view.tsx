@@ -294,6 +294,10 @@ export default function OptionChainPage() {
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
+        if (msg.type === "error") {
+          console.error("Market WebSocket Error:", msg.message);
+          return;
+        }
         if (msg.type !== "tick" || !Array.isArray(msg.items)) return;
 
         setQuoteMap((prev) => {
