@@ -63,7 +63,7 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
   }, []);
 
   const fetchRiskStatus = useCallback(async (isManual = false) => {
-    if (!userId) return;
+    if (!userId || userId.length < 20) return;
 
     try {
       setLoading(isManual);
