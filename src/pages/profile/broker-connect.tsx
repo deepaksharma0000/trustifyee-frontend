@@ -263,18 +263,48 @@ export default function BrokerConnect() {
               helperText="Leave empty if using TOTP Secret Key"
             />
 
-            <LoadingButton
-              fullWidth
-              variant="contained"
-              type="submit"
-              loading={loading}
-              color="primary"
-              size="large"
-              sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
-              startIcon={<Iconify icon="solar:bolt-bold" />}
-            >
-              {isConnected ? 'Re-Sync Session' : 'Login & Connect'}
-            </LoadingButton>
+            <Stack spacing={2}>
+              <LoadingButton
+                fullWidth
+                variant="contained"
+                type="submit"
+                loading={loading}
+                color="primary"
+                size="large"
+                sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
+                startIcon={<Iconify icon="solar:bolt-bold" />}
+              >
+                {isConnected ? 'Re-Sync Session' : 'Login & Connect'}
+              </LoadingButton>
+
+              {isConnected && (
+                <LoadingButton
+                  fullWidth
+                  variant="outlined"
+                  color="error"
+                  loading={loading}
+                  onClick={async () => {
+                    setLoading(true);
+                    setError('');
+                    try {
+                      // Attempt to get client code from user doc
+                      const clientToDisconnect = user.client_key || "";
+                      await axios.post('/api/auth/logout', { clientcode: clientToDisconnect });
+                      setSuccess('Disconnected successfully. Refreshing...');
+                      setTimeout(() => window.location.reload(), 1500);
+                    } catch (err: any) {
+                      setError(err.response?.data?.error || "Disconnect failed");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  sx={{ py: 1.2, fontWeight: 700, borderStyle: 'dashed' }}
+                  startIcon={<Iconify icon="solar:link-break-bold" />}
+                >
+                  Disconnect Broker
+                </LoadingButton>
+              )}
+            </Stack>
           </Box>
         )}
         <Stack spacing={1.5} sx={{ mt: 4, p: 2, bgcolor: 'background.neutral', borderRadius: 1.5 }}>

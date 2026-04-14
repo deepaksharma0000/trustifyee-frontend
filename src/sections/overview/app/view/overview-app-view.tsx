@@ -496,9 +496,28 @@ export default function OverviewAppView() {
                   }}>
                     <Iconify icon="mdi:check-circle" width={32} sx={{ color: theme.palette.success.light, mb: 0.5 }} />
                     <Typography variant="caption" sx={{ color: alpha('#fff', 0.7), display: 'block', letterSpacing: 0.8 }}>BROKER STATUS</Typography>
-                    <Typography variant="h6" fontWeight={800} sx={{ color: '#4ade80' }}>
+                    <Typography variant="h6" fontWeight={800} sx={{ color: '#4ade80', mb: 1 }}>
                       {isBrokerConnected ? 'Connected' : 'Pending'}
                     </Typography>
+                    {isBrokerConnected && (
+                      <Button
+                        variant="soft" color="error" size="small"
+                        sx={{ fontSize: '0.65rem', height: 24, px: 1 }}
+                        startIcon={<Iconify icon="solar:link-break-bold" width={12} />}
+                        onClick={async () => {
+                          if (window.confirm("Disconnect active broker session?")) {
+                            try {
+                              await api.post('/api/auth/logout', { clientcode: user.client_key || "" });
+                              window.location.reload();
+                            } catch (err) {
+                              console.error("Logout failed", err);
+                            }
+                          }
+                        }}
+                      >
+                        Disconnect
+                      </Button>
+                    )}
                   </Box>
                   <Box sx={{
                     p: 2, borderRadius: 2.5, textAlign: 'center',
@@ -686,6 +705,28 @@ export default function OverviewAppView() {
               '& .MuiChip-icon': { color: '#fff' }
             }}
           />
+          {isBrokerConnected && (
+            <Button
+              variant="soft"
+              color="error"
+              size="small"
+              startIcon={<Iconify icon="solar:link-break-bold" width={18} />}
+              onClick={async () => {
+                if (window.confirm("Terminate Admin Broker Session?")) {
+                  try {
+                    await api.post('/api/auth/logout', { clientcode: user.client_key || "" });
+                    window.location.reload();
+                  } catch (err) {
+                    console.error("Admin logout failed", err);
+                  }
+                }
+              }}
+              sx={{ borderRadius: 2, fontWeight: 600, px: 2 }}
+            >
+              Disconnect Broker
+            </Button>
+          )}
+
           <Tooltip title="Refresh dashboard data">
             <Button
               variant="outlined"
