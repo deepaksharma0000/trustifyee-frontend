@@ -80,6 +80,7 @@ export const endpoints = {
   },
   user: {
     riskStatus: (id: string) => `/api/user/risk-status/${id}`,
+    reactivate: (id: string) => `/api/user/reactivate-trading/${id}`,
   },
   mail: {
     list: '/api/mail/list',

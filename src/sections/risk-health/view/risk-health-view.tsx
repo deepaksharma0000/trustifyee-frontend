@@ -100,6 +100,22 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
       setLoading(false);
     }
   }, [userId, addLog]);
+  
+  const handleReactivate = async () => {
+    if (!userId) return;
+    try {
+      setLoading(true);
+      await axios.post(endpoints.user.reactivate(userId));
+      addLog('ACTION: Trading manually reactivated. Fail-safe reset.', 'success');
+      // Briefly wait for DB to update before refreshing
+      setTimeout(() => fetchRiskStatus(true), 500);
+    } catch (error) {
+      console.error(error);
+      addLog('ERROR: Could not reactivate trading. Contact administrator.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchRiskStatus();
@@ -157,9 +173,24 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
                     Safety Status: <strong>{data?.trading_paused ? 'Engaged (Trading Locked)' : 'Scanning (System Clear)'}</strong>
                   </Typography>
                 </Box>
-                <Label color={data?.trading_paused ? 'error' : 'success'} variant="soft">
-                   {data?.consecutive_failures || 0} / 3 Failures
-                </Label>
+                
+                {data?.trading_paused ? (
+                  <Button 
+                    variant="contained" 
+                    color="error" 
+                    size="small" 
+                    onClick={handleReactivate}
+                    disabled={loading}
+                    startIcon={<Iconify icon="solar:bolt-bold" />}
+                    sx={{ boxShadow: (th) => `0 8px 16px 0 ${alpha(th.palette.error.main, 0.24)}` }}
+                  >
+                    Reactive
+                  </Button>
+                ) : (
+                  <Label color={data?.trading_paused ? 'error' : 'success'} variant="soft">
+                    {data?.consecutive_failures || 0} / 3 Failures
+                  </Label>
+                )}
               </Card>
             </Grid>
 
