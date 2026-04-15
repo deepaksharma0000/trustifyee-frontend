@@ -3,8 +3,11 @@ import { useState } from 'react';
 import { Alert, Card, Typography, Box, TextField, Divider, Stack } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import { useAuthUser } from 'src/hooks/use-auth-user';
+import { useBoolean } from 'src/hooks/use-boolean';
 import Iconify from 'src/components/iconify';
 import axios from 'src/utils/axios';
+import { ConfirmDialog } from 'src/components/custom-dialog';
+import { Button } from '@mui/material';
 
 // ----------------------------------------------------------------------
 
@@ -14,6 +17,8 @@ export default function BrokerConnect() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const confirm = useBoolean();
   const [broker, setBroker] = useState<'AngelOne' | 'AliceBlue'>(user?.broker as any || 'AngelOne');
   
   const [formData, setFormData] = useState({
@@ -283,21 +288,7 @@ export default function BrokerConnect() {
                   variant="outlined"
                   color="error"
                   loading={loading}
-                  onClick={async () => {
-                    setLoading(true);
-                    setError('');
-                    try {
-                      // Attempt to get client code from user doc
-                      const clientToDisconnect = user.client_key || "";
-                      await axios.post('/api/auth/logout', { clientcode: clientToDisconnect });
-                      setSuccess('Disconnected successfully. Refreshing...');
-                      setTimeout(() => window.location.reload(), 1500);
-                    } catch (err: any) {
-                      setError(err.response?.data?.error || "Disconnect failed");
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
+                  onClick={confirm.onTrue}
                   sx={{ py: 1.2, fontWeight: 700, borderStyle: 'dashed' }}
                   startIcon={<Iconify icon="solar:link-break-bold" />}
                 >
@@ -319,6 +310,36 @@ export default function BrokerConnect() {
           </Typography>
         </Stack>
       </Card>
+
+      <ConfirmDialog
+        open={confirm.value}
+        onClose={confirm.onFalse}
+        title="Terminate Broker Session?"
+        content="This will immediately log you out from the broker API. Your active strategies will stop executing until you reconnect."
+        action={
+          <Button
+            variant="contained"
+            color="error"
+            onClick={async () => {
+              setLoading(true);
+              setError('');
+              try {
+                const clientToDisconnect = user.client_key || "";
+                await axios.post('/api/auth/logout', { clientcode: clientToDisconnect });
+                setSuccess('Disconnected successfully. Refreshing...');
+                confirm.onFalse();
+                setTimeout(() => window.location.reload(), 1500);
+              } catch (err: any) {
+                setError(err.response?.data?.error || "Disconnect failed");
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
+            Disconnect Now
+          </Button>
+        }
+      />
     </Box>
   );
 }

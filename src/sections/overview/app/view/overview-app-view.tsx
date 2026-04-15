@@ -26,6 +26,7 @@ import { paths } from 'src/routes/paths';
 import { HOST_API } from 'src/config-global';
 
 // hooks
+import { useBoolean } from 'src/hooks/use-boolean';
 import { useSettingsContext } from 'src/components/settings';
 import { useAuthUser } from 'src/hooks/use-auth-user';
 
@@ -34,6 +35,7 @@ import { SeoIllustration } from 'src/assets/illustrations';
 
 // components
 import Iconify from 'src/components/iconify';
+import { ConfirmDialog } from 'src/components/custom-dialog';
 import OpenPositionView from 'src/sections/account/view/user-account-view';
 import LiveTradingControl from 'src/sections/overview/e-commerce/view/LiveTradingControl';
 import AlgoRiskDisclaimer from 'src/components/algo-risk-disclaimer/AlgoRiskDisclaimer';
@@ -58,6 +60,8 @@ export default function OverviewAppView() {
   const settings = useSettingsContext();
   const navigate = useNavigate();
   const { user } = useAuthUser() as any;
+
+  const confirm = useBoolean();
 
   // 🔄 1-SECOND RELOAD AFTER LOGIN HANDLER
   useEffect(() => {
@@ -504,16 +508,7 @@ export default function OverviewAppView() {
                         variant="soft" color="error" size="small"
                         sx={{ fontSize: '0.65rem', height: 24, px: 1 }}
                         startIcon={<Iconify icon="solar:link-break-bold" width={12} />}
-                        onClick={async () => {
-                          if (window.confirm("Disconnect active broker session?")) {
-                            try {
-                              await api.post('/api/auth/logout', { clientcode: user.client_key || "" });
-                              window.location.reload();
-                            } catch (err) {
-                              console.error("Logout failed", err);
-                            }
-                          }
-                        }}
+                        onClick={confirm.onTrue}
                       >
                         Disconnect
                       </Button>
@@ -711,16 +706,7 @@ export default function OverviewAppView() {
               color="error"
               size="small"
               startIcon={<Iconify icon="solar:link-break-bold" width={18} />}
-              onClick={async () => {
-                if (window.confirm("Terminate Admin Broker Session?")) {
-                  try {
-                    await api.post('/api/auth/logout', { clientcode: user.client_key || "" });
-                    window.location.reload();
-                  } catch (err) {
-                    console.error("Admin logout failed", err);
-                  }
-                }
-              }}
+              onClick={confirm.onTrue}
               sx={{ borderRadius: 2, fontWeight: 600, px: 2 }}
             >
               Disconnect Broker
@@ -986,6 +972,30 @@ export default function OverviewAppView() {
         </Box>
       )}
       <AlgoRiskDisclaimer variant="footer" />
+
+      <ConfirmDialog
+        open={confirm.value}
+        onClose={confirm.onFalse}
+        title="Disconnect Broker Session"
+        content="Are you sure you want to terminate the active broker session? You will need to reconnect manually to start trading again."
+        action={
+          <Button
+            variant="contained"
+            color="error"
+            onClick={async () => {
+              try {
+                await api.post('/api/auth/logout', { clientcode: user.client_key || "" });
+                confirm.onFalse();
+                window.location.reload();
+              } catch (err) {
+                console.error("Logout failed", err);
+              }
+            }}
+          >
+            Disconnect
+          </Button>
+        }
+      />
     </Container>
   );
 }
