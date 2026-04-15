@@ -40,6 +40,7 @@
   import { SettingsProvider, SettingsDrawer } from 'src/components/settings';
   // sections
   import { CheckoutProvider } from 'src/sections/checkout/context';
+  import { BrokerSessionProvider } from 'src/trading/context/broker-session-context';
   // auth
   import { AuthProvider, AuthConsumer } from 'src/auth/context/jwt';
   // import { AuthProvider, AuthConsumer } from 'src/auth/context/auth0';
@@ -80,13 +81,15 @@
             <ThemeProvider>
               <MotionLazy>
                 <SnackbarProvider>
-                  <CheckoutProvider>
-                    <SettingsDrawer />
-                    <ProgressBar />
-                    <AuthConsumer>
-                      <Router />
-                    </AuthConsumer>
-                  </CheckoutProvider>
+                  <BrokerSessionProvider>
+                    <CheckoutProvider>
+                      <SettingsDrawer />
+                      <ProgressBar />
+                      <AuthConsumer>
+                        <Router />
+                      </AuthConsumer>
+                    </CheckoutProvider>
+                  </BrokerSessionProvider>
                 </SnackbarProvider>
               </MotionLazy>
             </ThemeProvider>

@@ -48,6 +48,7 @@ interface OptionItem {
   expiry: string;
   optiontype: "CE" | "PE";
   strike: number;
+  ltp?: number; // 🔥 Initial LTP from backend
 }
 
 interface OptionRow {
@@ -248,6 +249,7 @@ export default function OptionChainPage() {
       });
 
       setIndexLtp(json.data.ltp || 0);
+      console.log("OPTION_DATA:", options); // 🔍 DEBUG LOG
       setMarketData(Object.values(grouped).sort((a, b) => a.strikePrice - b.strikePrice));
     } catch (err: any) {
       setApiError(err.message || "API error");
@@ -952,7 +954,7 @@ export default function OptionChainPage() {
                         {renderPriceCellWithButtons(
                           row.CE,
                           isCeItm,
-                          quoteMap[row.CE?.symboltoken || '']?.ltp?.toFixed(2) || '0.00',
+                          quoteMap[row.CE?.symboltoken || '']?.ltp?.toFixed(2) || row.CE?.ltp?.toFixed(2) || '0.00',
                           true
                         )}
 
@@ -963,7 +965,7 @@ export default function OptionChainPage() {
                         {renderPriceCellWithButtons(
                           row.PE,
                           isPeItm,
-                          quoteMap[row.PE?.symboltoken || '']?.ltp?.toFixed(2) || '0.00',
+                          quoteMap[row.PE?.symboltoken || '']?.ltp?.toFixed(2) || row.PE?.ltp?.toFixed(2) || '0.00',
                           true
                         )}
 
@@ -985,7 +987,7 @@ export default function OptionChainPage() {
                         {renderPriceCellWithButtons(
                           row.CE,
                           isCeItm,
-                          quoteMap[row.CE?.symboltoken || '']?.ltp?.toFixed(2) || '0.00',
+                          quoteMap[row.CE?.symboltoken || '']?.ltp?.toFixed(2) || row.CE?.ltp?.toFixed(2) || '0.00',
                           true
                         )}
 
@@ -996,7 +998,7 @@ export default function OptionChainPage() {
                         {renderPriceCellWithButtons(
                           row.PE,
                           isPeItm,
-                          quoteMap[row.PE?.symboltoken || '']?.ltp?.toFixed(2) || '0.00',
+                          quoteMap[row.PE?.symboltoken || '']?.ltp?.toFixed(2) || row.PE?.ltp?.toFixed(2) || '0.00',
                           true
                         )}
 
