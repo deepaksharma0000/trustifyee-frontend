@@ -6,7 +6,7 @@ import { AsyncSignalQueue } from 'src/trading/execution/queue';
 import { AngelApiResponse, AngelOrderResponse } from 'src/trading/angelone/types';
 
 // Configuration
-const WS_BASE = process.env.REACT_APP_WS_URL || HOST_API.replace(/^http\/i, 'ws');
+const WS_BASE = process.env.REACT_APP_WS_URL || HOST_API.replace(/^http/i, 'ws');
 const API_BASE = process.env.REACT_APP_API_URL || `${HOST_API}/api`;
 const WS_PATH = '/ws/signals';
 const FALLBACK_POLL_MS = 5000;
