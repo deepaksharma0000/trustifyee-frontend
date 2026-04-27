@@ -215,45 +215,38 @@ export default function BrokerConnect() {
               disabled={loading}
               helperText={formData.password === '********' ? "Using saved Password" : ""}
             />
-            {isAdmin && (
-              <TextField
-                fullWidth
-                label="SmartAPI Key"
-                placeholder="e.g. iSYTk7nA"
-                value={formData.api_key}
-                onChange={(e) => setFormData({ ...formData, api_key: e.target.value.trim() })}
-                sx={{ mb: 2.5 }}
-                disabled={loading}
-                helperText={formData.api_key === '********' ? "Using saved API Key" : "Required for 1.1 April Rule"}
-              />
-            )}
+            <TextField
+              fullWidth
+              label="SmartAPI Key"
+              placeholder="e.g. iSYTk7nA"
+              value={formData.api_key}
+              onChange={(e) => setFormData({ ...formData, api_key: e.target.value.trim() })}
+              sx={{ mb: 2.5 }}
+              disabled={loading}
+              helperText={formData.api_key === '********' ? "Using saved API Key" : "Required for SmartAPI Authentication"}
+            />
 
-            {isAdmin && (
-              <Divider sx={{ mb: 2.5, borderStyle: 'dashed' }}>
-                <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 700, textTransform: 'uppercase' }}>
-                  TOTP Method
-                </Typography>
-              </Divider>
-            )}
+            <Divider sx={{ mb: 2.5, borderStyle: 'dashed' }}>
+              <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 700, textTransform: 'uppercase' }}>
+                TOTP Method
+              </Typography>
+            </Divider>
 
-            {isAdmin && (
-              <>
-                <TextField
-                  fullWidth
-                  label="TOTP Secret Key (Auto-Login)"
-                  placeholder="16-character secret from AngelOne"
-                  value={formData.totp_secret}
-                  onChange={(e) => setFormData({ ...formData, totp_secret: e.target.value.trim().toUpperCase() })}
-                  sx={{ mb: 2 }}
-                  disabled={loading}
-                  helperText={formData.totp_secret === '********' ? "Using saved TOTP Secret" : "Provide this to enable one-click login"}
-                />
+            <TextField
+              fullWidth
+              label="TOTP Secret Key (Auto-Login)"
+              placeholder="16-character secret from AngelOne"
+              value={formData.totp_secret}
+              onChange={(e) => setFormData({ ...formData, totp_secret: e.target.value.trim().toUpperCase() })}
+              sx={{ mb: 2 }}
+              disabled={loading}
+              helperText={formData.totp_secret === '********' ? "Using saved TOTP Secret" : "Provide this to enable one-click login"}
+            />
 
-                <Box sx={{ textAlign: 'center', mb: 2 }}>
-                  <Typography variant="caption" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>— OR —</Typography>
-                </Box>
-              </>
-            )}
+            <Box sx={{ textAlign: 'center', mb: 2 }}>
+              <Typography variant="caption" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>— OR —</Typography>
+            </Box>
+
 
             <TextField
               fullWidth

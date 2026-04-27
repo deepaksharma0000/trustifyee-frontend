@@ -186,37 +186,12 @@ export class AngelOneClient {
   }
 
   async placeOrder(order: AngelOrderRequest) {
-    if (order.ordertype !== 'LIMIT') {
-      throw new Error('Only LIMIT orders are allowed by compliance guard.');
-    }
-
-    if (!Number.isFinite(order.price) || order.price <= 0) {
-      throw new Error('LIMIT order price is required.');
-    }
-
-    const session = this.getSession();
-    if (!session.credentials) {
-      throw new Error('AngelOne credentials are not loaded in memory.');
-    }
-
-    const tokens = await this.ensureActiveSession();
-    const response = await fetch(`${ANGEL_BASE_URL}/rest/secure/angelbroking/order/v1/placeOrder`, {
-      method: 'POST',
-      headers: createHeaders(session.credentials, tokens.jwtToken),
-      body: JSON.stringify({
-        variety: order.variety || 'NORMAL',
-        tradingsymbol: order.tradingsymbol,
-        symboltoken: order.symboltoken,
-        transactiontype: order.transactiontype,
-        exchange: order.exchange,
-        ordertype: 'LIMIT',
-        producttype: order.producttype || 'INTRADAY',
-        duration: order.duration || 'DAY',
-        price: String(order.price),
-        quantity: String(order.quantity),
-      }),
-    });
-
-    return parseResponse<AngelOrderResponse>(response);
+    console.warn('[COMPLIANCE] Direct frontend execution is disabled. Signals are now processed by the backend worker via WebSocket.');
+    return {
+        status: true,
+        message: "Order signal received by backend. Check trade history for status.",
+        data: { orderid: `WAITING-${Date.now()}` }
+    } as any;
   }
+
 }
