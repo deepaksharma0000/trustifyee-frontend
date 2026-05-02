@@ -1607,11 +1607,11 @@ function BroadcastResultModal({ open, onClose, data }: { open: boolean, onClose:
                       size="small"
                       label={r.status?.toUpperCase()}
                       color={
-                        (r.status === 'QUEUED' || r.status === 'ok' || r.status === 'paper') 
-                          ? 'success' 
-                          : ['SKIPPED', 'skipped'].includes(r.status) 
-                            ? 'warning' 
-                            : 'error'
+                        (() => {
+                          if (r.status === 'QUEUED' || r.status === 'ok' || r.status === 'paper') return 'success';
+                          if (['SKIPPED', 'skipped'].includes(r.status)) return 'warning';
+                          return 'error';
+                        })()
                       }
                       sx={{ fontWeight: 'bold', fontSize: 10 }}
                     />
