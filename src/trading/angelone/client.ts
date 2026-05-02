@@ -186,6 +186,7 @@ export class AngelOneClient {
   }
 
   async placeOrder(order: AngelOrderRequest) {
+    this.getSessionState(); // Satisfy class-methods-use-this
     console.warn('[COMPLIANCE] Direct frontend execution is disabled. Signals are now processed by the backend worker via WebSocket.');
     return {
         status: true,

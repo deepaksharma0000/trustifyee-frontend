@@ -335,7 +335,9 @@ export default function OverviewBankingView() {
   // 🔄 [NEW] POLLING FOR ACTIVE BROADCASTS
   useEffect(() => {
     const hasActiveBroadcast = signals.some((s: any) => s.status === 'EXECUTION_IN_PROGRESS');
-    if (!hasActiveBroadcast || currentTab !== getTabIndex('All Signals')) return;
+    if (!hasActiveBroadcast || currentTab !== getTabIndex('All Signals')) {
+      return undefined;
+    }
 
     const pollTimer = setInterval(() => {
       fetchSignals();
@@ -534,22 +536,26 @@ export default function OverviewBankingView() {
                         </Stack>
                       </TableCell>
                       <TableCell align="right">
-                        {row.status === 'ACTIVE' ? (
-                          <LoadingButton
-                            size="small"
-                            variant="contained"
-                            color="warning"
-                            loading={broadcastLoading === row._id}
-                            onClick={() => handleBroadcastSignal(row._id)}
-                            startIcon={<Iconify icon="solar:bolt-bold" />}
-                          >
-                            Execute
-                          </LoadingButton>
-                        ) : row.status === 'EXECUTION_IN_PROGRESS' ? (
-                          <CircularProgress size={20} color="warning" />
-                        ) : (
-                          <Iconify icon="solar:check-circle-bold" sx={{ color: 'success.main' }} />
-                        )}
+                        {(() => {
+                          if (row.status === 'ACTIVE') {
+                            return (
+                              <LoadingButton
+                                size="small"
+                                variant="contained"
+                                color="warning"
+                                loading={broadcastLoading === row._id}
+                                onClick={() => handleBroadcastSignal(row._id)}
+                                startIcon={<Iconify icon="solar:bolt-bold" />}
+                              >
+                                Execute
+                              </LoadingButton>
+                            );
+                          }
+                          if (row.status === 'EXECUTION_IN_PROGRESS') {
+                            return <CircularProgress size={20} color="warning" />;
+                          }
+                          return <Iconify icon="solar:check-circle-bold" sx={{ color: 'success.main' }} />;
+                        })()}
                       </TableCell>
                     </TableRow>
                   );

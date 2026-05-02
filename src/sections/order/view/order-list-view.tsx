@@ -1609,7 +1609,7 @@ function BroadcastResultModal({ open, onClose, data }: { open: boolean, onClose:
                       color={
                         (r.status === 'QUEUED' || r.status === 'ok' || r.status === 'paper') 
                           ? 'success' 
-                          : (r.status === 'SKIPPED' || r.status === 'skipped') 
+                          : ['SKIPPED', 'skipped'].includes(r.status) 
                             ? 'warning' 
                             : 'error'
                       }

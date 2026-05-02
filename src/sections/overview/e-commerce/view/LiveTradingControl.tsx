@@ -136,7 +136,7 @@ export default function LiveTradingControl({ user }: { user: any }) {
         const token = localStorage.getItem('authToken');
         let attempts = 0;
         const interval = setInterval(async () => {
-            attempts++;
+            attempts += 1;
             if (attempts > 12) { // 1 minute max
                 clearInterval(interval);
                 return;
@@ -383,9 +383,12 @@ export default function LiveTradingControl({ user }: { user: any }) {
                                         </TableCell>
                                         <TableCell>
                                             <Label color={
-                                                executionStatuses[sig._id] === 'SUCCESS' ? 'success' :
-                                                executionStatuses[sig._id] === 'FAILED' ? 'error' :
-                                                executionStatuses[sig._id] === 'PENDING' ? 'warning' : 'default'
+                                                (() => {
+                                                    if (executionStatuses[sig._id] === 'SUCCESS') return 'success';
+                                                    if (executionStatuses[sig._id] === 'FAILED') return 'error';
+                                                    if (executionStatuses[sig._id] === 'PENDING') return 'warning';
+                                                    return 'default';
+                                                })()
                                             }>
                                                 {executionStatuses[sig._id] || sig.status || 'READY'}
                                             </Label>
@@ -417,7 +420,11 @@ export default function LiveTradingControl({ user }: { user: any }) {
                                                     '&:hover': { boxShadow: `0 4px 14px ${alpha('#22c55e', 0.5)}` }
                                                 }}
                                             >
-                                                {executionStatuses[sig._id] === 'PENDING' ? 'Queued...' : executionStatuses[sig._id] === 'SUCCESS' ? 'Done' : 'Execute'}
+                                                {(() => {
+                                                    if (executionStatuses[sig._id] === 'PENDING') return 'Queued...';
+                                                    if (executionStatuses[sig._id] === 'SUCCESS') return 'Done';
+                                                    return 'Execute';
+                                                })()}
                                             </Button>
                                         </TableCell>
                                     </TableRow>
