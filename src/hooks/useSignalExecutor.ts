@@ -100,6 +100,13 @@ export function useSignalExecutor({
     async (signal: TradeSignal) => {
       onSignalReceived?.(signal);
 
+      // 🛡️ [DUPLICATE PREVENTION]
+      // If the signal is marked for server-side execution, ignore it on the client.
+      if ((signal as any).executionMode === 'SERVER') {
+        console.log(`[Executor] Signal ${signal.signalId} is handled by server. Skipping client execution.`);
+        return;
+      }
+
       if (!enabled) return;
 
       // 🛡️ VALIDATION: LIMIT Order Only

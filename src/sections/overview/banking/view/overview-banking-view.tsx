@@ -29,7 +29,8 @@ import {
   InputAdornment,
   Chip,
   Grid,
-  CircularProgress
+  CircularProgress,
+  LinearProgress
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { LoadingButton } from '@mui/lab';
@@ -331,6 +332,18 @@ export default function OverviewBankingView() {
     }
   }, [isAdmin, currentTab, fetchSignals, fetchHistory, fetchGlobalStatus, fetchActiveUsers, fetchResponses, availableTabs]);
 
+  // 🔄 [NEW] POLLING FOR ACTIVE BROADCASTS
+  useEffect(() => {
+    const hasActiveBroadcast = signals.some((s: any) => s.status === 'EXECUTION_IN_PROGRESS');
+    if (!hasActiveBroadcast || currentTab !== getTabIndex('All Signals')) return;
+
+    const pollTimer = setInterval(() => {
+      fetchSignals();
+    }, 2000);
+
+    return () => clearInterval(pollTimer);
+  }, [signals, currentTab, getTabIndex, fetchSignals]);
+
   const handleHandleExport = async () => {
     try {
       const params = { ...historyFilters };
@@ -509,7 +522,16 @@ export default function OverviewBankingView() {
                       </TableCell>
 
                       <TableCell>
-                        <Label variant="soft" color={statusColor}>{statusText}</Label>
+                        <Stack spacing={1}>
+                          <Label variant="soft" color={statusColor}>{statusText}</Label>
+                          {row.status === 'EXECUTION_IN_PROGRESS' && (
+                            <LinearProgress 
+                              color="warning" 
+                              variant="indeterminate" 
+                              sx={{ width: 60, height: 2, borderRadius: 1 }} 
+                            />
+                          )}
+                        </Stack>
                       </TableCell>
                       <TableCell align="right">
                         {row.status === 'ACTIVE' ? (
@@ -523,6 +545,8 @@ export default function OverviewBankingView() {
                           >
                             Execute
                           </LoadingButton>
+                        ) : row.status === 'EXECUTION_IN_PROGRESS' ? (
+                          <CircularProgress size={20} color="warning" />
                         ) : (
                           <Iconify icon="solar:check-circle-bold" sx={{ color: 'success.main' }} />
                         )}

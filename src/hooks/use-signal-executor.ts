@@ -68,7 +68,8 @@ export function useSignalExecutor({
 
       onSignalReceived?.(signal);
       try {
-        const res = await fetch(`${API_BASE}/signals/execute`, {
+        const res = await fetch(`${API_BASE}/signals/queue-execution`, {
+
           method: "POST",
           headers: {
             "Content-Type": "application/json",

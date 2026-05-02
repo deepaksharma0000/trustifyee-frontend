@@ -44,6 +44,8 @@ export default function LiveTradingControl({ user }: { user: any }) {
     const [rows, setRows] = useState<TradingRow[]>([]);
     const [signals, setSignals] = useState<any[]>([]);
     const [brokerResponse, setBrokerResponse] = useState<any>(null);
+    const [executionStatuses, setExecutionStatuses] = useState<Record<string, string>>({});
+
 
     const fetchSignals = async () => {
         try {
@@ -130,11 +132,51 @@ export default function LiveTradingControl({ user }: { user: any }) {
         }
     };
 
+    const pollStatus = async (signalId: string) => {
+        const token = localStorage.getItem('authToken');
+        let attempts = 0;
+        const interval = setInterval(async () => {
+            attempts++;
+            if (attempts > 12) { // 1 minute max
+                clearInterval(interval);
+                return;
+            }
+            try {
+                const res = await fetch(`${HOST_API}/api/signals/execution-status/${signalId}`, {
+                    headers: { 'x-access-token': token || '' }
+                });
+                const data = await res.json();
+                if (data.status && data.data) {
+                    setExecutionStatuses(prev => ({ ...prev, [signalId]: data.data.status }));
+                    if (['SUCCESS', 'FAILED'].includes(data.data.status)) {
+                        clearInterval(interval);
+                        if (data.data.status === 'SUCCESS') {
+                            setBrokerResponse({
+                                status: 'success',
+                                message: `Order executed successfully! ID: ${data.data.orderId}`,
+                                time: new Date().toLocaleTimeString()
+                            });
+                        } else {
+                            setBrokerResponse({
+                                status: 'error',
+                                message: `Execution failed: ${data.data.errorMessage}`,
+                                time: new Date().toLocaleTimeString()
+                            });
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Status poll failed", err);
+            }
+        }, 5000);
+    };
+
     const handleExecuteSignal = async (signalId: string, lots: number) => {
         setBrokerResponse(null);
+        setExecutionStatuses(prev => ({ ...prev, [signalId]: 'PENDING' }));
         try {
             const token = localStorage.getItem('authToken');
-            const response = await fetch(`${HOST_API}/api/signals/execute`, {
+            const response = await fetch(`${HOST_API}/api/signals/queue-execution`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -150,11 +192,13 @@ export default function LiveTradingControl({ user }: { user: any }) {
                     message: data.message,
                     time: new Date().toLocaleTimeString()
                 });
+                pollStatus(signalId);
                 fetchSignals();
             } else {
-                throw new Error(data.error || 'Failed to execute signal');
+                throw new Error(data.error || 'Failed to queue signal');
             }
         } catch (err: any) {
+            setExecutionStatuses(prev => ({ ...prev, [signalId]: 'FAILED' }));
             setBrokerResponse({ status: 'error', message: err.message, time: new Date().toLocaleTimeString() });
         }
     };
@@ -316,11 +360,11 @@ export default function LiveTradingControl({ user }: { user: any }) {
                         <Table size="small">
                             <TableHead>
                                 <TableRow sx={{ bgcolor: alpha('#22c55e', 0.04) }}>
-                                    {['Time', 'Symbol', 'Side', 'Strategy', 'Default Lots', 'Execute Lots', 'Action'].map((h) => (
-                                        <TableCell key={h} align={['Default Lots', 'Execute Lots', 'Action'].includes(h) ? 'center' : 'left'} sx={{ fontSize: '0.72rem', fontWeight: 800, color: 'text.disabled', letterSpacing: 0.8, py: 1.5 }}>
-                                            {h.toUpperCase()}
-                                        </TableCell>
-                                    ))}
+                                    {['Time', 'Symbol', 'Side', 'Status', 'Execute Lots', 'Action'].map((h) => (
+                                         <TableCell key={h} align={['Execute Lots', 'Action'].includes(h) ? 'center' : 'left'} sx={{ fontSize: '0.72rem', fontWeight: 800, color: 'text.disabled', letterSpacing: 0.8, py: 1.5 }}>
+                                             {h.toUpperCase()}
+                                         </TableCell>
+                                     ))}
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -338,10 +382,13 @@ export default function LiveTradingControl({ user }: { user: any }) {
                                             <Label color={sig.side === 'BUY' ? 'success' : 'error'}>{sig.side}</Label>
                                         </TableCell>
                                         <TableCell>
-                                            <Chip label={sig.strategy || 'Multi'} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <Typography variant="body2" fontWeight={700}>1</Typography>
+                                            <Label color={
+                                                executionStatuses[sig._id] === 'SUCCESS' ? 'success' :
+                                                executionStatuses[sig._id] === 'FAILED' ? 'error' :
+                                                executionStatuses[sig._id] === 'PENDING' ? 'warning' : 'default'
+                                            }>
+                                                {executionStatuses[sig._id] || sig.status || 'READY'}
+                                            </Label>
                                         </TableCell>
                                         <TableCell align="center">
                                             <TextField
@@ -357,19 +404,20 @@ export default function LiveTradingControl({ user }: { user: any }) {
                                             <Button
                                                 variant="contained"
                                                 size="small"
-                                                startIcon={<Iconify icon="mdi:flash" width={14} />}
+                                                startIcon={<Iconify icon={executionStatuses[sig._id] === 'PENDING' ? 'mdi:loading' : 'mdi:flash'} width={14} />}
+                                                disabled={executionStatuses[sig._id] === 'PENDING' || executionStatuses[sig._id] === 'SUCCESS'}
                                                 onClick={() => {
                                                     const lotInput = document.getElementById(`lots-${sig._id}`) as HTMLInputElement;
                                                     handleExecuteSignal(sig._id, parseInt(lotInput.value, 10));
                                                 }}
                                                 sx={{
                                                     borderRadius: 1.5, fontWeight: 700, fontSize: '0.72rem',
-                                                    background: 'linear-gradient(135deg, #22c55e, #15803d)',
+                                                    background: executionStatuses[sig._id] === 'SUCCESS' ? 'grey.500' : 'linear-gradient(135deg, #22c55e, #15803d)',
                                                     boxShadow: `0 2px 8px ${alpha('#22c55e', 0.4)}`,
                                                     '&:hover': { boxShadow: `0 4px 14px ${alpha('#22c55e', 0.5)}` }
                                                 }}
                                             >
-                                                Execute
+                                                {executionStatuses[sig._id] === 'PENDING' ? 'Queued...' : executionStatuses[sig._id] === 'SUCCESS' ? 'Done' : 'Execute'}
                                             </Button>
                                         </TableCell>
                                     </TableRow>

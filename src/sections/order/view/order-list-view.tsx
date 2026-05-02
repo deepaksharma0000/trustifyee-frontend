@@ -119,7 +119,7 @@ export default function OptionChainPage() {
 
   const { user: authUser } = useAuthUser();
   const isAdmin = authUser?.role === "admin" || authUser?.role === "sub-admin" || authUser?.role === "subadmin";
-  const token = localStorage.getItem("authToken");
+  const token = sessionStorage.getItem("accessToken") || localStorage.getItem("authToken");
   const API_BASE = HOST_API || process.env.REACT_APP_API_BASE_URL || "";
   const wsBase = API_BASE
     ? API_BASE.replace(/^http/, "ws")
@@ -646,9 +646,11 @@ export default function OptionChainPage() {
     setBroadcastResults({
       ok: results.every(r => r.success),
       totalUsers: totalTargeted,
-      results: allUserResults
+      results: [] // Results will be updated via the Signal Table polling
     });
     setBroadcastModalOpen(true);
+    
+    alert(`🚀 Broadcast initiated for ${totalTargeted} users. Check the Signals tab for real-time progress.`);
   };
 
   const handleOpenOrderDialog = (opt: OptionItem, side: 'BUY' | 'SELL') => {
@@ -1516,13 +1518,13 @@ function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange,
 function BroadcastResultModal({ open, onClose, data }: { open: boolean, onClose: () => void, data: any }) {
   if (!data) return null;
 
-  const results = data.results || [];
+  const results = data.executions || [];
   const total = data.totalUsers || 0;
 
-  const successCount = results.filter((r: any) => r.status === 'ok').length;
-  const paperCount = results.filter((r: any) => r.status === 'paper').length;
-  const skippedCount = results.filter((r: any) => r.status === 'skipped').length;
-  const errorCount = results.filter((r: any) => r.status === 'error').length;
+  const successCount = results.filter((r: any) => r.status === 'QUEUED' || r.status === 'ok').length;
+  const paperCount = data.demoPlaced || 0;
+  const skippedCount = results.filter((r: any) => r.status === 'SKIPPED' || r.status === 'skipped').length;
+  const errorCount = results.filter((r: any) => r.status === 'FAILED' || r.status === 'error').length;
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
@@ -1594,28 +1596,29 @@ function BroadcastResultModal({ open, onClose, data }: { open: boolean, onClose:
                     <Chip size="small" label={r.licence} color={r.licence === 'Live' ? 'primary' : 'default'} sx={{ fontWeight: 'bold' }} />
                   </TableCell>
                   <TableCell align="center">
-                    <Iconify icon={r.isOnline ? "eva:checkmark-circle-fill" : "eva:close-circle-fill"}
-                      color={r.isOnline ? "success.main" : "text.disabled"} width={20} />
+                    <Iconify icon={r.online ? "eva:checkmark-circle-fill" : "eva:close-circle-fill"}
+                      color={r.online ? "success.main" : "text.disabled"} width={20} />
                   </TableCell>
                   <TableCell align="center">
-                    <Iconify icon={r.brokerConnected ? "eva:checkmark-circle-fill" : "eva:close-circle-fill"}
-                      color={r.brokerConnected ? "success.main" : "text.disabled"} width={20} />
+                    <Typography variant="caption" sx={{ fontWeight: 'bold' }}>{r.broker}</Typography>
                   </TableCell>
                   <TableCell>
                     <Chip
                       size="small"
                       label={r.status?.toUpperCase()}
                       color={
-                        ((r.status === 'ok' || r.status === 'paper') && 'success') ||
-                        (r.status === 'skipped' && 'warning') ||
-                        'error'
+                        (r.status === 'QUEUED' || r.status === 'ok' || r.status === 'paper') 
+                          ? 'success' 
+                          : (r.status === 'SKIPPED' || r.status === 'skipped') 
+                            ? 'warning' 
+                            : 'error'
                       }
                       sx={{ fontWeight: 'bold', fontSize: 10 }}
                     />
                   </TableCell>
                   <TableCell>
                     <Typography variant="caption" sx={{ color: r.status === 'error' ? 'error.main' : 'text.secondary' }}>
-                      {r.orderid || r.reason || r.error || "-"}
+                      {r.message || r.orderid || r.reason || r.error || "-"}
                     </Typography>
                   </TableCell>
                 </TableRow>
