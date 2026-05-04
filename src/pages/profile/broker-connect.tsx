@@ -33,7 +33,7 @@ export default function BrokerConnect() {
       if (user.broker) setBroker(user.broker as any);
       setFormData((prev) => ({
         ...prev,
-        client_code: user.client_code === '********' ? '********' : (user.client_key || ''),
+        client_code: user.client_key === '********' ? '********' : (user.client_key || ''),
         password: user.broker_password === '********' ? '********' : '',
         api_key: user.api_key === '********' ? '********' : '',
         totp_secret: user.broker_totp_secret === '********' ? '********' : '',
