@@ -141,7 +141,7 @@ export default function LiveTradingControl({ user }: { user: any }) {
         const MAX_ATTEMPTS = 24; // 2 minutes max (24 x 5s)
 
         const interval = setInterval(async () => {
-            attempts++;
+            attempts += 1;
             try {
                 const res = await axios.get(`/api/signals/execution-status/${signalId}`);
                 const { data } = res.data;

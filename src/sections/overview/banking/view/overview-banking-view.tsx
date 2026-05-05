@@ -72,7 +72,7 @@ const OPEN_CLOSE_OPTIONS = ['All', 'OPEN', 'CLOSED'];
 const fSafeDate = (date: any, fmt: string) => {
   if (!date) return '-';
   const d = new Date(date);
-  return isNaN(d.getTime()) ? '-' : format(d, fmt);
+  return Number.isNaN(d.getTime()) ? '-' : format(d, fmt);
 };
 
 // ----------------------------------------------------------------------
