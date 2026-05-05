@@ -27,6 +27,14 @@ import { TableHeadCustom } from 'src/components/table';
 
 // ----------------------------------------------------------------------
 
+const fSafeDate = (date: any, fmt: string) => {
+  if (!date) return '-';
+  const d = new Date(date);
+  return isNaN(d.getTime()) ? '-' : format(d, fmt);
+};
+
+// ----------------------------------------------------------------------
+
 type RowProps = {
   id: string;
   type: string;
@@ -168,8 +176,8 @@ function BankingRecentTransitionsRow({ row }: BankingRecentTransitionsRowProps) 
 
         <TableCell>
           <ListItemText
-            primary={format(new Date(row.date), 'dd MMM yyyy')}
-            secondary={format(new Date(row.date), 'p')}
+            primary={fSafeDate(row.date, 'dd MMM yyyy')}
+            secondary={fSafeDate(row.date, 'p')}
             primaryTypographyProps={{ typography: 'body2' }}
             secondaryTypographyProps={{
               mt: 0.5,

@@ -24,6 +24,14 @@ import CustomPopover, { usePopover } from 'src/components/custom-popover';
 
 // ----------------------------------------------------------------------
 
+const fSafeDate = (date: any, fmt: string) => {
+  if (!date) return '-';
+  const d = new Date(date);
+  return isNaN(d.getTime()) ? '-' : format(d, fmt);
+};
+
+// ----------------------------------------------------------------------
+
 type RowProps = {
   id: string;
   checkIn: Date;
@@ -148,8 +156,8 @@ function BookingDetailsRow({ row }: BookingDetailsRowProps) {
 
         <TableCell>
           <ListItemText
-            primary={format(new Date(row.checkIn), 'dd MMM yyyy')}
-            secondary={format(new Date(row.checkIn), 'p')}
+            primary={fSafeDate(row.checkIn, 'dd MMM yyyy')}
+            secondary={fSafeDate(row.checkIn, 'p')}
             primaryTypographyProps={{ typography: 'body2', noWrap: true }}
             secondaryTypographyProps={{
               mt: 0.5,
@@ -161,8 +169,8 @@ function BookingDetailsRow({ row }: BookingDetailsRowProps) {
 
         <TableCell>
           <ListItemText
-            primary={format(new Date(row.checkOut), 'dd MMM yyyy')}
-            secondary={format(new Date(row.checkOut), 'p')}
+            primary={fSafeDate(row.checkOut, 'dd MMM yyyy')}
+            secondary={fSafeDate(row.checkOut, 'p')}
             primaryTypographyProps={{ typography: 'body2', noWrap: true }}
             secondaryTypographyProps={{
               mt: 0.5,

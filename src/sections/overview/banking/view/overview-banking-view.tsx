@@ -69,6 +69,12 @@ const INDEX_MAP: { [key: string]: string } = {
 
 const OPEN_CLOSE_OPTIONS = ['All', 'OPEN', 'CLOSED'];
 
+const fSafeDate = (date: any, fmt: string) => {
+  if (!date) return '-';
+  const d = new Date(date);
+  return isNaN(d.getTime()) ? '-' : format(d, fmt);
+};
+
 // ----------------------------------------------------------------------
 
 interface TabPanelProps {
@@ -505,8 +511,8 @@ export default function OverviewBankingView() {
                   return (
                     <TableRow key={row._id} hover>
                       <TableCell>{index + 1}</TableCell>
-                      <TableCell>{format(new Date(row.createdAt), 'HH:mm:ss')}</TableCell>
-                      <TableCell>{row.updatedAt ? format(new Date(row.updatedAt), 'HH:mm:ss') : '-'}</TableCell>
+                      <TableCell>{fSafeDate(row.createdAt, 'HH:mm:ss')}</TableCell>
+                      <TableCell>{row.updatedAt ? fSafeDate(row.updatedAt, 'HH:mm:ss') : '-'}</TableCell>
                       <TableCell>
                         <Label color={row.side === 'BUY' ? 'success' : 'error'} variant="soft">
                           {typeLabel}
@@ -599,7 +605,7 @@ export default function OverviewBankingView() {
                 )}
                 {!historyLoading && history.map((row: any) => (
                   <TableRow key={row._id} hover>
-                    <TableCell>{format(new Date(row.createdAt), 'dd/MM/yyyy HH:mm:ss')}</TableCell>
+                    <TableCell>{fSafeDate(row.createdAt, 'dd/MM/yyyy HH:mm:ss')}</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>{row.tradingsymbol}</TableCell>
                     <TableCell><Chip label={row.strategy || '-'} size="small" variant="soft" /></TableCell>
                     <TableCell>
@@ -700,7 +706,7 @@ export default function OverviewBankingView() {
                 {!historyLoading && history.map((row: any, idx) => (
                   <TableRow key={row._id} hover>
                     <TableCell>{idx + 1}</TableCell>
-                    <TableCell>{format(new Date(row.createdAt), 'dd MMM, HH:mm')}</TableCell>
+                    <TableCell>{fSafeDate(row.createdAt, 'dd MMM, HH:mm')}</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>{row.tradingsymbol}</TableCell>
                     <TableCell><Label variant="soft" color="info">{row.strategy || 'Manual'}</Label></TableCell>
                     <TableCell>
@@ -749,7 +755,7 @@ export default function OverviewBankingView() {
                 )}
                 {!responsesLoading && responses.map((row: any) => (
                   <TableRow key={row._id} hover>
-                    <TableCell sx={{ fontSize: '0.85rem' }}>{format(new Date(row.createdAt), 'dd/MM HH:mm:ss')}</TableCell>
+                    <TableCell sx={{ fontSize: '0.85rem' }}>{fSafeDate(row.createdAt, 'dd/MM HH:mm:ss')}</TableCell>
                     <TableCell><Label variant="soft" color="info">{row.action}</Label></TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>{row.tradingsymbol}</TableCell>
                     <TableCell>
@@ -893,7 +899,7 @@ export default function OverviewBankingView() {
                               />
                             </TableCell>
                             <TableCell align="right">
-                              <Typography variant="caption">{format(new Date(u.created_at), 'dd MMM yy')}</Typography>
+                              <Typography variant="caption">{fSafeDate(u.created_at, 'dd MMM yy')}</Typography>
                             </TableCell>
                           </TableRow>
                         ))}
