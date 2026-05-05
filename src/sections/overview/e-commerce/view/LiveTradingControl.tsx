@@ -10,6 +10,8 @@ import { paths } from 'src/routes/paths';
 import Label from 'src/components/label';
 import Iconify from 'src/components/iconify';
 import { HOST_API } from 'src/config-global';
+import axios from 'src/utils/axios';
+import { useSnackbar } from 'src/components/snackbar';
 
 interface TradingRow {
     id: string;
@@ -132,41 +134,45 @@ export default function LiveTradingControl({ user }: { user: any }) {
         }
     };
 
-    const pollStatus = async (signalId: string) => {
-        const token = localStorage.getItem('authToken');
+    const { enqueueSnackbar } = useSnackbar();
+
+    const pollStatus = (signalId: string) => {
         let attempts = 0;
+        const MAX_ATTEMPTS = 24; // 2 minutes max (24 x 5s)
+
         const interval = setInterval(async () => {
-            attempts += 1;
-            if (attempts > 12) { // 1 minute max
-                clearInterval(interval);
-                return;
-            }
+            attempts++;
             try {
-                const res = await fetch(`${HOST_API}/api/signals/execution-status/${signalId}`, {
-                    headers: { 'x-access-token': token || '' }
-                });
-                const data = await res.json();
-                if (data.status && data.data) {
-                    setExecutionStatuses(prev => ({ ...prev, [signalId]: data.data.status }));
-                    if (['SUCCESS', 'FAILED'].includes(data.data.status)) {
-                        clearInterval(interval);
-                        if (data.data.status === 'SUCCESS') {
-                            setBrokerResponse({
-                                status: 'success',
-                                message: `Order executed successfully! ID: ${data.data.orderId}`,
-                                time: new Date().toLocaleTimeString()
-                            });
-                        } else {
-                            setBrokerResponse({
-                                status: 'error',
-                                message: `Execution failed: ${data.data.errorMessage}`,
-                                time: new Date().toLocaleTimeString()
-                            });
-                        }
-                    }
+                const res = await axios.get(`/api/signals/execution-status/${signalId}`);
+                const { data } = res.data;
+
+                if (data.status === 'SUCCESS') {
+                    clearInterval(interval);
+                    setExecutionStatuses(prev => ({ ...prev, [signalId]: 'SUCCESS' }));
+                    enqueueSnackbar('Trade executed successfully!', { variant: 'success' });
+                    setBrokerResponse({
+                        status: 'success',
+                        message: `Order executed successfully! ID: ${data.orderId}`,
+                        time: new Date().toLocaleTimeString()
+                    });
+                } else if (data.status === 'FAILED') {
+                    clearInterval(interval);
+                    setExecutionStatuses(prev => ({ ...prev, [signalId]: 'FAILED' }));
+                    enqueueSnackbar(`Trade failed: ${data.errorMessage || 'Unknown error'}`, { variant: 'error' });
+                    setBrokerResponse({
+                        status: 'error',
+                        message: `Execution failed: ${data.errorMessage}`,
+                        time: new Date().toLocaleTimeString()
+                    });
+                } else if (attempts >= MAX_ATTEMPTS) {
+                    clearInterval(interval);
+                    setExecutionStatuses(prev => ({ ...prev, [signalId]: 'TIMEOUT' }));
+                    enqueueSnackbar('Execution timed out. Check order history.', { variant: 'warning' });
                 }
             } catch (err) {
                 console.error("Status poll failed", err);
+                clearInterval(interval);
+                setExecutionStatuses(prev => ({ ...prev, [signalId]: 'ERROR' }));
             }
         }, 5000);
     };

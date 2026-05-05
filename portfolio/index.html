@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creative Portfolio | Advanced Minimal</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@300;500;800&family=Inter:wght@300;400;600&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="custom-cursor"></div>
+
+    <!-- Navigation -->
+    <nav class="glass-nav">
+        <div class="logo">CREATIVE<b>.</b></div>
+        <div class="nav-links">
+            <a href="#work">Work</a>
+            <a href="#about">About</a>
+            <a href="#contact" class="btn-sm">Enquiry</a>
+        </div>
+    </nav>
+
+    <!-- SECTION 1: 3-Slide Hero -->
+    <section class="hero-slider">
+        <div class="slider-container">
+            <!-- Slide 1: Wall Look (Left) -->
+            <div class="slide slide-1">
+                <div class="image-wall">
+                    <div class="wall-item"
+                        style="background-image: url('https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80');">
+                    </div>
+                    <div class="wall-item"
+                        style="background-image: url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80');">
+                    </div>
+                    <div class="wall-item"
+                        style="background-image: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80');">
+                    </div>
+                    <div class="wall-item"
+                        style="background-image: url('https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&q=80');">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 2: Man at Desktop (Center) -->
+            <div class="slide slide-2 active">
+                <div class="hero-main">
+                    <img src="https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&q=80"
+                        alt="Man at desktop" class="main-img">
+                    <div class="hero-text">
+                        <h1>CRAFTING<br>DIGITAL ART</h1>
+                        <p>Minimalism meets Innovation.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 3: Wall Look (Right) -->
+            <div class="slide slide-3">
+                <div class="image-wall">
+                    <div class="wall-item"
+                        style="background-image: url('https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80');">
+                    </div>
+                    <div class="wall-item"
+                        style="background-image: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80');">
+                    </div>
+                    <div class="wall-item"
+                        style="background-image: url('https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&q=80');">
+                    </div>
+                    <div class="wall-item"
+                        style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80');">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 2: Walking Man (Edge to Edge) -->
+    <section class="walking-section">
+        <div class="walking-track">
+            <div class="man-asset" id="walkingMan">
+                <img src="https://cdni.iconscout.com/illustration/premium/thumb/man-walking-illustration-download-in-svg-png-gif-file-formats--person-travel-outdoor-lifestyle-pack-people-illustrations-3343603.png"
+                    alt="walking man">
+            </div>
+            <div class="walking-text">MOTION IS LIFE</div>
+        </div>
+    </section>
+
+    <!-- SECTION 3: Work Tree -->
+    <section class="work-tree" id="work">
+        <div class="tree-line"></div>
+        <div class="work-nodes">
+            <div class="node left reveal">
+                <div class="node-content">
+                    <span class="type">Fintech</span>
+                    <h3>Neobank App</h3>
+                    <div class="work-thumb"
+                        style="background-image: url('https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&q=80');">
+                    </div>
+                </div>
+            </div>
+            <div class="node right reveal">
+                <div class="node-content">
+                    <span class="type">E-Commerce</span>
+                    <h3>Luxe Studio</h3>
+                    <div class="work-thumb"
+                        style="background-image: url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80');">
+                    </div>
+                </div>
+            </div>
+            <div class="node left reveal">
+                <div class="node-content">
+                    <span class="type">Branding</span>
+                    <h3>Minimalist Identity</h3>
+                    <div class="work-thumb"
+                        style="background-image: url('https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&q=80');">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 4: Testimonials (Another Level) -->
+    <section class="testimonials">
+        <div class="testi-header">What People Say</div>
+        <div class="testi-circle-container">
+            <div class="testi-card active" data-id="1">
+                <p>"Aryan is a visionary. His designs are not just pixels, they are experiences."</p>
+                <span class="author">— Elon Musk (CEO, X)</span>
+            </div>
+            <div class="testi-card" data-id="2">
+                <p>"The best minimalist developer we've worked with in the last decade."</p>
+                <span class="author">— Tim Cook (Apple)</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 5: Upcoming Projects -->
+    <section class="upcoming">
+        <div class="section-label">UPCOMING</div>
+        <div class="upcoming-item">
+            <div class="up-title">Project: Neural Hub</div>
+            <div class="up-date">Aug 2024</div>
+        </div>
+        <div class="upcoming-item">
+            <div class="up-title">SaaS: Flowstate UI</div>
+            <div class="up-date">Sept 2024</div>
+        </div>
+    </section>
+
+    <!-- FOOTER & Enquiry -->
+    <footer class="creative-footer">
+        <div class="footer-grid">
+            <div class="footer-left">
+                <h2>Have an Idea?</h2>
+                <p>Let's make it a reality.</p>
+            </div>
+            <div class="footer-right">
+                <form id="enquiryForm" class="minimal-form">
+                    <input type="text" placeholder="Name" required>
+                    <input type="email" placeholder="Email" required>
+                    <textarea placeholder="Message"></textarea>
+                    <button type="submit">SEND</button>
+                </form>
+            </div>
+        </div>
+        <div class="copyright">© 2024 Aryan Dev. All Rights Reserved.</div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
