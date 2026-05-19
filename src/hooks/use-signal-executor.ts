@@ -53,7 +53,9 @@ const FALLBACK_POLL_MS = 5000;
 const IP_CHECK_INTERVAL_MS = 60_000;
 
 interface TradeSignal {
-  signalId: string;
+  signalId?: string;
+  _id?: string;
+  id?: string;
   symbol: string;
   exchange: string;
   tradingsymbol: string;
@@ -118,9 +120,20 @@ export function useSignalExecutor({
         return;
       }
 
+      // Safe normalization layer supporting signalId, _id (Mongo), and id
+      const resolvedSignalId = signal.signalId || signal._id || signal.id;
+
+      // 1. Validation guard before execution
+      if (!resolvedSignalId) {
+        console.error("%c[SignalExecutor] ❌ Missing signal identifier in payload:", "color: #ff3333; font-weight: bold;", signal);
+        return;
+      }
+
+      console.log("[SignalExecutor] Normalized Signal ID:", resolvedSignalId);
+
       // 🛡️ Duplicate Execution Suppression
-      if (processedSignalsRef.current.has(signal.signalId)) {
-        console.warn(`%c[SignalExecutor] 🛑 Duplicate Suppression: Signal ${signal.signalId} already processed by this runtime. Skipping execution.`, "color: #ff9800; font-weight: bold;");
+      if (processedSignalsRef.current.has(resolvedSignalId)) {
+        console.warn(`%c[SignalExecutor] 🛑 Duplicate Suppression: Signal ${resolvedSignalId} already processed by this runtime. Skipping execution.`, "color: #ff9800; font-weight: bold;");
         return;
       }
 
@@ -129,19 +142,22 @@ export function useSignalExecutor({
         "color: #9c27b0; font-weight: bold; font-size: 12px;"
       );
 
-      onSignalReceived?.(signal);
+      // Normalize representation internally for callbacks
+      const normalizedSignal = { ...signal, signalId: resolvedSignalId };
+
+      onSignalReceived?.(normalizedSignal);
 
       // Lock execution immediately to avoid race conditions during async operations
-      processedSignalsRef.current.add(signal.signalId);
+      processedSignalsRef.current.add(resolvedSignalId);
 
       // ⏱️ Execution ACK Timeout Handling (Abort request if server takes >10 seconds)
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        console.error(`%c[SignalExecutor] ⏰ Execution ACK Timeout: Server failed to respond to signal ${signal.signalId} within 10s.`, "color: #ef4444; font-weight: bold;");
+        console.error(`%c[SignalExecutor] ⏰ Execution ACK Timeout: Server failed to respond to signal ${resolvedSignalId} within 10s.`, "color: #ef4444; font-weight: bold;");
         controller.abort();
       }, 10_000);
 
-      console.log(`%c[SignalExecutor] ⚡ INITIATING BROKER EXECUTION:\nRequest: POST /queue-execution\nSignal ID: ${signal.signalId}`, "color: #2196f3; font-weight: bold;");
+      console.log(`%c[SignalExecutor] ⚡ INITIATING BROKER EXECUTION:\nRequest: POST /queue-execution\nSignal ID: ${resolvedSignalId}`, "color: #2196f3; font-weight: bold;");
 
       try {
         const res = await fetch(`${API_BASE}/signals/queue-execution`, {
@@ -151,7 +167,7 @@ export function useSignalExecutor({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            signalId: signal.signalId,
+            signalId: resolvedSignalId,
             lots: 1,
           }),
           signal: controller.signal,
@@ -166,30 +182,30 @@ export function useSignalExecutor({
             "color: #4caf50; font-weight: bold;"
           );
           console.log(
-            `%c[SignalExecutor] 🔄 OMS TRANSITION: Signal ${signal.signalId} → QUEUED (Client Order: ${result.clientOrderId || "PENDING"})`,
+            `%c[SignalExecutor] 🔄 OMS TRANSITION: Signal ${resolvedSignalId} → QUEUED (Client Order: ${result.clientOrderId || "PENDING"})`,
             "color: #ffeb3b; background: #000; font-weight: bold;"
           );
-          onOrderPlaced?.(signal, result);
+          onOrderPlaced?.(normalizedSignal, result);
         } else {
           // Release lock on server rejection so retry is possible
-          processedSignalsRef.current.delete(signal.signalId);
+          processedSignalsRef.current.delete(resolvedSignalId);
           const errorMsg = result.error || "Unknown broker error";
           console.error(
-            `%c[SignalExecutor] ❌ OMS FAILURE: Signal ${signal.signalId} → FAILED (Broker Error: ${errorMsg})`,
+            `%c[SignalExecutor] ❌ OMS FAILURE: Signal ${resolvedSignalId} → FAILED (Broker Error: ${errorMsg})`,
             "color: #fff; background: #f44336; font-weight: bold;"
           );
-          onOrderFailed?.(signal, errorMsg);
+          onOrderFailed?.(normalizedSignal, errorMsg);
         }
       } catch (err: any) {
         clearTimeout(timeoutId);
         // Release lock on exception to permit retry / fallback polling recovery
-        processedSignalsRef.current.delete(signal.signalId);
+        processedSignalsRef.current.delete(resolvedSignalId);
         const errorMsg = err.name === "AbortError" ? "Execution ACK Timeout (10s exceeded)" : (err.message || "Network error");
         console.error(
-          `%c[SignalExecutor] ❌ OMS FAILURE: Signal ${signal.signalId} → FAILED (Connection Error: ${errorMsg})`,
+          `%c[SignalExecutor] ❌ OMS FAILURE: Signal ${resolvedSignalId} → FAILED (Connection Error: ${errorMsg})`,
           "color: #fff; background: #f44336; font-weight: bold;"
         );
-        onOrderFailed?.(signal, errorMsg);
+        onOrderFailed?.(normalizedSignal, errorMsg);
       }
     },
     [token, enabled, onSignalReceived, onOrderPlaced, onOrderFailed]
@@ -209,8 +225,14 @@ export function useSignalExecutor({
       if (data.ok && Array.isArray(data.signals) && data.signals.length > 0) {
         console.log(`%c[SignalExecutor] ⚡ Replaying ${data.signals.length} pending signals...`, "color: #ff9800; font-weight: bold;");
         
+        // Normalize incoming REST pending list elements
+        const normalizedList = data.signals.map((sig: any) => ({
+          ...sig,
+          signalId: sig.signalId || sig._id || sig.id,
+        }));
+
         // Dynamically chain pending signal execution sequentially to satisfy no-restricted-syntax and no-await-in-loop
-        data.signals.reduce(
+        normalizedList.reduce(
           (promiseChain: Promise<any>, nextSignal: TradeSignal) => promiseChain.then(() => executeSignal(nextSignal)),
           Promise.resolve()
         ).catch((err: any) => {
@@ -295,7 +317,9 @@ export function useSignalExecutor({
         const msg = JSON.parse(event.data);
 
         if (msg.type === "TRADE_SIGNAL" && msg.data) {
-          executeSignal(msg.data as TradeSignal);
+          const rawSignal = msg.data as TradeSignal;
+          const resolvedId = rawSignal.signalId || rawSignal._id || rawSignal.id;
+          executeSignal({ ...rawSignal, signalId: resolvedId });
         }
 
         if (msg.type === "tick" && Array.isArray(msg.items)) {
