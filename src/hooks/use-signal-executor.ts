@@ -6,8 +6,49 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 
-const WS_BASE = process.env.REACT_APP_WS_URL || "ws://localhost:5000";
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+// Dynamic Production-Safe API and WebSocket URL Resolver
+const getApiBase = (): string => {
+  // 1. Check Vite environment variable
+  const viteUrl = (import.meta as any).env?.VITE_API_URL;
+  if (viteUrl) return viteUrl;
+
+  // 2. Check React process environment variable
+  const processUrl = typeof process !== "undefined" ? process.env?.REACT_APP_API_URL : undefined;
+  if (processUrl) return processUrl;
+
+  // 3. Dev convenience: if running on local browser, fallback to port 5000 backend
+  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+    return "http://localhost:5000/api";
+  }
+
+  // 4. Production fallback dynamically to current origin
+  return `${window.location.origin}/api`;
+};
+
+const API_BASE = getApiBase();
+
+const getWsBase = (): string => {
+  // 1. Check Vite environment variable
+  const viteWsUrl = (import.meta as any).env?.VITE_WS_URL;
+  if (viteWsUrl) return viteWsUrl;
+
+  // 2. Check React process environment variable
+  const processWsUrl = typeof process !== "undefined" ? process.env?.REACT_APP_WS_URL : undefined;
+  if (processWsUrl) return processWsUrl;
+
+  // 3. Dev convenience for local port 5000 backend
+  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+    return "ws://localhost:5000";
+  }
+
+  // 4. Production fallback dynamically by replacing http/https protocols from API base
+  return API_BASE
+    .replace(/^https/, "wss")
+    .replace(/^http/, "ws")
+    .replace(/\/api$/, ""); // strip /api suffix for base WebSocket connection
+};
+
+const WS_BASE = getWsBase();
 const FALLBACK_POLL_MS = 5000;
 const IP_CHECK_INTERVAL_MS = 60_000;
 
