@@ -39,6 +39,23 @@ import AlgoRiskDisclaimer from 'src/components/algo-risk-disclaimer/AlgoRiskDisc
 // ----------------------------------------------------------------------
 
 
+const getOmsStatusColor = (status: string) => {
+  switch (status) {
+    case 'FILLED':
+    case 'CLOSED':
+      return 'success';
+    case 'PARTIALLY_FILLED':
+      return 'warning';
+    case 'RECONCILING':
+      return 'error';
+    case 'INTENT_LOGGED':
+    case 'CREATED':
+      return 'default';
+    default:
+      return 'info';
+  }
+};
+
 interface OpenPositionViewProps {
   embed?: boolean;
 }
@@ -260,13 +277,7 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
               <Chip 
                 label={row.status || 'UNKNOWN'}
                 size="small"
-                color={
-                  row.status === 'FILLED' || row.status === 'CLOSED' ? 'success' :
-                  row.status === 'PARTIALLY_FILLED' ? 'warning' :
-                  row.status === 'RECONCILING' ? 'error' :
-                  row.status === 'INTENT_LOGGED' || row.status === 'CREATED' ? 'default' :
-                  'info'
-                }
+                color={getOmsStatusColor(row.status)}
                 variant={row.status === 'RECONCILING' ? 'filled' : 'outlined'}
               />
             </Box>
@@ -468,13 +479,7 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
                       <Chip 
                         label={row.status || 'UNKNOWN'}
                         size="small"
-                        color={
-                          row.status === 'FILLED' || row.status === 'CLOSED' ? 'success' :
-                          row.status === 'PARTIALLY_FILLED' ? 'warning' :
-                          row.status === 'RECONCILING' ? 'error' :
-                          row.status === 'INTENT_LOGGED' || row.status === 'CREATED' ? 'default' :
-                          'info'
-                        }
+                        color={getOmsStatusColor(row.status)}
                         variant={row.status === 'RECONCILING' ? 'filled' : 'outlined'}
                         sx={{ fontSize: '10px', height: '20px' }}
                       />

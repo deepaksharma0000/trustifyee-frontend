@@ -29,6 +29,76 @@ type LogEntry = {
   message: string;
 };
 
+const getSessionBorderColor = (state: string, theme: any) => {
+  switch (state) {
+    case 'AUTHORIZED': return alpha(theme.palette.success.main, 0.4);
+    case 'SAFE_MODE': return alpha(theme.palette.warning.main, 0.4);
+    case 'READ_ONLY_MODE': return alpha(theme.palette.info.main, 0.4);
+    case 'EXPIRED': return alpha(theme.palette.error.main, 0.4);
+    default: return alpha(theme.palette.grey[500], 0.2);
+  }
+};
+
+const getSessionBgGradient = (state: string, theme: any) => {
+  switch (state) {
+    case 'AUTHORIZED': return `linear-gradient(135deg, ${alpha(theme.palette.success.lighter, 0.1)} 0%, ${alpha(theme.palette.success.lighter, 0.05)} 100%)`;
+    case 'SAFE_MODE': return `linear-gradient(135deg, ${alpha(theme.palette.warning.lighter, 0.1)} 0%, ${alpha(theme.palette.warning.lighter, 0.05)} 100%)`;
+    case 'READ_ONLY_MODE': return `linear-gradient(135deg, ${alpha(theme.palette.info.lighter, 0.1)} 0%, ${alpha(theme.palette.info.lighter, 0.05)} 100%)`;
+    case 'EXPIRED': return `linear-gradient(135deg, ${alpha(theme.palette.error.lighter, 0.1)} 0%, ${alpha(theme.palette.error.lighter, 0.05)} 100%)`;
+    default: return `linear-gradient(135deg, ${alpha(theme.palette.grey[500], 0.1)} 0%, ${alpha(theme.palette.grey[500], 0.05)} 100%)`;
+  }
+};
+
+const getSessionGlowColor = (state: string) => {
+  switch (state) {
+    case 'AUTHORIZED': return 'success.main';
+    case 'SAFE_MODE': return 'warning.main';
+    case 'READ_ONLY_MODE': return 'info.main';
+    case 'EXPIRED': return 'error.main';
+    default: return 'grey.500';
+  }
+};
+
+const getSessionThemeColor = (state: string, theme: any) => {
+  switch (state) {
+    case 'AUTHORIZED': return theme.palette.success.main;
+    case 'SAFE_MODE': return theme.palette.warning.main;
+    case 'READ_ONLY_MODE': return theme.palette.info.main;
+    case 'EXPIRED': return theme.palette.error.main;
+    default: return theme.palette.grey[500];
+  }
+};
+
+const getSessionTextColor = (state: string) => {
+  switch (state) {
+    case 'AUTHORIZED': return 'success.main';
+    case 'SAFE_MODE': return 'warning.main';
+    case 'READ_ONLY_MODE': return 'info.main';
+    case 'EXPIRED': return 'error.main';
+    default: return 'text.secondary';
+  }
+};
+
+const getSessionIcon = (state: string) => {
+  switch (state) {
+    case 'AUTHORIZED': return "solar:shield-check-bold-duotone";
+    case 'SAFE_MODE': return "solar:shield-warning-bold-duotone";
+    case 'READ_ONLY_MODE': return "solar:lock-keyhole-bold-duotone";
+    case 'EXPIRED': return "solar:shield-cross-bold-duotone";
+    default: return "solar:shield-keyhole-bold-duotone";
+  }
+};
+
+const getSessionLabelColor = (state: string) => {
+  switch (state) {
+    case 'AUTHORIZED': return 'success';
+    case 'SAFE_MODE': return 'warning';
+    case 'READ_ONLY_MODE': return 'info';
+    case 'EXPIRED': return 'error';
+    default: return 'default';
+  }
+};
+
 type Props = {
   userId?: string;
   disablePadding?: boolean;
@@ -121,8 +191,8 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
         addLog(`MARGIN: Wallet balance check completed. Funds available.`, 'success');
       }
 
-    } catch (error) {
-      console.error(error);
+    } catch (riskErr) {
+      console.error(riskErr);
       addLog('NETWORK: Connection to risk engine timed out.', 'error');
     } finally {
       setLoading(false);
@@ -164,8 +234,8 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
       addLog('ACTION: Trading manually reactivated. Fail-safe reset.', 'success');
       // Briefly wait for DB to update before refreshing
       setTimeout(() => fetchRiskStatus(true), 500);
-    } catch (error) {
-      console.error(error);
+    } catch (reactivateErr) {
+      console.error(reactivateErr);
       addLog('ERROR: Could not reactivate trading. Contact administrator.', 'error');
     } finally {
       setLoading(false);
@@ -194,18 +264,8 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
           p: 3, 
           borderRadius: 2, 
           border: '1px solid', 
-          borderColor: (th) => 
-            sessionState === 'AUTHORIZED' ? alpha(th.palette.success.main, 0.4) :
-            sessionState === 'SAFE_MODE' ? alpha(th.palette.warning.main, 0.4) :
-            sessionState === 'READ_ONLY_MODE' ? alpha(th.palette.info.main, 0.4) :
-            sessionState === 'EXPIRED' ? alpha(th.palette.error.main, 0.4) :
-            alpha(th.palette.grey[500], 0.2),
-          background: (th) => 
-            sessionState === 'AUTHORIZED' ? `linear-gradient(135deg, ${alpha(th.palette.success.lighter, 0.1)} 0%, ${alpha(th.palette.success.lighter, 0.05)} 100%)` :
-            sessionState === 'SAFE_MODE' ? `linear-gradient(135deg, ${alpha(th.palette.warning.lighter, 0.1)} 0%, ${alpha(th.palette.warning.lighter, 0.05)} 100%)` :
-            sessionState === 'READ_ONLY_MODE' ? `linear-gradient(135deg, ${alpha(th.palette.info.lighter, 0.1)} 0%, ${alpha(th.palette.info.lighter, 0.05)} 100%)` :
-            sessionState === 'EXPIRED' ? `linear-gradient(135deg, ${alpha(th.palette.error.lighter, 0.1)} 0%, ${alpha(th.palette.error.lighter, 0.05)} 100%)` :
-            `linear-gradient(135deg, ${alpha(th.palette.grey[500], 0.1)} 0%, ${alpha(th.palette.grey[500], 0.05)} 100%)`,
+          borderColor: (th) => getSessionBorderColor(sessionState, th),
+          background: (th) => getSessionBgGradient(sessionState, th),
           boxShadow: 'none',
           position: 'relative',
           overflow: 'hidden'
@@ -220,12 +280,7 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
             borderRadius: '50%',
             filter: 'blur(40px)',
             opacity: 0.15,
-            bgcolor: (th) => 
-              sessionState === 'AUTHORIZED' ? 'success.main' :
-              sessionState === 'SAFE_MODE' ? 'warning.main' :
-              sessionState === 'READ_ONLY_MODE' ? 'info.main' :
-              sessionState === 'EXPIRED' ? 'error.main' :
-              'grey.500'
+            bgcolor: getSessionGlowColor(sessionState)
           }} />
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems="center" justifyContent="space-between">
@@ -233,29 +288,11 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
               <Box sx={{ 
                 p: 2, 
                 borderRadius: '50%', 
-                bgcolor: (th) => alpha(
-                  sessionState === 'AUTHORIZED' ? th.palette.success.main :
-                  sessionState === 'SAFE_MODE' ? th.palette.warning.main :
-                  sessionState === 'READ_ONLY_MODE' ? th.palette.info.main :
-                  sessionState === 'EXPIRED' ? th.palette.error.main :
-                  th.palette.grey[500], 
-                  0.12
-                ), 
-                color: (th) => 
-                  sessionState === 'AUTHORIZED' ? 'success.main' :
-                  sessionState === 'SAFE_MODE' ? 'warning.main' :
-                  sessionState === 'READ_ONLY_MODE' ? 'info.main' :
-                  sessionState === 'EXPIRED' ? 'error.main' :
-                  'text.secondary'
+                bgcolor: (th) => alpha(getSessionThemeColor(sessionState, th), 0.12), 
+                color: getSessionTextColor(sessionState)
               }}>
                 <Iconify 
-                  icon={
-                    sessionState === 'AUTHORIZED' ? "solar:shield-check-bold-duotone" : 
-                    sessionState === 'SAFE_MODE' ? "solar:shield-warning-bold-duotone" : 
-                    sessionState === 'READ_ONLY_MODE' ? "solar:lock-keyhole-bold-duotone" : 
-                    sessionState === 'EXPIRED' ? "solar:shield-cross-bold-duotone" : 
-                    "solar:shield-keyhole-bold-duotone"
-                  } 
+                  icon={getSessionIcon(sessionState)} 
                   width={36} 
                 />
               </Box>
@@ -264,13 +301,7 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
                   <Typography variant="h6" sx={{ fontWeight: 800 }}>Operational Session State</Typography>
                   <Label 
                     variant="soft" 
-                    color={
-                      sessionState === 'AUTHORIZED' ? 'success' :
-                      sessionState === 'SAFE_MODE' ? 'warning' :
-                      sessionState === 'READ_ONLY_MODE' ? 'info' :
-                      sessionState === 'EXPIRED' ? 'error' :
-                      'default'
-                    }
+                    color={getSessionLabelColor(sessionState)}
                     sx={{ textTransform: 'uppercase', fontWeight: 800, fontSize: 11 }}
                   >
                     {sessionState}
