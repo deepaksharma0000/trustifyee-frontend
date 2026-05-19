@@ -46,6 +46,7 @@
   // import { AuthProvider, AuthConsumer } from 'src/auth/context/auth0';
   // import { AuthProvider, AuthConsumer } from 'src/auth/context/amplify';
   // import { AuthProvider, AuthConsumer } from 'src/auth/context/firebase';
+  import StartupSafetyBanner from 'src/components/observability/StartupSafetyBanner';
 
   // ----------------------------------------------------------------------
 
@@ -85,6 +86,7 @@
                     <CheckoutProvider>
                       <SettingsDrawer />
                       <ProgressBar />
+                      <StartupSafetyBanner />
                       <AuthConsumer>
                         <Router />
                       </AuthConsumer>

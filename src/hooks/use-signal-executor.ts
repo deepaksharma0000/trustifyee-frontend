@@ -24,7 +24,17 @@ interface TradeSignal {
   quantity: number;
   strategy?: string;
   signalType: "ENTRY" | "EXIT";
+  executionMode?: "SERVER" | "CLIENT";
   createdAt?: string;
+}
+
+interface TickData {
+  symboltoken: string;
+  ltp: number;
+  oi: number;
+  volume: number;
+  percentChange: number;
+  ts: number;
 }
 
 interface UseSignalExecutorOptions {
@@ -177,8 +187,21 @@ export function useSignalExecutor({
           executeSignal(msg.data as TradeSignal);
         }
 
+        if (msg.type === "tick" && Array.isArray(msg.items)) {
+          msg.items.forEach((tick: TickData) => {
+            const latency = Date.now() - tick.ts;
+            if (latency > 500) {
+              console.warn(`[SignalExecutor] ⚠️ Stale tick detected (${latency}ms delay) for ${tick.symboltoken}`);
+            }
+          });
+        }
+
         if (msg.type === "connected") {
           console.log("[SignalExecutor] Server confirmed:", msg.message);
+        }
+        
+        if (msg.type === "pong") {
+          // Heartbeat ok
         }
       } catch (err) {
         console.error("[SignalExecutor] Failed to parse message:", err);

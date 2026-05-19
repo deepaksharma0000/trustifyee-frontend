@@ -245,13 +245,31 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
                 </Typography>
               </Box>
             </Stack>
-            <Chip
-              label={row.side}
-              size="small"
-              variant="soft"
-              color={row.side === 'BUY' ? 'success' : 'error'}
-            />
-          </Box>
+              <Chip
+                label={row.side}
+                size="small"
+                variant="soft"
+                color={row.side === 'BUY' ? 'success' : 'error'}
+              />
+            </Box>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="caption" color="text.secondary">
+                OMS State
+              </Typography>
+              <Chip 
+                label={row.status || 'UNKNOWN'}
+                size="small"
+                color={
+                  row.status === 'FILLED' || row.status === 'CLOSED' ? 'success' :
+                  row.status === 'PARTIALLY_FILLED' ? 'warning' :
+                  row.status === 'RECONCILING' ? 'error' :
+                  row.status === 'INTENT_LOGGED' || row.status === 'CREATED' ? 'default' :
+                  'info'
+                }
+                variant={row.status === 'RECONCILING' ? 'filled' : 'outlined'}
+              />
+            </Box>
 
           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
             <Typography variant="caption" color="text.secondary">
@@ -400,6 +418,7 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
           <TableHead>
             <TableRow>
               <TableCell>Trade Type</TableCell>
+              <TableCell>OMS State</TableCell>
               <TableCell>Signals Time</TableCell>
               <TableCell>Type</TableCell>
               <TableCell>Symbol</TableCell>
@@ -424,7 +443,7 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
                 const isProfit = parseFloat(total) >= 0;
 
                 return (
-                  <TableRow key={row.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                  <TableRow key={row.id || row.orderid} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                     <TableCell>
                       <Stack direction="row" spacing={0.5}>
                         <Chip
@@ -444,6 +463,21 @@ export default function OpenPositionView({ embed = false }: OpenPositionViewProp
                           />
                         )}
                       </Stack>
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={row.status || 'UNKNOWN'}
+                        size="small"
+                        color={
+                          row.status === 'FILLED' || row.status === 'CLOSED' ? 'success' :
+                          row.status === 'PARTIALLY_FILLED' ? 'warning' :
+                          row.status === 'RECONCILING' ? 'error' :
+                          row.status === 'INTENT_LOGGED' || row.status === 'CREATED' ? 'default' :
+                          'info'
+                        }
+                        variant={row.status === 'RECONCILING' ? 'filled' : 'outlined'}
+                        sx={{ fontSize: '10px', height: '20px' }}
+                      />
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>

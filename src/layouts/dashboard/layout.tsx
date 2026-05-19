@@ -6,6 +6,7 @@ import { useResponsive } from 'src/hooks/use-responsive';
 // components
 import { useSettingsContext } from 'src/components/settings';
 import InactivityTimer from 'src/components/inactivity-timer/InactivityTimer';
+import ExecutionRouteBanner from 'src/components/execution-route-banner/ExecutionRouteBanner';
 //
 import Main from './main';
 import Header from './header';
@@ -39,12 +40,15 @@ export default function DashboardLayout({ children }: Props) {
   if (isHorizontal) {
     return (
       <>
-      <InactivityTimer />
-      <Header onOpenNav={nav.onTrue} />
+        <InactivityTimer />
+        <Header onOpenNav={nav.onTrue} />
 
-      {lgUp ? renderHorizontal : renderNavVertical}
+        {lgUp ? renderHorizontal : renderNavVertical}
 
-        <Main>{children}</Main>
+        <Main>
+          <ExecutionRouteBanner />
+          {children}
+        </Main>
       </>
     );
   }
@@ -64,7 +68,10 @@ export default function DashboardLayout({ children }: Props) {
         >
           {lgUp ? renderNavMini : renderNavVertical}
 
-          <Main>{children}</Main>
+          <Main>
+            <ExecutionRouteBanner />
+            {children}
+          </Main>
         </Box>
       </>
     );
@@ -84,7 +91,10 @@ export default function DashboardLayout({ children }: Props) {
       >
         {renderNavVertical}
 
-        <Main>{children}</Main>
+        <Main>
+          <ExecutionRouteBanner />
+          {children}
+        </Main>
       </Box>
     </>
   );
