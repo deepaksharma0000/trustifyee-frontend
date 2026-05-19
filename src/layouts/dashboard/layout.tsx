@@ -14,6 +14,9 @@ import NavMini from './nav-mini';
 import NavVertical from './nav-vertical';
 import NavHorizontal from './nav-horizontal';
 
+import { useAuthUser } from 'src/hooks/use-auth-user';
+import { useSignalExecutor } from 'src/hooks/use-signal-executor';
+
 // ----------------------------------------------------------------------
 
 type Props = {
@@ -24,6 +27,25 @@ export default function DashboardLayout({ children }: Props) {
   const settings = useSettingsContext();
 
   const lgUp = useResponsive('up', 'lg');
+
+  const { user } = useAuthUser();
+  const token = sessionStorage.getItem("accessToken") || localStorage.getItem("authToken");
+
+  const enabled = !!user && !!token;
+
+  useSignalExecutor({
+    token,
+    enabled,
+    onSignalReceived: (signal) => {
+      console.log("[BackgroundExecutor] Received signal:", signal);
+    },
+    onOrderPlaced: (signal, result) => {
+      console.log("[BackgroundExecutor] Order placed in background:", signal, result);
+    },
+    onOrderFailed: (signal, err) => {
+      console.error("[BackgroundExecutor] Order failed in background:", signal, err);
+    },
+  });
 
   const nav = useBoolean();
 

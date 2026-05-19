@@ -47,7 +47,15 @@ export default function LiveTradingControl({ user }: { user: any }) {
     const [signals, setSignals] = useState<any[]>([]);
     const [brokerResponse, setBrokerResponse] = useState<any>(null);
     const [executionStatuses, setExecutionStatuses] = useState<Record<string, string>>({});
+    const [runtimeConnected, setRuntimeConnected] = useState<boolean>(() => !!(window as any).runtimeConnected);
 
+    useEffect(() => {
+        const handleStatusChange = (e: Event) => {
+            setRuntimeConnected((e as CustomEvent).detail);
+        };
+        window.addEventListener("runtime-status-change", handleStatusChange);
+        return () => window.removeEventListener("runtime-status-change", handleStatusChange);
+    }, []);
 
     const fetchSignals = async () => {
         try {
@@ -469,7 +477,7 @@ export default function LiveTradingControl({ user }: { user: any }) {
                         </Box>
                     </Stack>
 
-                    <Stack direction="row" spacing={2} alignItems="center">
+                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
                         <Button
                             variant="contained"
                             color="info"
@@ -488,16 +496,46 @@ export default function LiveTradingControl({ user }: { user: any }) {
                             Update Multiplier
                         </Button>
 
-                        <Stack direction="row" spacing={1} alignItems="center">
-                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.78rem' }}>Trading:</Typography>
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                            <Tooltip title={isConnected ? "Broker session is authenticated and active on server" : "Broker session is inactive. Please log in again!"}>
+                                <Chip
+                                    label={isConnected ? "BROKER: CONNECTED" : "BROKER: OFFLINE"}
+                                    size="small"
+                                    variant="soft"
+                                    color={isConnected ? "success" : "warning"}
+                                    icon={<Iconify icon={isConnected ? "eva:checkmark-circle-2-fill" : "eva:alert-circle-fill"} />}
+                                    sx={{ fontWeight: 700, fontSize: '0.68rem', letterSpacing: 0.5 }}
+                                />
+                            </Tooltip>
+
+                            <Tooltip title={runtimeConnected ? "Execution runtime is active and receiving trades" : "Execution runtime is offline. Keep this page open to auto-execute whitelisted trades!"}>
+                                <Chip
+                                    label={runtimeConnected ? "RUNTIME: ONLINE" : "RUNTIME: OFFLINE"}
+                                    size="small"
+                                    variant="soft"
+                                    color={runtimeConnected ? "success" : "error"}
+                                    icon={<Iconify icon={runtimeConnected ? "fluent:pulse-24-filled" : "eva:close-circle-fill"} />}
+                                    sx={{ 
+                                        fontWeight: 700, fontSize: '0.68rem', letterSpacing: 0.5,
+                                        animation: runtimeConnected ? 'pulse 2s infinite' : 'none',
+                                        '@keyframes pulse': {
+                                            '0%': { opacity: 1 },
+                                            '50%': { opacity: 0.6 },
+                                            '100%': { opacity: 1 },
+                                        }
+                                    }}
+                                />
+                            </Tooltip>
+
                             <Chip
-                                label={user.trading_status === 'enabled' ? 'ACTIVE' : 'DISABLED'}
+                                label={(isConnected && runtimeConnected) ? "TRADING READY" : "DEGRADED MODE"}
                                 size="small"
                                 sx={{
-                                    fontWeight: 800, fontSize: '0.65rem', letterSpacing: 0.8,
-                                    bgcolor: user.trading_status === 'enabled' ? alpha('#22c55e', 0.15) : alpha('#ef4444', 0.15),
-                                    color: user.trading_status === 'enabled' ? '#22c55e' : '#ef4444',
-                                    border: `1px solid ${user.trading_status === 'enabled' ? alpha('#22c55e', 0.35) : alpha('#ef4444', 0.35)}`,
+                                    fontWeight: 850, fontSize: '0.68rem', letterSpacing: 0.8,
+                                    bgcolor: (isConnected && runtimeConnected) ? alpha('#22c55e', 0.15) : alpha('#ff9800', 0.15),
+                                    color: (isConnected && runtimeConnected) ? '#22c55e' : '#ff9800',
+                                    border: `1px solid ${(isConnected && runtimeConnected) ? alpha('#22c55e', 0.35) : alpha('#ff9800', 0.35)}`,
+                                    boxShadow: (isConnected && runtimeConnected) ? `0 0 10px ${alpha('#22c55e', 0.3)}` : 'none',
                                 }}
                             />
                         </Stack>

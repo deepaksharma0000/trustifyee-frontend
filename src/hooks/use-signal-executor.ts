@@ -262,5 +262,14 @@ export function useSignalExecutor({
     };
   }, [token, enabled]); // Re-connect if token or enabled status changes
 
+  useEffect(() => {
+    (window as any).runtimeConnected = isConnected;
+    window.dispatchEvent(new CustomEvent("runtime-status-change", { detail: isConnected }));
+    return () => {
+      (window as any).runtimeConnected = false;
+      window.dispatchEvent(new CustomEvent("runtime-status-change", { detail: false }));
+    };
+  }, [isConnected]);
+
   return { isConnected };
 }
