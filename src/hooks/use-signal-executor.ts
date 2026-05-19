@@ -61,6 +61,7 @@ export function useSignalExecutor({
   const retriesRef = useRef(0);
   const storedIpRef = useRef<string>("");
   const isConnectedRef = useRef(false);
+  const processedSignalsRef = useRef<Set<string>>(new Set());
   const [isConnected, setIsConnected] = useState(false);
 
   // ─────────────────────────────────────────────────────────────────
@@ -76,10 +77,33 @@ export function useSignalExecutor({
         return;
       }
 
+      // 🛡️ Duplicate Execution Suppression
+      if (processedSignalsRef.current.has(signal.signalId)) {
+        console.warn(`%c[SignalExecutor] 🛑 Duplicate Suppression: Signal ${signal.signalId} already processed by this runtime. Skipping execution.`, "color: #ff9800; font-weight: bold;");
+        return;
+      }
+
+      console.log(
+        `%c[SignalExecutor] 📡 TRADE SIGNAL RECEIVED:\nSymbol: ${signal.tradingsymbol}\nSide: ${signal.side}\nQty: ${signal.quantity}\nSignalType: ${signal.signalType}\nStrategy: ${signal.strategy || "Manual"}`,
+        "color: #9c27b0; font-weight: bold; font-size: 12px;"
+      );
+
       onSignalReceived?.(signal);
+
+      // Lock execution immediately to avoid race conditions during async operations
+      processedSignalsRef.current.add(signal.signalId);
+
+      // ⏱️ Execution ACK Timeout Handling (Abort request if server takes >10 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.error(`%c[SignalExecutor] ⏰ Execution ACK Timeout: Server failed to respond to signal ${signal.signalId} within 10s.`, "color: #ef4444; font-weight: bold;");
+        controller.abort();
+      }, 10_000);
+
+      console.log(`%c[SignalExecutor] ⚡ INITIATING BROKER EXECUTION:\nRequest: POST /queue-execution\nSignal ID: ${signal.signalId}`, "color: #2196f3; font-weight: bold;");
+
       try {
         const res = await fetch(`${API_BASE}/signals/queue-execution`, {
-
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -89,49 +113,75 @@ export function useSignalExecutor({
             signalId: signal.signalId,
             lots: 1,
           }),
+          signal: controller.signal,
         });
 
+        clearTimeout(timeoutId);
         const result = await res.json();
 
         if (result.status) {
+          console.log(
+            `%c[SignalExecutor] ✅ BROKER EXECUTION RESPONSE:\nOrder ID: ${result.clientOrderId || "PENDING"}\nMessage: ${result.message || "Order queued successfully"}`,
+            "color: #4caf50; font-weight: bold;"
+          );
+          console.log(
+            `%c[SignalExecutor] 🔄 OMS TRANSITION: Signal ${signal.signalId} → QUEUED (Client Order: ${result.clientOrderId || "PENDING"})`,
+            "color: #ffeb3b; background: #000; font-weight: bold;"
+          );
           onOrderPlaced?.(signal, result);
         } else {
-          onOrderFailed?.(signal, result.error || "Unknown broker error");
+          // Release lock on server rejection so retry is possible
+          processedSignalsRef.current.delete(signal.signalId);
+          const errorMsg = result.error || "Unknown broker error";
+          console.error(
+            `%c[SignalExecutor] ❌ OMS FAILURE: Signal ${signal.signalId} → FAILED (Broker Error: ${errorMsg})`,
+            "color: #fff; background: #f44336; font-weight: bold;"
+          );
+          onOrderFailed?.(signal, errorMsg);
         }
       } catch (err: any) {
-        onOrderFailed?.(signal, err.message || "Network error");
+        clearTimeout(timeoutId);
+        // Release lock on exception to permit retry / fallback polling recovery
+        processedSignalsRef.current.delete(signal.signalId);
+        const errorMsg = err.name === "AbortError" ? "Execution ACK Timeout (10s exceeded)" : (err.message || "Network error");
+        console.error(
+          `%c[SignalExecutor] ❌ OMS FAILURE: Signal ${signal.signalId} → FAILED (Connection Error: ${errorMsg})`,
+          "color: #fff; background: #f44336; font-weight: bold;"
+        );
+        onOrderFailed?.(signal, errorMsg);
       }
     },
     [token, enabled, onSignalReceived, onOrderPlaced, onOrderFailed]
   );
 
   // ─────────────────────────────────────────────────────────────────
-  // FIX #9: HTTP Fallback — poll /api/signals/pending every 5s
-  // when WebSocket is disconnected
+  // Reconnect Replay Logic & Gap-Fill Poller
   // ─────────────────────────────────────────────────────────────────
-  const startFallbackPolling = useCallback(() => {
-    if (fallbackTimerRef.current) return;
-    console.warn("[SignalExecutor] WebSocket down. Starting HTTP fallback polling.");
-    fallbackTimerRef.current = setInterval(async () => {
-      if (isConnectedRef.current) {
-        stopFallbackPolling();
-        return;
-      }
-      try {
-        const res = await fetch(`${API_BASE}/signals/pending`, {
-          headers: { Authorization: `Bearer ${token}` },
+  const replayPendingSignals = useCallback(async () => {
+    if (!token || !enabled) return;
+    console.log("%c[SignalExecutor] 🔍 Querying active/pending signal queue replay...", "color: #00bcd4; font-weight: bold;");
+    try {
+      const res = await fetch(`${API_BASE}/signals/pending`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.ok && Array.isArray(data.signals) && data.signals.length > 0) {
+        console.log(`%c[SignalExecutor] ⚡ Replaying ${data.signals.length} pending signals...`, "color: #ff9800; font-weight: bold;");
+        
+        // Dynamically chain pending signal execution sequentially to satisfy no-restricted-syntax and no-await-in-loop
+        data.signals.reduce(
+          (promiseChain: Promise<any>, nextSignal: TradeSignal) => promiseChain.then(() => executeSignal(nextSignal)),
+          Promise.resolve()
+        ).catch((err: any) => {
+          console.error("[SignalExecutor] Error in pending signal replay chain:", err);
         });
-        const data = await res.json();
-        if (data.ok && Array.isArray(data.signals)) {
-          for (const signal of data.signals) {
-            await executeSignal(signal);
-          }
-        }
-      } catch (_) {
-        // Silently retry
+      } else {
+        console.log("%c[SignalExecutor] ✅ Queue replay complete: No pending signals found.", "color: #4caf50;");
       }
-    }, FALLBACK_POLL_MS);
-  }, [token, executeSignal]);
+    } catch (err: any) {
+      console.error("[SignalExecutor] ❌ Reconnect replay preflight failed:", err.message);
+    }
+  }, [token, enabled, executeSignal]);
 
   const stopFallbackPolling = useCallback(() => {
     if (fallbackTimerRef.current) {
@@ -139,6 +189,22 @@ export function useSignalExecutor({
       fallbackTimerRef.current = null;
     }
   }, []);
+
+  // ─────────────────────────────────────────────────────────────────
+  // FIX #9: HTTP Fallback — poll /api/signals/pending every 5s
+  // when WebSocket is disconnected
+  // ─────────────────────────────────────────────────────────────────
+  const startFallbackPolling = useCallback(() => {
+    if (fallbackTimerRef.current) return;
+    console.warn("%c[SignalExecutor] ⚠️ WebSocket offline. Starting HTTP fallback poller...", "color: #ff9800; font-weight: bold;");
+    fallbackTimerRef.current = setInterval(async () => {
+      if (isConnectedRef.current) {
+        stopFallbackPolling();
+        return;
+      }
+      await replayPendingSignals();
+    }, FALLBACK_POLL_MS);
+  }, [replayPendingSignals, stopFallbackPolling]);
 
   // ─────────────────────────────────────────────────────────────────
   // FIX #10: IP Change Detection
@@ -157,7 +223,9 @@ export function useSignalExecutor({
         console.warn(`[SignalExecutor] IP changed: ${old} → ${ip}`);
         onIpChanged?.(ip, old);
       }
-    } catch (_) {}
+    } catch (_) {
+      // Silently catch and ignore IP tracking network request failures
+    }
   }, [onIpChanged]);
 
   // ─────────────────────────────────────────────────────────────────
@@ -170,12 +238,15 @@ export function useSignalExecutor({
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
-    ws.onopen = () => {
-      console.log("[SignalExecutor] ✅ Connected to /ws/signals");
+    ws.onopen = async () => {
+      console.log("%c[SignalExecutor] 🚀 WS CONNECTED: Registered active runtime on /ws/signals", "color: #22c55e; font-weight: bold; font-size: 12px;");
       retriesRef.current = 0;
       isConnectedRef.current = true;
       setIsConnected(true);
       stopFallbackPolling();
+
+      // Trigger automatic gap-filling replay on reconnection
+      await replayPendingSignals();
     };
 
     ws.onmessage = (event) => {
@@ -183,7 +254,6 @@ export function useSignalExecutor({
         const msg = JSON.parse(event.data);
 
         if (msg.type === "TRADE_SIGNAL" && msg.data) {
-          console.log("[SignalExecutor] 📡 Signal received:", msg.data.tradingsymbol);
           executeSignal(msg.data as TradeSignal);
         }
 
@@ -197,9 +267,9 @@ export function useSignalExecutor({
         }
 
         if (msg.type === "connected") {
-          console.log("[SignalExecutor] Server confirmed:", msg.message);
+          console.log("%c[SignalExecutor] 🛡️ SERVER CONFIRMED REGISTRATION: Client device is now LIVE and whitelisted.", "color: #00bcd4; font-weight: bold;");
         }
-        
+
         if (msg.type === "pong") {
           // Heartbeat ok
         }
@@ -211,12 +281,12 @@ export function useSignalExecutor({
     ws.onclose = (event) => {
       isConnectedRef.current = false;
       setIsConnected(false);
-      console.warn(`[SignalExecutor] ⚠️ Disconnected (code: ${event.code}). Reconnecting...`);
+      console.warn(`%c[SignalExecutor] ⚠️ WS DISCONNECTED: Runtime offline (code: ${event.code}). Reconnecting...`, "color: #ff9800; font-weight: bold;");
 
       // Start HTTP fallback during reconnect gap
       startFallbackPolling();
 
-      // FIX #6: Exponential backoff — max 30s between retries
+      // Exponential backoff — max 30s between retries
       const delay = Math.min(1000 * 2 ** retriesRef.current, 30_000);
       retriesRef.current += 1;
 
@@ -238,20 +308,20 @@ export function useSignalExecutor({
         clearInterval(pingInterval);
       }
     }, 20_000);
-  }, [token, enabled, executeSignal, startFallbackPolling, stopFallbackPolling]);
+  }, [token, enabled, executeSignal, startFallbackPolling, stopFallbackPolling, replayPendingSignals]);
 
   // ─────────────────────────────────────────────────────────────────
   // Mount / unmount lifecycle
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!enabled || !token) return;
+    if (enabled && token) {
+      // Initial connect
+      connect();
 
-    // Initial connect
-    connect();
-
-    // FIX #10: Start IP monitoring
-    checkIpChange(); // immediate first check
-    ipCheckTimerRef.current = setInterval(checkIpChange, IP_CHECK_INTERVAL_MS);
+      // Start IP monitoring
+      checkIpChange(); // immediate first check
+      ipCheckTimerRef.current = setInterval(checkIpChange, IP_CHECK_INTERVAL_MS);
+    }
 
     return () => {
       // Cleanup all timers and connections
@@ -260,7 +330,7 @@ export function useSignalExecutor({
       if (fallbackTimerRef.current) clearInterval(fallbackTimerRef.current);
       if (ipCheckTimerRef.current) clearInterval(ipCheckTimerRef.current);
     };
-  }, [token, enabled]); // Re-connect if token or enabled status changes
+  }, [token, enabled, connect, checkIpChange]); // Re-connect if token or enabled status changes
 
   useEffect(() => {
     (window as any).runtimeConnected = isConnected;

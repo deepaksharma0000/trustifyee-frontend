@@ -3,6 +3,8 @@ import Box from '@mui/material/Box';
 // hooks
 import { useBoolean } from 'src/hooks/use-boolean';
 import { useResponsive } from 'src/hooks/use-responsive';
+import { useAuthUser } from 'src/hooks/use-auth-user';
+import { useSignalExecutor } from 'src/hooks/use-signal-executor';
 // components
 import { useSettingsContext } from 'src/components/settings';
 import InactivityTimer from 'src/components/inactivity-timer/InactivityTimer';
@@ -13,9 +15,6 @@ import Header from './header';
 import NavMini from './nav-mini';
 import NavVertical from './nav-vertical';
 import NavHorizontal from './nav-horizontal';
-
-import { useAuthUser } from 'src/hooks/use-auth-user';
-import { useSignalExecutor } from 'src/hooks/use-signal-executor';
 
 // ----------------------------------------------------------------------
 
