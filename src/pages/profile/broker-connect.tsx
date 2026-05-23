@@ -10,6 +10,15 @@ import { ConfirmDialog } from 'src/components/custom-dialog';
 
 // ----------------------------------------------------------------------
 
+const MASKED_CREDENTIAL = '********';
+
+const isMaskedCredential = (value?: string | null) => {
+  const clean = String(value || '').trim();
+  return clean === MASKED_CREDENTIAL || clean.endsWith('...') || clean.startsWith('enc::');
+};
+
+const savedOrEmpty = (value?: string | null) => (value && isMaskedCredential(value) ? MASKED_CREDENTIAL : value || '');
+
 export default function BrokerConnect() {
   const { user } = useAuthUser();
 
@@ -31,12 +40,13 @@ export default function BrokerConnect() {
   React.useEffect(() => {
     if (user) {
       if (user.broker) setBroker(user.broker as any);
+      const savedClientCode = user.client_code || user.client_key;
       setFormData((prev) => ({
         ...prev,
-        client_code: user.client_key === '********' ? '********' : (user.client_key || ''),
-        password: user.broker_password === '********' ? '********' : '',
-        api_key: user.api_key === '********' ? '********' : '',
-        totp_secret: user.broker_totp_secret === '********' ? '********' : '',
+        client_code: savedOrEmpty(savedClientCode),
+        password: isMaskedCredential(user.broker_password) ? MASKED_CREDENTIAL : '',
+        api_key: isMaskedCredential(user.api_key) ? MASKED_CREDENTIAL : '',
+        totp_secret: isMaskedCredential(user.broker_totp_secret) ? MASKED_CREDENTIAL : '',
       }));
     }
   }, [user]);
@@ -63,7 +73,7 @@ export default function BrokerConnect() {
     setLoading(true);
     setError('');
     try {
-      const clientCodeToUse = formData.client_code === '********' ? user.client_key : formData.client_code;
+      const clientCodeToUse = formData.client_code === MASKED_CREDENTIAL ? user.client_code || user.client_key : formData.client_code;
       if (!clientCodeToUse) throw new Error("Please enter your Alice Blue Client Code first");
       
       const res = await axios.get(`/api/alice/auth/login-url?clientcode=${clientCodeToUse}`);
@@ -85,12 +95,46 @@ export default function BrokerConnect() {
     setError('');
     setSuccess('');
 
+    const clientCode = formData.client_code === MASKED_CREDENTIAL ? '' : formData.client_code.trim().toUpperCase();
+    const password = formData.password === MASKED_CREDENTIAL ? '' : formData.password;
+    const apiKey = formData.api_key === MASKED_CREDENTIAL ? '' : formData.api_key.trim();
+    const totpSecret = formData.totp_secret === MASKED_CREDENTIAL ? '' : formData.totp_secret.trim().toUpperCase();
+    const manualTotp = formData.totp.trim();
+
+    const hasSavedClientCode = isMaskedCredential(user.client_code || user.client_key);
+    const hasSavedPassword = isMaskedCredential(user.broker_password);
+    const hasSavedApiKey = isMaskedCredential(user.api_key);
+    const hasSavedTotpSecret = isMaskedCredential(user.broker_totp_secret);
+
+    if (!clientCode && !hasSavedClientCode) {
+      setLoading(false);
+      setError('Client Code is required.');
+      return;
+    }
+    if (!password && !hasSavedPassword) {
+      setLoading(false);
+      setError('Password is required.');
+      return;
+    }
+    if (!apiKey && !hasSavedApiKey) {
+      setLoading(false);
+      setError('SmartAPI Key is required.');
+      return;
+    }
+    if (!totpSecret && !hasSavedTotpSecret) {
+      setLoading(false);
+      setError('TOTP Secret Key is required for automated live trade execution.');
+      return;
+    }
+
     const payload = {
-      ...formData,
-      client_code: formData.client_code === '********' ? '' : formData.client_code,
-      password: formData.password === '********' ? '' : formData.password,
-      api_key: formData.api_key === '********' ? '' : formData.api_key,
-      totp_secret: formData.totp_secret === '********' ? '' : formData.totp_secret,
+      broker: 'AngelOne',
+      client_code: clientCode,
+      client_key: clientCode,
+      password,
+      api_key: apiKey,
+      totp: manualTotp,
+      totp_secret: totpSecret,
     };
 
     try {
@@ -173,7 +217,7 @@ export default function BrokerConnect() {
               onChange={(e) => setFormData({ ...formData, client_code: e.target.value.toUpperCase() })}
               sx={{ mb: 3 }}
               disabled={loading}
-              helperText={formData.client_code === '********' ? "Using saved Client ID" : "Your Alice Blue login ID"}
+              helperText={formData.client_code === MASKED_CREDENTIAL ? "Using saved Client ID" : "Your Alice Blue login ID"}
             />
             <LoadingButton
               fullWidth
@@ -202,18 +246,18 @@ export default function BrokerConnect() {
               onChange={(e) => setFormData({ ...formData, client_code: e.target.value.toUpperCase() })}
               sx={{ mb: 2 }}
               disabled={loading}
-              helperText={formData.client_code === '********' ? "Using saved Client ID" : ""}
+              helperText={formData.client_code === MASKED_CREDENTIAL ? "Using saved Client ID" : ""}
             />
             <TextField
               fullWidth
               label="Password"
-              type={formData.password === '********' ? "text" : "password"}
+              type={formData.password === MASKED_CREDENTIAL ? "text" : "password"}
               autoComplete="current-password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               sx={{ mb: 2.5 }}
               disabled={loading}
-              helperText={formData.password === '********' ? "Using saved Password" : ""}
+              helperText={formData.password === MASKED_CREDENTIAL ? "Using saved Password" : ""}
             />
             <TextField
               fullWidth
@@ -223,7 +267,7 @@ export default function BrokerConnect() {
               onChange={(e) => setFormData({ ...formData, api_key: e.target.value.trim() })}
               sx={{ mb: 2.5 }}
               disabled={loading}
-              helperText={formData.api_key === '********' ? "Using saved API Key" : "Required for SmartAPI Authentication"}
+              helperText={formData.api_key === MASKED_CREDENTIAL ? "Using saved API Key" : "Required for SmartAPI Authentication"}
             />
 
             <Divider sx={{ mb: 2.5, borderStyle: 'dashed' }}>
@@ -240,7 +284,8 @@ export default function BrokerConnect() {
               onChange={(e) => setFormData({ ...formData, totp_secret: e.target.value.trim().toUpperCase() })}
               sx={{ mb: 2 }}
               disabled={loading}
-              helperText={formData.totp_secret === '********' ? "Using saved TOTP Secret" : "Provide this to enable one-click login"}
+              required={!isMaskedCredential(user.broker_totp_secret)}
+              helperText={formData.totp_secret === MASKED_CREDENTIAL ? "Using saved TOTP Secret" : "Required for automated live trade execution"}
             />
 
             <Box sx={{ textAlign: 'center', mb: 2 }}>
@@ -316,7 +361,7 @@ export default function BrokerConnect() {
               setLoading(true);
               setError('');
               try {
-                const clientToDisconnect = user.client_key || "";
+                const clientToDisconnect = user.client_code || user.client_key || "";
                 await axios.post('/api/auth/logout', { clientcode: clientToDisconnect });
                 setSuccess('Disconnected successfully. Refreshing...');
                 confirm.onFalse();
