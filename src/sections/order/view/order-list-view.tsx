@@ -174,6 +174,12 @@ export default function OptionChainPage() {
     return "transparent";
   };
 
+  const isPlausibleLivePrice = (symbolToken: string, ltp: number) => {
+    if (!Number.isFinite(ltp) || ltp <= 0) return false;
+    const isIndex = ["99926000", "99926009", "99926037"].includes(symbolToken);
+    return isIndex ? ltp < 1000000 : ltp < 100000;
+  };
+
   const extractExpiryList = useCallback((options: OptionItem[]): ExpiryDateItem[] => {
     const map = new Map<string, ExpiryDateItem>();
 
@@ -307,6 +313,10 @@ export default function OptionChainPage() {
           msg.items.forEach((item: any) => {
             const symbolToken = item.symboltoken;
             const ltp = Number(item.ltp || 0);
+            if (!isPlausibleLivePrice(symbolToken, ltp)) {
+              console.warn("Dropped implausible market tick", { symbolToken, ltp });
+              return;
+            }
             const oi =
               item.oi === null || item.oi === undefined ? null : Number(item.oi);
             const volume =
