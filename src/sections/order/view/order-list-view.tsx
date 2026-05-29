@@ -627,6 +627,7 @@ export default function OptionChainPage() {
             symboltoken: opt.symboltoken,
             strategy,
             tradeType: "Option-Chain",
+            executionMode: "SERVER",
           }),
         });
 
@@ -635,7 +636,15 @@ export default function OptionChainPage() {
         if (!json.ok) {
           return { success: false, error: `${opt.tradingsymbol}: ${json.error || "Broadcast failed"}`, results: [] };
         }
-        return { success: true, totalUsers: json.totalUsers, results: json.results || [] };
+        return {
+          success: true,
+          totalUsers: json.totalUsers,
+          dispatchMode: json.dispatchMode,
+          queued: json.queued,
+          livePlaced: json.livePlaced,
+          demoPlaced: json.demoPlaced,
+          executions: json.executions || json.results || [],
+        };
       } catch (err: any) {
         return { success: false, error: `${opt.tradingsymbol}: ${err.message || "Network error"}`, results: [] };
       }
@@ -645,7 +654,8 @@ export default function OptionChainPage() {
     const totalTargeted = results[0]?.totalUsers || 0;
 
     // Combine all user results from multiple symbols if any
-    const allUserResults: any[] = results.flatMap(r => (r as any).results || []);
+    const allUserResults: any[] = results.flatMap((r: any) => r.executions || r.results || []);
+    const firstOk = results.find((r: any) => r.success);
 
     // Clear selection after execution
     setSelectedOptions([]);
@@ -654,9 +664,13 @@ export default function OptionChainPage() {
 
     // Open Professional Results Modal
     setBroadcastResults({
-      ok: results.every(r => r.success),
+      ok: results.every((r: any) => r.success),
       totalUsers: totalTargeted,
-      results: [] // Results will be updated via the Signal Table polling
+      dispatchMode: firstOk?.dispatchMode || "SERVER_BROADCAST",
+      queued: firstOk?.queued,
+      livePlaced: firstOk?.livePlaced,
+      demoPlaced: firstOk?.demoPlaced,
+      executions: allUserResults,
     });
     setBroadcastModalOpen(true);
     
@@ -1244,7 +1258,8 @@ function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange,
         stopLossPrice: slTargetEnabled && stopLoss ? Number(stopLoss) : undefined,
         targetPrice: slTargetEnabled && target ? Number(target) : undefined,
         strategy: strategy || "Manual",
-        tradeType: "Option-Chain"
+        tradeType: "Option-Chain",
+        executionMode: "SERVER",
       };
 
       const res = await fetch(`${API_BASE}/api/orders/place-all`, {
@@ -1528,12 +1543,25 @@ function OrderDialog({ open, onClose, option, side, setSide, ltp, percentChange,
 function BroadcastResultModal({ open, onClose, data }: { open: boolean, onClose: () => void, data: any }) {
   if (!data) return null;
 
-  const results = data.executions || [];
+  const results = data.executions || data.results || [];
   const total = data.totalUsers || 0;
+  const dispatchMode = String(data.dispatchMode || "SERVER_BROADCAST");
+  const isClientDispatch =
+    dispatchMode === "CLIENT_ONLY" ||
+    dispatchMode === "CLIENT_FALLBACK" ||
+    results.some((r: any) =>
+      String(r.message || "").toLowerCase().includes("user-side execution")
+    );
 
-  const successCount = results.filter((r: any) => r.status === 'QUEUED' || r.status === 'ok').length;
+  const serverQueuedCount =
+    typeof data.queued === "number"
+      ? data.queued
+      : results.filter((r: any) => r.status === "QUEUED" && !isClientDispatch).length;
+  const successCount = isClientDispatch
+    ? results.filter((r: any) => r.online && (r.status === "QUEUED" || r.status === "ok")).length
+    : serverQueuedCount || results.filter((r: any) => r.status === "QUEUED" || r.status === "SUCCESS").length;
   const paperCount = data.demoPlaced || 0;
-  const skippedCount = results.filter((r: any) => r.status === 'SKIPPED' || r.status === 'skipped').length;
+  const skippedCount = results.filter((r: any) => r.status === 'SKIPPED' || r.status === 'skipped' || r.status === 'OFFLINE').length;
   const errorCount = results.filter((r: any) => r.status === 'FAILED' || r.status === 'error').length;
 
   return (
@@ -1546,7 +1574,11 @@ function BroadcastResultModal({ open, onClose, data }: { open: boolean, onClose:
             </Box>
             <Box>
               <Typography variant="h5" fontWeight="bold">Broadcast Execution Summary</Typography>
-              <Typography variant="caption" color="text.secondary">Order processed for {total} targeted users</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {isClientDispatch
+                  ? `Signal sent to ${total} user(s) — waiting for user device to place orders`
+                  : `Server broker execution queued for ${total} targeted user(s)`}
+              </Typography>
             </Box>
           </Stack>
           <IconButton onClick={onClose}>
@@ -1558,7 +1590,9 @@ function BroadcastResultModal({ open, onClose, data }: { open: boolean, onClose:
           <Grid item xs={6} md={3}>
             <Card sx={{ p: 2, textAlign: 'center', bgcolor: 'success.lighter', border: '1px solid', borderColor: 'success.light' }}>
               <Typography variant="h4" color="success.darker" fontWeight="bold">{successCount}</Typography>
-              <Typography variant="overline" color="success.darker">Live Placed</Typography>
+              <Typography variant="overline" color="success.darker">
+                {isClientDispatch ? "Signals Sent" : "Server Queued"}
+              </Typography>
             </Card>
           </Grid>
           <Grid item xs={6} md={3}>
@@ -1618,8 +1652,10 @@ function BroadcastResultModal({ open, onClose, data }: { open: boolean, onClose:
                       label={r.status?.toUpperCase()}
                       color={
                         (() => {
+                          if (r.status === 'SUCCESS' || r.status === 'PENDING') return 'success';
+                          if (r.status === 'QUEUED' && !isClientDispatch) return 'info';
                           if (r.status === 'QUEUED' || r.status === 'ok' || r.status === 'paper') return 'success';
-                          if (['SKIPPED', 'skipped'].includes(r.status)) return 'warning';
+                          if (['SKIPPED', 'skipped', 'OFFLINE'].includes(r.status)) return 'warning';
                           return 'error';
                         })()
                       }
