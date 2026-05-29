@@ -109,11 +109,7 @@ export default function OptionChainPage() {
   const [orderSide, setOrderSide] = useState<'BUY' | 'SELL'>('BUY');
 
   /* ---------------- BROADCAST RESULTS MODAL STATE ---------------- */
-  const [broadcastResults, setBroadcastResults] = useState<{
-    ok: boolean;
-    totalUsers: number;
-    results: any[];
-  } | null>(null);
+  const [broadcastResults, setBroadcastResults] = useState<any | null>(null);
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
 
   const blinkTimers = useRef<Record<string, number>>({});
