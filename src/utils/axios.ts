@@ -100,5 +100,6 @@ export const endpoints = {
   },
   orders: {
     brokerResponses: '/api/orders/broker-responses',
+    angelOrderBook: '/api/orders/angel-order-book',
   },
 };
