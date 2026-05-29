@@ -33,6 +33,7 @@ import {
   Tab,
   Divider,
   LinearProgress,
+  Tooltip,
 } from "@mui/material";
 import { Link as RouterLink } from 'react-router-dom';
 import { paths } from 'src/routes/paths';
@@ -1623,7 +1624,9 @@ function BroadcastResultModal({ open, onClose, data }: { open: boolean, onClose:
               <TableRow>
                 <TableCell sx={{ bgcolor: 'background.neutral' }}>User Name</TableCell>
                 <TableCell sx={{ bgcolor: 'background.neutral' }}>Licence</TableCell>
-                <TableCell sx={{ bgcolor: 'background.neutral' }} align="center">Online</TableCell>
+                <TableCell sx={{ bgcolor: 'background.neutral' }} align="center">
+                  {isClientDispatch ? "Online" : "Execution"}
+                </TableCell>
                 <TableCell sx={{ bgcolor: 'background.neutral' }} align="center">Broker</TableCell>
                 <TableCell sx={{ bgcolor: 'background.neutral' }}>Status</TableCell>
                 <TableCell sx={{ bgcolor: 'background.neutral' }}>Message/ID</TableCell>
@@ -1640,8 +1643,29 @@ function BroadcastResultModal({ open, onClose, data }: { open: boolean, onClose:
                     <Chip size="small" label={r.licence} color={r.licence === 'Live' ? 'primary' : 'default'} sx={{ fontWeight: 'bold' }} />
                   </TableCell>
                   <TableCell align="center">
-                    <Iconify icon={r.online ? "eva:checkmark-circle-fill" : "eva:close-circle-fill"}
-                      color={r.online ? "success.main" : "text.disabled"} width={20} />
+                    {isClientDispatch ? (
+                      <Iconify
+                        icon={r.online ? "eva:checkmark-circle-fill" : "eva:close-circle-fill"}
+                        color={r.online ? "success.main" : "text.disabled"}
+                        width={20}
+                      />
+                    ) : (
+                      <Tooltip title={r.onlineMode === "SERVER_SIDE" ? "Server-side — user device not required" : "Server queued"}>
+                        <Iconify
+                          icon={
+                            r.status === "QUEUED" || r.status === "SUCCESS" || r.online
+                              ? "mdi:server-network"
+                              : "eva:close-circle-fill"
+                          }
+                          color={
+                            r.status === "QUEUED" || r.status === "SUCCESS" || r.online
+                              ? "info.main"
+                              : "text.disabled"
+                          }
+                          width={20}
+                        />
+                      </Tooltip>
+                    )}
                   </TableCell>
                   <TableCell align="center">
                     <Typography variant="caption" sx={{ fontWeight: 'bold' }}>{r.broker}</Typography>
