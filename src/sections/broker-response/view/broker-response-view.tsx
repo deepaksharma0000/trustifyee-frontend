@@ -95,6 +95,100 @@ export default function BrokerResponseView() {
         fetchAll();
     }, [fetchAll]);
 
+    let renderAngelOrdersContent;
+    if (loading) {
+        renderAngelOrdersContent = (
+            <TableRow>
+                <TableCell colSpan={8}><LoadingScreen /></TableCell>
+            </TableRow>
+        );
+    } else if (angelOrders.length === 0) {
+        renderAngelOrdersContent = (
+            <TableRow>
+                <TableCell colSpan={8} sx={{ py: 8 }}>
+                    <EmptyContent
+                        title="No orders in Angel One book"
+                        description="Orders placed successfully will appear here with live broker status."
+                    />
+                </TableCell>
+            </TableRow>
+        );
+    } else {
+        renderAngelOrdersContent = angelOrders.map((row) => (
+            <TableRow key={row.orderid || `${row.tradingsymbol}-${row.updatetime}`} hover>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.updatetime || '—'}</TableCell>
+                <TableCell>
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+                        {row.orderid || '—'}
+                    </Typography>
+                </TableCell>
+                <TableCell>
+                    <Typography variant="subtitle2">{row.tradingsymbol}</Typography>
+                    <Typography variant="caption" color="text.secondary">{row.exchange}</Typography>
+                </TableCell>
+                <TableCell>{row.transactiontype}</TableCell>
+                <TableCell>{row.quantity}</TableCell>
+                <TableCell>{row.price}</TableCell>
+                <TableCell>
+                    <Label variant="filled" color={statusColor(row.orderstatus)}>
+                        {row.orderstatus || 'UNKNOWN'}
+                    </Label>
+                </TableCell>
+                <TableCell>
+                    <Typography variant="body2" color="text.secondary">
+                        {row.statusmessage || '—'}
+                    </Typography>
+                </TableCell>
+            </TableRow>
+        ));
+    }
+
+    let renderPlatformExecutionsContent;
+    if (loading) {
+        renderPlatformExecutionsContent = (
+            <TableRow>
+                <TableCell colSpan={6}><LoadingScreen /></TableCell>
+            </TableRow>
+        );
+    } else if (platformExecutions.length === 0) {
+        renderPlatformExecutionsContent = (
+            <TableRow>
+                <TableCell colSpan={6} sx={{ py: 8 }}>
+                    <EmptyContent title="No platform executions yet" />
+                </TableCell>
+            </TableRow>
+        );
+    } else {
+        renderPlatformExecutionsContent = platformExecutions.map((row: any) => (
+            <TableRow key={String(row._id)} hover>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                    {fDateTime(row.updatedAt || row.executedAt)}
+                </TableCell>
+                <TableCell>
+                    <Label variant="filled" color={statusColor(row.status)}>
+                        {row.status}
+                    </Label>
+                </TableCell>
+                <TableCell>
+                    <Label variant="soft" color={statusColor(row.brokerOrderStatus || '')}>
+                        {row.brokerOrderStatus || '—'}
+                    </Label>
+                </TableCell>
+                <TableCell>
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+                        {row.orderId || row.clientOrderId || '—'}
+                    </Typography>
+                </TableCell>
+                <TableCell>{row.source || '—'}</TableCell>
+                <TableCell>
+                    <Typography variant="body2" color={row.status === 'FAILED' ? 'error.main' : 'text.secondary'}>
+                        {row.brokerRejectReason || row.errorMessage || '—'}
+                    </Typography>
+                </TableCell>
+            </TableRow>
+        ));
+    }
+
     return (
         <Container maxWidth={settings.themeStretch ? false : 'lg'}>
             <ExecutionRouteBanner />
@@ -153,48 +247,7 @@ export default function BrokerResponseView() {
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {loading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={8}><LoadingScreen /></TableCell>
-                                        </TableRow>
-                                    ) : angelOrders.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={8} sx={{ py: 8 }}>
-                                                <EmptyContent
-                                                    title="No orders in Angel One book"
-                                                    description="Orders placed successfully will appear here with live broker status."
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        angelOrders.map((row) => (
-                                            <TableRow key={row.orderid || `${row.tradingsymbol}-${row.updatetime}`} hover>
-                                                <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.updatetime || '—'}</TableCell>
-                                                <TableCell>
-                                                    <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-                                                        {row.orderid || '—'}
-                                                    </Typography>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Typography variant="subtitle2">{row.tradingsymbol}</Typography>
-                                                    <Typography variant="caption" color="text.secondary">{row.exchange}</Typography>
-                                                </TableCell>
-                                                <TableCell>{row.transactiontype}</TableCell>
-                                                <TableCell>{row.quantity}</TableCell>
-                                                <TableCell>{row.price}</TableCell>
-                                                <TableCell>
-                                                    <Label variant="filled" color={statusColor(row.orderstatus)}>
-                                                        {row.orderstatus || 'UNKNOWN'}
-                                                    </Label>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Typography variant="body2" color="text.secondary">
-                                                        {row.statusmessage || '—'}
-                                                    </Typography>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
+                                    {renderAngelOrdersContent}
                                 </TableBody>
                             </Table>
                         </Scrollbar>
@@ -218,46 +271,7 @@ export default function BrokerResponseView() {
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {loading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={6}><LoadingScreen /></TableCell>
-                                        </TableRow>
-                                    ) : platformExecutions.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={6} sx={{ py: 8 }}>
-                                                <EmptyContent title="No platform executions yet" />
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        platformExecutions.map((row: any) => (
-                                            <TableRow key={String(row._id)} hover>
-                                                <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                                                    {fDateTime(row.updatedAt || row.executedAt)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Label variant="filled" color={statusColor(row.status)}>
-                                                        {row.status}
-                                                    </Label>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Label variant="soft" color={statusColor(row.brokerOrderStatus || '')}>
-                                                        {row.brokerOrderStatus || '—'}
-                                                    </Label>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-                                                        {row.orderId || row.clientOrderId || '—'}
-                                                    </Typography>
-                                                </TableCell>
-                                                <TableCell>{row.source || '—'}</TableCell>
-                                                <TableCell>
-                                                    <Typography variant="body2" color={row.status === 'FAILED' ? 'error.main' : 'text.secondary'}>
-                                                        {row.brokerRejectReason || row.errorMessage || '—'}
-                                                    </Typography>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
+                                    {renderPlatformExecutionsContent}
                                 </TableBody>
                             </Table>
                         </Scrollbar>
