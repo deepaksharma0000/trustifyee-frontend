@@ -97,7 +97,7 @@ export default function OverviewAppView() {
   );
 
   const fetchData = useCallback(async () => {
-    if (!user || (user.licence !== 'Live' && user.role !== 'admin')) return;
+    if (!user || !isAdmin) return;
 
     setLoading(true);
     try {
@@ -123,13 +123,13 @@ export default function OverviewAppView() {
     } finally {
       setLoading(false);
     }
-  }, [api, user, token]);
+  }, [api, user, token, isAdmin]);
 
   useEffect(() => {
-    if (user && (user.licence === 'Live' || user.role === 'admin')) {
+    if (user && isAdmin) {
       fetchData();
     }
-  }, [fetchData, user]);
+  }, [fetchData, user, isAdmin]);
 
   // 🕒 COUNTDOWN TIMER LOGIC
   useEffect(() => {
