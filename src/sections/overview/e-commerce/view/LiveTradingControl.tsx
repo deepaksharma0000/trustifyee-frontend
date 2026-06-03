@@ -122,7 +122,7 @@ export default function LiveTradingControl({ user }: { user: any }) {
         setRows(initialRows);
 
         return () => clearInterval(interval);
-    }, [user]);
+    }, [user, fetchSignals]);
 
     const handleUpdateMultipliers = async () => {
         setBrokerResponse(null);
