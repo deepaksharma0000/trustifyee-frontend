@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Card, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Typography, TextField, MenuItem, Button, Box, Chip, Alert,
@@ -57,7 +57,7 @@ export default function LiveTradingControl({ user }: { user: any }) {
         return () => window.removeEventListener("runtime-status-change", handleStatusChange);
     }, []);
 
-    const fetchSignals = async () => {
+    const fetchSignals = useCallback(async () => {
         try {
             const token = localStorage.getItem('authToken');
             const res = await fetch(`${HOST_API}/api/signals/active`, {
@@ -68,7 +68,35 @@ export default function LiveTradingControl({ user }: { user: any }) {
         } catch (err) {
             console.error("Signal fetch failed", err);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        const handleExecutionUpdate = (event: Event) => {
+            const msg = (event as CustomEvent).detail;
+            if (msg?.type !== 'TRADE_EXECUTION_UPDATE' || !msg?.data) return;
+
+            const executionKey = String(msg.data.signalId || msg.data.clientOrderId || '');
+            if (!executionKey) return;
+
+            setExecutionStatuses((prev) => ({
+                ...prev,
+                [executionKey]: String(msg.data.status || 'PENDING'),
+            }));
+
+            setBrokerResponse({
+                status: msg.data.status === 'FAILED' ? 'error' : 'success',
+                message: msg.data.message || `Execution ${msg.data.status || 'UPDATED'}`,
+                time: new Date().toLocaleTimeString(),
+                orderId: msg.data.orderId || msg.data.clientOrderId,
+                signalId: msg.data.signalId || executionKey,
+            });
+
+            fetchSignals();
+        };
+
+        window.addEventListener('ws-signal-message' as any, handleExecutionUpdate);
+        return () => window.removeEventListener('ws-signal-message' as any, handleExecutionUpdate);
+    }, [fetchSignals]);
 
     useEffect(() => {
         fetchSignals();
@@ -160,16 +188,17 @@ export default function LiveTradingControl({ user }: { user: any }) {
                     enqueueSnackbar('Trade executed successfully!', { variant: 'success' });
                     setBrokerResponse({
                         status: 'success',
-                        message: `Order executed successfully! ID: ${data.orderId}`,
+                        message: `Order executed successfully! ID: ${data.orderId || data.clientOrderId || signalId}`,
                         time: new Date().toLocaleTimeString()
                     });
                 } else if (data.status === 'FAILED') {
                     clearInterval(interval);
                     setExecutionStatuses(prev => ({ ...prev, [signalId]: 'FAILED' }));
-                    enqueueSnackbar(`Trade failed: ${data.errorMessage || 'Unknown error'}`, { variant: 'error' });
+                    const failureReason = data.brokerRejectReason || data.errorMessage || data.brokerResponse?.message || 'Unknown error';
+                    enqueueSnackbar(`Trade failed: ${failureReason}`, { variant: 'error' });
                     setBrokerResponse({
                         status: 'error',
-                        message: `Execution failed: ${data.errorMessage}`,
+                        message: `Execution failed: ${failureReason}`,
                         time: new Date().toLocaleTimeString()
                     });
                 } else if (attempts >= MAX_ATTEMPTS) {
@@ -501,7 +530,7 @@ export default function LiveTradingControl({ user }: { user: any }) {
                                 <Chip
                                     label={isConnected ? "BROKER: CONNECTED" : "BROKER: OFFLINE"}
                                     size="small"
-                                    variant="soft"
+                                    variant="filled"
                                     color={isConnected ? "success" : "warning"}
                                     icon={<Iconify icon={isConnected ? "eva:checkmark-circle-2-fill" : "eva:alert-circle-fill"} />}
                                     sx={{ fontWeight: 700, fontSize: '0.68rem', letterSpacing: 0.5 }}
@@ -512,7 +541,7 @@ export default function LiveTradingControl({ user }: { user: any }) {
                                 <Chip
                                     label={runtimeConnected ? "RUNTIME: ONLINE" : "RUNTIME: OFFLINE"}
                                     size="small"
-                                    variant="soft"
+                                    variant="filled"
                                     color={runtimeConnected ? "success" : "error"}
                                     icon={<Iconify icon={runtimeConnected ? "fluent:pulse-24-filled" : "eva:close-circle-fill"} />}
                                     sx={{ 

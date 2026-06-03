@@ -30,7 +30,12 @@ export default function DashboardLayout({ children }: Props) {
   const { user } = useAuthUser();
   const token = sessionStorage.getItem("accessToken") || localStorage.getItem("authToken");
 
-  const enabled = !!user && !!token;
+  const role = String(user?.role || '').toLowerCase();
+  const isStaff = role === 'admin' || role === 'sub-admin' || role === 'master';
+  const isLiveUser =
+    String(user?.licence || '').toLowerCase() === 'live' &&
+    (user?.broker_connected === true || String(user?.broker || '').toLowerCase() === 'angelone');
+  const enabled = !!user && !!token && !isStaff && isLiveUser;
 
   useSignalExecutor({
     token,

@@ -592,14 +592,7 @@ export default function OptionChainPage() {
       return;
     }
 
-    // Get the AngelOne clientcode from localStorage
-    const angelClientcode = localStorage.getItem('angel_clientcode');
-    if (!angelClientcode) {
-      alert("❌ No AngelOne session found. Please connect your broker first.");
-      return;
-    }
-
-    let confirmMsg = `BROADCAST: Place ${selectedOptions.length} order(s) for ALL active users?\n\nEach user will receive ${orderQuantity} lots.`;
+    let confirmMsg = `BROADCAST (SERVER): Place ${selectedOptions.length} order(s) for ALL active users?\n\nEach user's Angel One account will be executed on the server. Quantity: ${orderQuantity} lots per user.`;
 
     if (stopLoss) confirmMsg += `\n🛑 SL: ${stopLoss}`;
     if (target) confirmMsg += `\n🎯 Target: ${target}`;

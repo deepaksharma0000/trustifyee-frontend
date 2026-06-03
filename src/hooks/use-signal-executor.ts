@@ -114,9 +114,15 @@ export function useSignalExecutor({
   // ─────────────────────────────────────────────────────────────────
   const executeSignal = useCallback(
     async (signal: TradeSignal) => {
-      // FIX 3: ORDER EXECUTION GUARD
       if (!enabled || !token) {
         console.warn("[SignalExecutor] Signal ignored: Execution disabled or token missing.");
+        return;
+      }
+
+      if (String(signal.executionMode || "").toUpperCase() === "SERVER") {
+        console.info(
+          `[SignalExecutor] SERVER signal ${signal.signalId || signal._id} — backend executes on Angel One; skipping client queue.`
+        );
         return;
       }
 
@@ -165,6 +171,7 @@ export function useSignalExecutor({
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
+            "x-access-token": token,
           },
           body: JSON.stringify({
             signalId: resolvedSignalId,
@@ -316,10 +323,24 @@ export function useSignalExecutor({
       try {
         const msg = JSON.parse(event.data);
 
+        // Dispatch all ws events to a global window listener so individual pages can listen to real-time events.
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("ws-signal-message", { detail: msg }));
+        }
+
         if (msg.type === "TRADE_SIGNAL" && msg.data) {
           const rawSignal = msg.data as TradeSignal;
           const resolvedId = rawSignal.signalId || rawSignal._id || rawSignal.id;
-          executeSignal({ ...rawSignal, signalId: resolvedId });
+          const mode = String(rawSignal.executionMode || "CLIENT").toUpperCase();
+          if (mode === "SERVER") {
+            console.info("[SignalExecutor] TRADE_SIGNAL (SERVER) — worker handles broker placement.");
+          } else {
+            executeSignal({ ...rawSignal, signalId: resolvedId });
+          }
+        }
+
+        if (msg.type === "TRADE_EXECUTION_UPDATE" && msg.data) {
+          console.info("[SignalExecutor] Trade execution update:", msg.data);
         }
 
         if (msg.type === "tick" && Array.isArray(msg.items)) {

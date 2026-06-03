@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig } from 'axios';
+import axios, { AxiosHeaders, AxiosRequestConfig } from 'axios';
 // config
 import { HOST_API } from 'src/config-global';
 
@@ -12,9 +12,10 @@ axiosInstance.interceptors.request.use(
     const token = localStorage.getItem('authToken');
 
     if (token) {
-      config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${token}`;
-      config.headers['x-access-token'] = token;
+      const headers = AxiosHeaders.from(config.headers);
+      headers.set('Authorization', `Bearer ${token}`);
+      headers.set('x-access-token', token);
+      config.headers = headers;
     }
 
     return config;

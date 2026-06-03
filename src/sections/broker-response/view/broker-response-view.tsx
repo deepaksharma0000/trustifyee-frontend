@@ -18,6 +18,7 @@ import {
     Tooltip,
     Tabs,
     Tab,
+    TextField,
 } from '@mui/material';
 // components
 import Iconify from 'src/components/iconify';
@@ -27,6 +28,7 @@ import { useSettingsContext } from 'src/components/settings';
 import { LoadingScreen } from 'src/components/loading-screen';
 import Label from 'src/components/label';
 import ExecutionRouteBanner from 'src/components/execution-route-banner/ExecutionRouteBanner';
+import { useAuthUser } from 'src/hooks/use-auth-user';
 // utils
 import axios, { endpoints } from 'src/utils/axios';
 import { fDateTime } from 'src/utils/format-time';
@@ -59,40 +61,104 @@ const statusColor = (status: string): 'success' | 'warning' | 'error' | 'info' |
 
 export default function BrokerResponseView() {
     const settings = useSettingsContext();
+    const { user: authUser } = useAuthUser();
+    const isAdmin = authUser?.role === 'admin' || authUser?.role === 'sub-admin' || authUser?.role === 'subadmin';
 
     const [currentTab, setCurrentTab] = useState(0);
     const [platformData, setPlatformData] = useState<any[]>([]);
     const [angelOrders, setAngelOrders] = useState<AngelOrderRow[]>([]);
     const [platformExecutions, setPlatformExecutions] = useState<any[]>([]);
     const [clientcode, setClientcode] = useState('');
+    const [clientcodeInput, setClientcodeInput] = useState('');
     const [fetchedAt, setFetchedAt] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [angelOrdersError, setAngelOrdersError] = useState<string | null>(null);
 
-    const fetchAll = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
-
-            const [responsesRes, angelRes] = await Promise.all([
-                axios.get(endpoints.orders.brokerResponses),
-                axios.get(endpoints.orders.angelOrderBook),
-            ]);
-
-            setPlatformData(responsesRes.data?.data || []);
-            setAngelOrders(angelRes.data?.angelOne?.orders || []);
-            setPlatformExecutions(angelRes.data?.platformExecutions || []);
-            setClientcode(angelRes.data?.clientcode || '');
-            setFetchedAt(angelRes.data?.angelOne?.fetchedAt || '');
-        } catch (err: any) {
-            setError(err?.response?.data?.message || err.message || 'Failed to fetch order status');
-        } finally {
-            setLoading(false);
+    useEffect(() => {
+        if (isAdmin) {
+            setClientcode('');
+            setClientcodeInput('');
+            return;
         }
-    }, []);
+
+        const savedClientCode = localStorage.getItem('angel_clientcode') || '';
+        setClientcode(savedClientCode);
+        setClientcodeInput(savedClientCode);
+    }, [isAdmin]);
+
+    const fetchAll = useCallback(async (options?: { silent?: boolean }) => {
+        if (!options?.silent) {
+            setLoading(true);
+        }
+        setError(null);
+        setAngelOrdersError(null);
+
+        const scopedClientCode = String(clientcode || '').trim();
+        const requestParams = scopedClientCode ? { clientcode: scopedClientCode } : undefined;
+
+        // 1. Fetch Broker Responses (API Responses)
+        try {
+            const responsesRes = await axios.get(endpoints.orders.brokerResponses, { params: requestParams });
+            setPlatformData(responsesRes.data?.data || []);
+        } catch (err: any) {
+            setError(err?.response?.data?.message || err.message || 'Failed to fetch broker responses');
+        }
+
+        // 2. Fetch Angel One Order Book & Platform Executions
+        try {
+            const angelRes = await axios.get(endpoints.orders.angelOrderBook, { params: requestParams });
+            setPlatformExecutions(angelRes.data?.platformExecutions || []);
+            const returnedClientCode = String(angelRes.data?.clientcode || '').trim().toUpperCase();
+            if (returnedClientCode && returnedClientCode !== 'ALL') {
+                setClientcode(returnedClientCode);
+                setClientcodeInput(returnedClientCode);
+            }
+            
+            if (angelRes.data?.angelOneError) {
+                setAngelOrdersError(angelRes.data.angelOneError);
+                setAngelOrders([]);
+                setFetchedAt('');
+            } else {
+                setAngelOrders(angelRes.data?.angelOne?.orders || []);
+                setFetchedAt(angelRes.data?.angelOne?.fetchedAt || '');
+            }
+        } catch (err: any) {
+            setAngelOrdersError(err?.response?.data?.message || err.message || 'Failed to fetch Angel One order book');
+            setAngelOrders([]);
+            setFetchedAt('');
+        } finally {
+            if (!options?.silent) {
+                setLoading(false);
+            }
+        }
+    }, [clientcode]);
 
     useEffect(() => {
         fetchAll();
+    }, [fetchAll]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            fetchAll({ silent: true });
+        }, 10000);
+
+        return () => clearInterval(interval);
+    }, [fetchAll]);
+
+    useEffect(() => {
+        const handleWsMessage = (event: CustomEvent) => {
+            const msg = event.detail;
+            if (msg?.type === 'TRADE_EXECUTION_UPDATE') {
+                console.log('[BrokerResponseView] Real-time execution update received, refreshing data...', msg.data);
+                fetchAll({ silent: true });
+            }
+        };
+
+        window.addEventListener('ws-signal-message' as any, handleWsMessage);
+        return () => {
+            window.removeEventListener('ws-signal-message' as any, handleWsMessage);
+        };
     }, [fetchAll]);
 
     let renderAngelOrdersContent;
@@ -201,13 +267,24 @@ export default function BrokerResponseView() {
                         {clientcode ? ` · Client ${clientcode}` : ''}
                     </Typography>
                 </Box>
-                <Button
-                    variant="contained"
-                    startIcon={<Iconify icon="eva:refresh-fill" />}
-                    onClick={fetchAll}
-                >
-                    Refresh
-                </Button>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }}>
+                    <TextField
+                        size="small"
+                        label="Client Code"
+                        value={clientcodeInput}
+                        onChange={(event) => setClientcodeInput(event.target.value.toUpperCase())}
+                        placeholder={isAdmin ? 'Leave blank for global history' : 'Angel client code'}
+                        helperText={isAdmin ? 'Leave blank to view global execution history' : 'Loaded from your saved broker session'}
+                        sx={{ minWidth: { xs: '100%', sm: 280 } }}
+                    />
+                    <Button
+                        variant="contained"
+                        startIcon={<Iconify icon="eva:refresh-fill" />}
+                        onClick={() => setClientcode(String(clientcodeInput || '').trim().toUpperCase())}
+                    >
+                        Refresh
+                    </Button>
+                </Stack>
             </Stack>
 
             {error && (
@@ -224,6 +301,16 @@ export default function BrokerResponseView() {
 
             {currentTab === 0 && (
                 <Card>
+                    {angelOrdersError && (
+                        <Alert severity="warning" sx={{ m: 2 }}>
+                            Broker Sync Alert: {angelOrdersError}. Please reconnect your broker if session is expired.
+                        </Alert>
+                    )}
+                    {!clientcode && (
+                        <Alert severity="info" sx={{ m: 2 }}>
+                            Global mode is active. Enter a client code to inspect one Angel One account.
+                        </Alert>
+                    )}
                     {fetchedAt && (
                         <Box sx={{ px: 2, pt: 2 }}>
                             <Typography variant="caption" color="text.secondary">
