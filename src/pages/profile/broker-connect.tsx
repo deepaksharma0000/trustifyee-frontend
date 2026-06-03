@@ -486,7 +486,8 @@ export default function BrokerConnect() {
                       variant="outlined"
                       startIcon={<Iconify icon="solar:download-bold" />}
                       size="small"
-                      onClick={() => alert('Downloading agent package...')}
+                      href="/uploads/agent.zip"
+                      download="agent.zip"
                     >
                       Download Agent ZIP
                     </Button>
