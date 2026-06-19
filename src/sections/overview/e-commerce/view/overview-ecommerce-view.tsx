@@ -241,6 +241,37 @@ const getColumns = (
       )
     },
     {
+      field: 'broker',
+      headerName: 'Broker',
+      width: 150,
+      renderCell: (params) => {
+        const broker = String(params.value || 'AngelOne');
+        const brokerIcons: Record<string, string> = {
+          AngelOne: 'simple-icons:angelone',
+          Zerodha: 'simple-icons:zerodha',
+          Upstox: 'simple-icons:upstox',
+          AliceBlue: 'mdi:alpha-a-circle',
+        };
+        const connected = !!params.row.broker_connected;
+        const brokerStatus = String(params.row.broker_status || (connected ? 'connected' : 'disconnected')).toLowerCase();
+        const expired = brokerStatus === 'expired';
+        const statusLabel = expired ? 'Expired' : connected ? 'Connected' : 'Disconnected';
+        const statusColor = expired ? 'warning.main' : connected && params.row.broker_verified ? 'success.main' : 'error.main';
+
+        return (
+          <Tooltip title={`${broker} — ${statusLabel}`}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Iconify icon={brokerIcons[broker] || 'mdi:bank'} width={20} />
+              <Box>
+                <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>{broker}</Typography>
+                <Typography variant="caption" sx={{ color: statusColor, fontWeight: 600 }}>{statusLabel}</Typography>
+              </Box>
+            </Box>
+          </Tooltip>
+        );
+      }
+    },
+    {
       field: 'is_login',
       headerName: 'System Login',
       width: 115,

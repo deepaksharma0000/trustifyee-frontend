@@ -22,17 +22,22 @@ const savedOrEmpty = (value?: string | null) => (value && isMaskedCredential(val
 export default function BrokerConnect() {
   const { user } = useAuthUser();
 
+  const isSuperAdmin = user?.role === 'admin';
+  const isSubAdmin = user?.role === 'sub-admin';
+  const isAdmin = isSuperAdmin || isSubAdmin;
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   const confirm = useBoolean();
-  const [broker, setBroker] = useState<'AngelOne' | 'AliceBlue'>(user?.broker as any || 'AngelOne');
+  const [broker, setBroker] = useState<'AngelOne' | 'AliceBlue' | 'Zerodha' | 'Upstox'>(user?.broker as any || 'AngelOne');
   
   const [formData, setFormData] = useState({
     client_code: '',
     password: '',
     api_key: '', 
+    api_secret: '',
     totp: '',
     totp_secret: ''
   });
@@ -70,18 +75,37 @@ export default function BrokerConnect() {
         client_code: savedOrEmpty(savedClientCode),
         password: isMaskedCredential(user.broker_password) ? MASKED_CREDENTIAL : '',
         api_key: isMaskedCredential(user.api_key) ? MASKED_CREDENTIAL : '',
+        api_secret: '',
         totp_secret: isMaskedCredential(user.broker_totp_secret) ? MASKED_CREDENTIAL : '',
       }));
     }
   }, [user]);
 
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const zerodhaResult = params.get('zerodha');
+    if (zerodhaResult === 'connected') {
+      setSuccess('Zerodha connected successfully! Refreshing...');
+      window.history.replaceState({}, '', window.location.pathname);
+      setTimeout(() => window.location.reload(), 1200);
+    } else if (zerodhaResult === 'error') {
+      setError(decodeURIComponent(params.get('message') || 'Zerodha connection failed'));
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const [zerodhaStatus, setZerodhaStatus] = React.useState<'connected' | 'disconnected' | 'expired' | null>(null);
+
+  React.useEffect(() => {
+    if (broker !== 'Zerodha' || !user || isAdmin) return;
+    axios.get('/api/zerodha/status')
+      .then((res) => setZerodhaStatus(res.data?.status || 'disconnected'))
+      .catch(() => setZerodhaStatus('disconnected'));
+  }, [broker, user, isAdmin]);
+
   if (!user) {
     return <Alert severity="error">Session expired. Please login again.</Alert>;
   }
-
-  const isSuperAdmin = user?.role === 'admin';
-  const isSubAdmin = user?.role === 'sub-admin';
-  const isAdmin = isSuperAdmin || isSubAdmin;
   
   if (!isAdmin && user.licence !== 'Live') {
     return (
@@ -91,7 +115,12 @@ export default function BrokerConnect() {
     );
   }
 
-  const isConnected = user.broker_connected;
+  const isConnected =
+    broker === 'Zerodha'
+      ? zerodhaStatus === 'connected' || (user.broker === 'Zerodha' && !!user.broker_connected)
+      : broker === 'Upstox'
+      ? user.broker === 'Upstox' && !!user.broker_connected
+      : !!user.broker_connected;
 
   const handleAliceConnect = async () => {
     setLoading(true);
@@ -108,6 +137,63 @@ export default function BrokerConnect() {
       }
     } catch (err: any) {
       setError(err.response?.data?.error || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpstoxConnect = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await axios.get('/api/upstox/auth/url');
+      if (res.data.url) {
+        window.location.href = res.data.url;
+      } else {
+        throw new Error('Could not generate Upstox login URL');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleZerodhaConnect = async () => {
+    if (isAdmin) {
+      setError('Zerodha connect is for client accounts. Please login as a Live client user.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const payload: Record<string, string> = {};
+      const clientCode = formData.client_code === MASKED_CREDENTIAL ? '' : formData.client_code.trim();
+      if (clientCode) payload.client_key = clientCode.toUpperCase();
+      if (formData.api_key && formData.api_key !== MASKED_CREDENTIAL) payload.api_key = formData.api_key;
+      if (formData.api_secret) payload.api_secret = formData.api_secret;
+
+      const res = await axios.post('/api/zerodha/connect', payload);
+      if (res.data.auth_url) {
+        window.location.href = res.data.auth_url;
+      } else {
+        throw new Error(res.data.message || 'Could not generate Zerodha login URL');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleZerodhaDisconnect = async () => {
+    setLoading(true);
+    try {
+      await axios.post('/api/zerodha/disconnect');
+      setSuccess('Disconnected from Zerodha. Refreshing...');
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Disconnect failed');
     } finally {
       setLoading(false);
     }
@@ -195,7 +281,10 @@ export default function BrokerConnect() {
             <Stack spacing={0.5} sx={{ mb: 3, textAlign: 'center' }}>
               <Typography variant="h4" sx={{ fontWeight: 800 }}>Connect Broker</Typography>
               <Typography variant="body2" color="text.secondary">
-                {broker === 'AngelOne' ? 'Angel One SmartAPI v2 Authentication' : 'Alice Blue ANT API Authentication'}
+                {broker === 'AngelOne' && 'Angel One SmartAPI v2 Authentication'}
+                {broker === 'AliceBlue' && 'Alice Blue ANT API Authentication'}
+                {broker === 'Zerodha' && 'Zerodha Kite Connect OAuth'}
+                {broker === 'Upstox' && 'Upstox Pro OAuth Authentication'}
               </Typography>
             </Stack>
 
@@ -203,29 +292,23 @@ export default function BrokerConnect() {
                <Typography variant="overline" sx={{ color: 'text.disabled', fontWeight: 700, mb: 1, display: 'block' }}>
                  SELECT BROKER
                </Typography>
-               <Stack direction="row" spacing={1}>
+               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {(['AngelOne', 'Zerodha', 'Upstox', 'AliceBlue'] as const).map((item) => (
                   <Box 
-                    onClick={() => setBroker('AngelOne')}
+                    key={item}
+                    onClick={() => setBroker(item)}
                     sx={{ 
-                      flex: 1, p: 1.5, borderRadius: 1.5, cursor: 'pointer', textAlign: 'center',
-                      border: '2px solid', borderColor: broker === 'AngelOne' ? 'primary.main' : 'divider',
-                      bgcolor: broker === 'AngelOne' ? 'primary.lighter' : 'transparent',
+                      flex: '1 1 45%', p: 1.5, borderRadius: 1.5, cursor: 'pointer', textAlign: 'center',
+                      border: '2px solid', borderColor: broker === item ? 'primary.main' : 'divider',
+                      bgcolor: broker === item ? 'primary.lighter' : 'transparent',
                       transition: 'all 0.2s'
                     }}
                   >
-                    <Typography variant="subtitle2" sx={{ color: broker === 'AngelOne' ? 'primary.dark' : 'text.secondary' }}>Angel One</Typography>
+                    <Typography variant="subtitle2" sx={{ color: broker === item ? 'primary.dark' : 'text.secondary' }}>
+                      {item === 'AngelOne' ? 'Angel One' : item === 'AliceBlue' ? 'Alice Blue' : item}
+                    </Typography>
                   </Box>
-                  <Box 
-                    onClick={() => setBroker('AliceBlue')}
-                    sx={{ 
-                      flex: 1, p: 1.5, borderRadius: 1.5, cursor: 'pointer', textAlign: 'center',
-                      border: '2px solid', borderColor: broker === 'AliceBlue' ? 'primary.main' : 'divider',
-                      bgcolor: broker === 'AliceBlue' ? 'primary.lighter' : 'transparent',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <Typography variant="subtitle2" sx={{ color: broker === 'AliceBlue' ? 'primary.dark' : 'text.secondary' }}>Alice Blue</Typography>
-                  </Box>
+                  ))}
                </Stack>
             </Box>
 
@@ -264,6 +347,93 @@ export default function BrokerConnect() {
                 </LoadingButton>
                 <Typography variant="caption" sx={{ mt: 2, display: 'block', textAlign: 'center', color: 'text.secondary' }}>
                   You will be redirected to Alice Blue for secure login
+                </Typography>
+              </Box>
+            ) : broker === 'Upstox' ? (
+              <Box>
+                <LoadingButton
+                  fullWidth
+                  variant="contained"
+                  onClick={handleUpstoxConnect}
+                  loading={loading}
+                  color="primary"
+                  size="large"
+                  sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
+                  startIcon={<Iconify icon="simple-icons:upstox" />}
+                >
+                  {isConnected ? 'Re-Connect Upstox' : 'Connect Upstox'}
+                </LoadingButton>
+                <Typography variant="caption" sx={{ mt: 2, display: 'block', textAlign: 'center', color: 'text.secondary' }}>
+                  You will be redirected to Upstox for secure OAuth login
+                </Typography>
+              </Box>
+            ) : broker === 'Zerodha' ? (
+              <Box>
+                {isAdmin && (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    Zerodha OAuth is configured for Live client users. Admins manage client broker connections from the client panel.
+                  </Alert>
+                )}
+                <TextField
+                  fullWidth
+                  label="Client Code (optional)"
+                  placeholder="Your Kite user ID"
+                  value={formData.client_code}
+                  onChange={(e) => setFormData({ ...formData, client_code: e.target.value.toUpperCase() })}
+                  sx={{ mb: 2 }}
+                  disabled={loading}
+                  helperText="Auto-filled from Kite after login if left empty"
+                />
+                <TextField
+                  fullWidth
+                  label="Kite API Key (optional)"
+                  placeholder="Uses platform key if empty"
+                  value={formData.api_key}
+                  onChange={(e) => setFormData({ ...formData, api_key: e.target.value.trim() })}
+                  sx={{ mb: 2 }}
+                  disabled={loading}
+                />
+                <TextField
+                  fullWidth
+                  label="Kite API Secret (optional)"
+                  type="password"
+                  value={formData.api_secret}
+                  onChange={(e) => setFormData({ ...formData, api_secret: e.target.value.trim() })}
+                  sx={{ mb: 3 }}
+                  disabled={loading}
+                />
+                <Stack spacing={2}>
+                  <LoadingButton
+                    fullWidth
+                    variant="contained"
+                    onClick={handleZerodhaConnect}
+                    loading={loading}
+                    color="primary"
+                    size="large"
+                    disabled={isAdmin}
+                    sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
+                    startIcon={<Iconify icon="simple-icons:zerodha" />}
+                  >
+                    {isConnected ? 'Re-Connect Zerodha' : 'Connect Zerodha'}
+                  </LoadingButton>
+                  {zerodhaStatus === 'expired' && (
+                    <Alert severity="warning">Zerodha session expired. Please reconnect.</Alert>
+                  )}
+                  {isConnected && (
+                    <LoadingButton
+                      fullWidth
+                      variant="outlined"
+                      color="error"
+                      loading={loading}
+                      onClick={handleZerodhaDisconnect}
+                      startIcon={<Iconify icon="solar:link-break-bold" />}
+                    >
+                      Disconnect Zerodha
+                    </LoadingButton>
+                  )}
+                </Stack>
+                <Typography variant="caption" sx={{ mt: 2, display: 'block', textAlign: 'center', color: 'text.secondary' }}>
+                  You will be redirected to Kite for secure login. Session expires daily.
                 </Typography>
               </Box>
             ) : (

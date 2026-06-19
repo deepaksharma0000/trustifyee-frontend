@@ -34,7 +34,8 @@ export default function DashboardLayout({ children }: Props) {
   const isStaff = role === 'admin' || role === 'sub-admin' || role === 'master';
   const isLiveUser =
     String(user?.licence || '').toLowerCase() === 'live' &&
-    (user?.broker_connected === true || String(user?.broker || '').toLowerCase() === 'angelone');
+    (user?.broker_connected === true ||
+      ['zerodha', 'upstox', 'aliceblue'].includes(String(user?.broker || '').toLowerCase()));
   const enabled = !!user && !!token && !isStaff && isLiveUser;
 
   useSignalExecutor({
