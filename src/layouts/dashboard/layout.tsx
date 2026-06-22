@@ -1,6 +1,7 @@
 // @mui
 import Box from '@mui/material/Box';
 // hooks
+import { useCallback } from 'react';
 import { useBoolean } from 'src/hooks/use-boolean';
 import { useResponsive } from 'src/hooks/use-responsive';
 import { useAuthUser } from 'src/hooks/use-auth-user';
@@ -38,18 +39,22 @@ export default function DashboardLayout({ children }: Props) {
       ['zerodha', 'upstox', 'aliceblue'].includes(String(user?.broker || '').toLowerCase()));
   const enabled = !!user && !!token && !isStaff && isLiveUser;
 
+  const handleSignalReceived = useCallback((signal: unknown) => {
+    console.log("[BackgroundExecutor] Received signal:", signal);
+  }, []);
+  const handleOrderPlaced = useCallback((signal: unknown, result: unknown) => {
+    console.log("[BackgroundExecutor] Order placed in background:", signal, result);
+  }, []);
+  const handleOrderFailed = useCallback((signal: unknown, err: unknown) => {
+    console.error("[BackgroundExecutor] Order failed in background:", signal, err);
+  }, []);
+
   useSignalExecutor({
     token,
     enabled,
-    onSignalReceived: (signal) => {
-      console.log("[BackgroundExecutor] Received signal:", signal);
-    },
-    onOrderPlaced: (signal, result) => {
-      console.log("[BackgroundExecutor] Order placed in background:", signal, result);
-    },
-    onOrderFailed: (signal, err) => {
-      console.error("[BackgroundExecutor] Order failed in background:", signal, err);
-    },
+    onSignalReceived: handleSignalReceived,
+    onOrderPlaced: handleOrderPlaced,
+    onOrderFailed: handleOrderFailed,
   });
 
   const nav = useBoolean();

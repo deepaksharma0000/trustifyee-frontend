@@ -87,6 +87,8 @@ export function useSignalExecutor({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fallbackTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const intentionalCloseRef = useRef(false);
+  const connectRef = useRef<() => void>(() => undefined);
   
   const [isConnected, setIsConnected] = useState(false);
   const [isExecutorReady, setIsExecutorReady] = useState(false);
@@ -200,6 +202,8 @@ export function useSignalExecutor({
   const connect = useCallback(() => {
     if (!appToken || !enabled) return;
 
+    intentionalCloseRef.current = false;
+
     const ws = new WebSocket(`${WS_BASE}${WS_PATH}?token=${encodeURIComponent(appToken)}`);
     wsRef.current = ws;
 
@@ -221,21 +225,37 @@ export function useSignalExecutor({
 
     ws.onclose = () => {
       setIsConnected(false);
+      if (intentionalCloseRef.current) return;
       startFallbackPolling();
-      reconnectTimerRef.current = setTimeout(connect, 5000);
+      reconnectTimerRef.current = setTimeout(() => {
+        if (!intentionalCloseRef.current) connectRef.current();
+      }, 5000);
     };
 
     ws.onerror = () => ws.close();
   }, [angelClient, appToken, enabled, queue, startFallbackPolling, stopFallbackPolling]);
 
+  connectRef.current = connect;
+
   useEffect(() => {
-    connect();
-    return () => {
+    if (!appToken || !enabled) {
+      intentionalCloseRef.current = true;
       wsRef.current?.close();
       stopFallbackPolling();
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      return undefined;
+    }
+
+    connectRef.current();
+
+    return () => {
+      intentionalCloseRef.current = true;
+      wsRef.current?.close();
+      wsRef.current = null;
+      stopFallbackPolling();
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
     };
-  }, [connect, stopFallbackPolling]);
+  }, [appToken, enabled, stopFallbackPolling]);
 
   return { isConnected, isExecutorReady, lastError, queueSize: queue.size() };
 }

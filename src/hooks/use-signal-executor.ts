@@ -4,7 +4,7 @@
 // FIX #9: HTTP fallback polling when WebSocket is down
 // FIX #10: IP change detection
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 
 // Dynamic Production-Safe API and WebSocket URL Resolver
 const getApiBase = (): string => {
@@ -105,7 +105,21 @@ export function useSignalExecutor({
   const storedIpRef = useRef<string>("");
   const isConnectedRef = useRef(false);
   const processedSignalsRef = useRef<Set<string>>(new Set());
+  const intentionalCloseRef = useRef(false);
+  const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+
+  const onSignalReceivedRef = useRef(onSignalReceived);
+  const onOrderPlacedRef = useRef(onOrderPlaced);
+  const onOrderFailedRef = useRef(onOrderFailed);
+  const onIpChangedRef = useRef(onIpChanged);
+
+  useEffect(() => {
+    onSignalReceivedRef.current = onSignalReceived;
+    onOrderPlacedRef.current = onOrderPlaced;
+    onOrderFailedRef.current = onOrderFailed;
+    onIpChangedRef.current = onIpChanged;
+  }, [onSignalReceived, onOrderPlaced, onOrderFailed, onIpChanged]);
 
   // ─────────────────────────────────────────────────────────────────
   // FIX #2: Execute a trade signal by calling /api/signals/execute
@@ -151,7 +165,7 @@ export function useSignalExecutor({
       // Normalize representation internally for callbacks
       const normalizedSignal = { ...signal, signalId: resolvedSignalId };
 
-      onSignalReceived?.(normalizedSignal);
+      onSignalReceivedRef.current?.(normalizedSignal);
 
       // Lock execution immediately to avoid race conditions during async operations
       processedSignalsRef.current.add(resolvedSignalId);
@@ -192,7 +206,7 @@ export function useSignalExecutor({
             `%c[SignalExecutor] 🔄 OMS TRANSITION: Signal ${resolvedSignalId} → QUEUED (Client Order: ${result.clientOrderId || "PENDING"})`,
             "color: #ffeb3b; background: #000; font-weight: bold;"
           );
-          onOrderPlaced?.(normalizedSignal, result);
+          onOrderPlacedRef.current?.(normalizedSignal, result);
         } else {
           // Release lock on server rejection so retry is possible
           processedSignalsRef.current.delete(resolvedSignalId);
@@ -201,7 +215,7 @@ export function useSignalExecutor({
             `%c[SignalExecutor] ❌ OMS FAILURE: Signal ${resolvedSignalId} → FAILED (Broker Error: ${errorMsg})`,
             "color: #fff; background: #f44336; font-weight: bold;"
           );
-          onOrderFailed?.(normalizedSignal, errorMsg);
+          onOrderFailedRef.current?.(normalizedSignal, errorMsg);
         }
       } catch (err: any) {
         clearTimeout(timeoutId);
@@ -212,11 +226,14 @@ export function useSignalExecutor({
           `%c[SignalExecutor] ❌ OMS FAILURE: Signal ${resolvedSignalId} → FAILED (Connection Error: ${errorMsg})`,
           "color: #fff; background: #f44336; font-weight: bold;"
         );
-        onOrderFailed?.(normalizedSignal, errorMsg);
+        onOrderFailedRef.current?.(normalizedSignal, errorMsg);
       }
     },
-    [token, enabled, onSignalReceived, onOrderPlaced, onOrderFailed]
+    [token, enabled]
   );
+
+  const executeSignalRef = useRef(executeSignal);
+  executeSignalRef.current = executeSignal;
 
   // ─────────────────────────────────────────────────────────────────
   // Reconnect Replay Logic & Gap-Fill Poller
@@ -291,18 +308,27 @@ export function useSignalExecutor({
         const old = storedIpRef.current;
         storedIpRef.current = ip;
         console.warn(`[SignalExecutor] IP changed: ${old} → ${ip}`);
-        onIpChanged?.(ip, old);
+        onIpChangedRef.current?.(ip, old);
       }
     } catch (_) {
       // Silently catch and ignore IP tracking network request failures
     }
-  }, [onIpChanged]);
+  }, []);
 
   // ─────────────────────────────────────────────────────────────────
   // FIX #6: WebSocket connect with exponential backoff reconnect
   // ─────────────────────────────────────────────────────────────────
+  const connectRef = useRef<() => void>(() => undefined);
+
   const connect = useCallback(() => {
     if (!token || !enabled) return;
+
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
+    }
+
+    intentionalCloseRef.current = false;
 
     const url = `${WS_BASE}/ws/signals?token=${encodeURIComponent(token)}`;
     const ws = new WebSocket(url);
@@ -315,7 +341,6 @@ export function useSignalExecutor({
       setIsConnected(true);
       stopFallbackPolling();
 
-      // Trigger automatic gap-filling replay on reconnection
       await replayPendingSignals();
     };
 
@@ -323,7 +348,6 @@ export function useSignalExecutor({
       try {
         const msg = JSON.parse(event.data);
 
-        // Dispatch all ws events to a global window listener so individual pages can listen to real-time events.
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("ws-signal-message", { detail: msg }));
         }
@@ -335,7 +359,7 @@ export function useSignalExecutor({
           if (mode === "SERVER") {
             console.info("[SignalExecutor] TRADE_SIGNAL (SERVER) — worker handles broker placement.");
           } else {
-            executeSignal({ ...rawSignal, signalId: resolvedId });
+            executeSignalRef.current({ ...rawSignal, signalId: resolvedId });
           }
         }
 
@@ -367,17 +391,27 @@ export function useSignalExecutor({
     ws.onclose = (event) => {
       isConnectedRef.current = false;
       setIsConnected(false);
+
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+
+      if (intentionalCloseRef.current) {
+        return;
+      }
+
       console.warn(`%c[SignalExecutor] ⚠️ WS DISCONNECTED: Runtime offline (code: ${event.code}). Reconnecting...`, "color: #ff9800; font-weight: bold;");
 
-      // Start HTTP fallback during reconnect gap
       startFallbackPolling();
 
-      // Exponential backoff — max 30s between retries
       const delay = Math.min(1000 * 2 ** retriesRef.current, 30_000);
       retriesRef.current += 1;
 
       reconnectTimerRef.current = setTimeout(() => {
-        if (enabled && token) connect();
+        if (enabled && token && !intentionalCloseRef.current) {
+          connectRef.current();
+        }
       }, delay);
     };
 
@@ -386,37 +420,40 @@ export function useSignalExecutor({
       ws.close();
     };
 
-    // Send keepalive pings every 20s
-    const pingInterval = setInterval(() => {
+    pingIntervalRef.current = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "ping" }));
-      } else {
-        clearInterval(pingInterval);
       }
     }, 20_000);
-  }, [token, enabled, executeSignal, startFallbackPolling, stopFallbackPolling, replayPendingSignals]);
+  }, [token, enabled, startFallbackPolling, stopFallbackPolling, replayPendingSignals]);
 
-  // ─────────────────────────────────────────────────────────────────
-  // Mount / unmount lifecycle
-  // ─────────────────────────────────────────────────────────────────
+  connectRef.current = connect;
+
   useEffect(() => {
-    if (enabled && token) {
-      // Initial connect
-      connect();
-
-      // Start IP monitoring
-      checkIpChange(); // immediate first check
-      ipCheckTimerRef.current = setInterval(checkIpChange, IP_CHECK_INTERVAL_MS);
-    }
-
-    return () => {
-      // Cleanup all timers and connections
+    if (!enabled || !token) {
+      intentionalCloseRef.current = true;
       wsRef.current?.close();
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      if (fallbackTimerRef.current) clearInterval(fallbackTimerRef.current);
+      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+      stopFallbackPolling();
+      return undefined;
+    }
+
+    connectRef.current();
+
+    checkIpChange();
+    ipCheckTimerRef.current = setInterval(checkIpChange, IP_CHECK_INTERVAL_MS);
+
+    return () => {
+      intentionalCloseRef.current = true;
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
       if (ipCheckTimerRef.current) clearInterval(ipCheckTimerRef.current);
+      stopFallbackPolling();
+      wsRef.current?.close();
+      wsRef.current = null;
     };
-  }, [token, enabled, connect, checkIpChange]); // Re-connect if token or enabled status changes
+  }, [token, enabled, checkIpChange, stopFallbackPolling]);
 
   useEffect(() => {
     (window as any).runtimeConnected = isConnected;
