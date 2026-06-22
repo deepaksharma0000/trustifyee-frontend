@@ -4,7 +4,7 @@
 // FIX #9: HTTP fallback polling when WebSocket is down
 // FIX #10: IP change detection
 
-import { useEffect, useRef, useCallback, useState, useMemo } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 
 // Dynamic Production-Safe API and WebSocket URL Resolver
 const getApiBase = (): string => {
@@ -115,6 +115,11 @@ export function useSignalExecutor({
   const onOrderPlacedRef = useRef(onOrderPlaced);
   const onOrderFailedRef = useRef(onOrderFailed);
   const onIpChangedRef = useRef(onIpChanged);
+
+  useEffect(() => {
+    console.log('SignalExecutor Mounted');
+    return () => console.log('SignalExecutor Unmounted');
+  }, []);
 
   useEffect(() => {
     onSignalReceivedRef.current = onSignalReceived;
@@ -237,6 +242,50 @@ export function useSignalExecutor({
     }
   }, []);
 
+  const stopFallbackPollingRef = useRef(stopFallbackPolling);
+  stopFallbackPollingRef.current = stopFallbackPolling;
+
+  const detachSocketHandlers = useCallback((ws: WebSocket) => {
+    ws.onopen = null;
+    ws.onmessage = null;
+    ws.onerror = null;
+    ws.onclose = null;
+  }, []);
+
+  const closeActiveSocket = useCallback((intentional: boolean) => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
+    }
+
+    const existing = wsRef.current;
+    if (!existing) {
+      return;
+    }
+
+    if (intentional) {
+      intentionalCloseRef.current = true;
+    }
+
+    detachSocketHandlers(existing);
+
+    if (existing.readyState === WebSocket.OPEN || existing.readyState === WebSocket.CONNECTING) {
+      try {
+        existing.close(1000, intentional ? 'client-intentional-close' : 'client-replaced');
+      } catch {
+        // best effort
+      }
+    }
+
+    if (wsRef.current === existing) {
+      wsRef.current = null;
+    }
+  }, [detachSocketHandlers]);
+
   // ─────────────────────────────────────────────────────────────────
   // FIX #9: HTTP Fallback — poll /api/signals/pending every 5s
   // when WebSocket is disconnected
@@ -284,11 +333,15 @@ export function useSignalExecutor({
   const connect = useCallback(() => {
     if (!token || !enabled) return;
 
-    if (pingIntervalRef.current) {
-      clearInterval(pingIntervalRef.current);
-      pingIntervalRef.current = null;
+    const current = wsRef.current;
+    if (
+      current &&
+      (current.readyState === WebSocket.OPEN || current.readyState === WebSocket.CONNECTING)
+    ) {
+      return;
     }
 
+    closeActiveSocket(true);
     intentionalCloseRef.current = false;
 
     const url = `${WS_BASE}/ws/signals?token=${encodeURIComponent(token)}`;
@@ -296,16 +349,24 @@ export function useSignalExecutor({
     wsRef.current = ws;
 
     ws.onopen = async () => {
+      if (wsRef.current !== ws) {
+        return;
+      }
+
       console.log("%c[SignalExecutor] 🚀 WS CONNECTED: Registered active runtime on /ws/signals", "color: #22c55e; font-weight: bold; font-size: 12px;");
       retriesRef.current = 0;
       isConnectedRef.current = true;
       setIsConnected(true);
-      stopFallbackPolling();
+      stopFallbackPollingRef.current();
 
       await replayPendingSignals();
     };
 
     ws.onmessage = (event) => {
+      if (wsRef.current !== ws) {
+        return;
+      }
+
       try {
         const msg = JSON.parse(event.data);
 
@@ -345,6 +406,11 @@ export function useSignalExecutor({
     };
 
     ws.onclose = (event) => {
+      if (wsRef.current !== ws) {
+        return;
+      }
+
+      wsRef.current = null;
       isConnectedRef.current = false;
       setIsConnected(false);
 
@@ -372,44 +438,41 @@ export function useSignalExecutor({
     };
 
     ws.onerror = (err) => {
+      if (wsRef.current !== ws) {
+        return;
+      }
       console.error("[SignalExecutor] WS error:", err);
       ws.close();
     };
 
     pingIntervalRef.current = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "ping" }));
+      if (wsRef.current !== ws || ws.readyState !== WebSocket.OPEN) {
+        return;
       }
+      ws.send(JSON.stringify({ type: "ping" }));
     }, 20_000);
-  }, [token, enabled, startFallbackPolling, stopFallbackPolling, replayPendingSignals]);
+  }, [token, enabled, closeActiveSocket, startFallbackPolling, replayPendingSignals]);
 
   connectRef.current = connect;
 
   useEffect(() => {
     if (!enabled || !token) {
-      intentionalCloseRef.current = true;
-      wsRef.current?.close();
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
-      stopFallbackPolling();
+      closeActiveSocket(true);
+      stopFallbackPollingRef.current();
       return undefined;
     }
 
     connectRef.current();
 
-    checkIpChange();
+    checkIpChange().catch(() => undefined);
     ipCheckTimerRef.current = setInterval(checkIpChange, IP_CHECK_INTERVAL_MS);
 
     return () => {
-      intentionalCloseRef.current = true;
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+      closeActiveSocket(true);
       if (ipCheckTimerRef.current) clearInterval(ipCheckTimerRef.current);
-      stopFallbackPolling();
-      wsRef.current?.close();
-      wsRef.current = null;
+      stopFallbackPollingRef.current();
     };
-  }, [token, enabled, checkIpChange, stopFallbackPolling]);
+  }, [token, enabled, checkIpChange, closeActiveSocket]);
 
   useEffect(() => {
     (window as any).runtimeConnected = isConnected;

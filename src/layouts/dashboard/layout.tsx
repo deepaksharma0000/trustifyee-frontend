@@ -1,7 +1,7 @@
 // @mui
 import Box from '@mui/material/Box';
 // hooks
-import { useCallback } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useBoolean } from 'src/hooks/use-boolean';
 import { useResponsive } from 'src/hooks/use-responsive';
 import { useAuthUser } from 'src/hooks/use-auth-user';
@@ -24,20 +24,27 @@ type Props = {
 };
 
 export default function DashboardLayout({ children }: Props) {
+  console.count('DashboardLayout Render');
+
   const settings = useSettingsContext();
 
   const lgUp = useResponsive('up', 'lg');
 
   const { user } = useAuthUser();
-  const token = sessionStorage.getItem("accessToken") || localStorage.getItem("authToken");
+  const token = useMemo(
+    () => sessionStorage.getItem('accessToken') || localStorage.getItem('authToken'),
+    [user?._id]
+  );
 
-  const role = String(user?.role || '').toLowerCase();
-  const isStaff = role === 'admin' || role === 'sub-admin' || role === 'master';
-  const isLiveUser =
-    String(user?.licence || '').toLowerCase() === 'live' &&
-    (user?.broker_connected === true ||
-      ['zerodha', 'upstox', 'aliceblue'].includes(String(user?.broker || '').toLowerCase()));
-  const enabled = !!user && !!token && !isStaff && isLiveUser;
+  const enabled = useMemo(() => {
+    const role = String(user?.role || '').toLowerCase();
+    const isStaff = role === 'admin' || role === 'sub-admin' || role === 'master';
+    const isLiveUser =
+      String(user?.licence || '').toLowerCase() === 'live' &&
+      (user?.broker_connected === true ||
+        ['zerodha', 'upstox', 'aliceblue'].includes(String(user?.broker || '').toLowerCase()));
+    return !!user && !!token && !isStaff && isLiveUser;
+  }, [user, token]);
 
   const handleSignalReceived = useCallback((signal: unknown) => {
     console.log("[BackgroundExecutor] Received signal:", signal);
