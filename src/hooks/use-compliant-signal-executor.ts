@@ -6,6 +6,8 @@ const EXECUTOR_BASE = process.env.REACT_APP_EXECUTOR_URL || 'http://127.0.0.1:43
 /** @deprecated Backend-only execution — hook retained for WS display in examples. */
 const FRONTEND_SIGNAL_EXECUTION_ENABLED = false;
 const ONE_SECOND_MS = 1000;
+const OPS_LIMIT = 3;
+const FALLBACK_POLL_MS = 5000;
 
 export type ExecutionStatus = 'idle' | 'ready' | 'degraded' | 'unavailable';
 

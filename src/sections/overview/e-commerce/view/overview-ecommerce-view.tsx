@@ -255,8 +255,18 @@ const getColumns = (
         const connected = !!params.row.broker_connected;
         const brokerStatus = String(params.row.broker_status || (connected ? 'connected' : 'disconnected')).toLowerCase();
         const expired = brokerStatus === 'expired';
-        const statusLabel = expired ? 'Expired' : connected ? 'Connected' : 'Disconnected';
-        const statusColor = expired ? 'warning.main' : connected && params.row.broker_verified ? 'success.main' : 'error.main';
+        let statusLabel = 'Disconnected';
+        if (expired) {
+          statusLabel = 'Expired';
+        } else if (connected) {
+          statusLabel = 'Connected';
+        }
+        let statusColor = 'error.main';
+        if (expired) {
+          statusColor = 'warning.main';
+        } else if (connected && params.row.broker_verified) {
+          statusColor = 'success.main';
+        }
 
         return (
           <Tooltip title={`${broker} — ${statusLabel}`}>

@@ -19,6 +19,28 @@ const isMaskedCredential = (value?: string | null) => {
 
 const savedOrEmpty = (value?: string | null) => (value && isMaskedCredential(value) ? MASKED_CREDENTIAL : value || '');
 
+type BrokerOption = 'AngelOne' | 'AliceBlue' | 'Zerodha' | 'Upstox';
+
+function getBrokerDisplayLabel(item: BrokerOption): string {
+  if (item === 'AngelOne') return 'Angel One';
+  if (item === 'AliceBlue') return 'Alice Blue';
+  return item;
+}
+
+function resolveIsConnected(
+  selectedBroker: BrokerOption,
+  user: { broker?: string; broker_connected?: boolean },
+  zerodhaStatus: 'connected' | 'disconnected' | 'expired' | null
+): boolean {
+  if (selectedBroker === 'Zerodha') {
+    return zerodhaStatus === 'connected' || (user.broker === 'Zerodha' && !!user.broker_connected);
+  }
+  if (selectedBroker === 'Upstox') {
+    return user.broker === 'Upstox' && !!user.broker_connected;
+  }
+  return !!user.broker_connected;
+}
+
 export default function BrokerConnect() {
   const { user } = useAuthUser();
 
@@ -115,12 +137,7 @@ export default function BrokerConnect() {
     );
   }
 
-  const isConnected =
-    broker === 'Zerodha'
-      ? zerodhaStatus === 'connected' || (user.broker === 'Zerodha' && !!user.broker_connected)
-      : broker === 'Upstox'
-      ? user.broker === 'Upstox' && !!user.broker_connected
-      : !!user.broker_connected;
+  const isConnected = resolveIsConnected(broker, user, zerodhaStatus);
 
   const handleAliceConnect = async () => {
     setLoading(true);
@@ -273,6 +290,235 @@ export default function BrokerConnect() {
     alert('Copied to clipboard!');
   };
 
+  const renderBrokerConnectPanel = () => {
+    if (broker === 'AliceBlue') {
+      return (
+        <Box>
+          <TextField
+            fullWidth
+            label="Alice Blue Client ID"
+            placeholder="e.g. 123456"
+            value={formData.client_code}
+            onChange={(e) => setFormData({ ...formData, client_code: e.target.value.toUpperCase() })}
+            sx={{ mb: 3 }}
+            disabled={loading}
+            helperText={formData.client_code === MASKED_CREDENTIAL ? "Using saved Client ID" : "Your Alice Blue login ID"}
+          />
+          <LoadingButton
+            fullWidth
+            variant="contained"
+            onClick={handleAliceConnect}
+            loading={loading}
+            color="primary"
+            size="large"
+            sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
+            startIcon={<Iconify icon="solar:link-bold" />}
+          >
+            Connect Alice Blue
+          </LoadingButton>
+          <Typography variant="caption" sx={{ mt: 2, display: 'block', textAlign: 'center', color: 'text.secondary' }}>
+            You will be redirected to Alice Blue for secure login
+          </Typography>
+        </Box>
+      );
+    }
+
+    if (broker === 'Upstox') {
+      return (
+        <Box>
+          <LoadingButton
+            fullWidth
+            variant="contained"
+            onClick={handleUpstoxConnect}
+            loading={loading}
+            color="primary"
+            size="large"
+            sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
+            startIcon={<Iconify icon="simple-icons:upstox" />}
+          >
+            {isConnected ? 'Re-Connect Upstox' : 'Connect Upstox'}
+          </LoadingButton>
+          <Typography variant="caption" sx={{ mt: 2, display: 'block', textAlign: 'center', color: 'text.secondary' }}>
+            You will be redirected to Upstox for secure OAuth login
+          </Typography>
+        </Box>
+      );
+    }
+
+    if (broker === 'Zerodha') {
+      return (
+        <Box>
+          {isAdmin && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Zerodha OAuth is configured for Live client users. Admins manage client broker connections from the client panel.
+            </Alert>
+          )}
+          <TextField
+            fullWidth
+            label="Client Code (optional)"
+            placeholder="Your Kite user ID"
+            value={formData.client_code}
+            onChange={(e) => setFormData({ ...formData, client_code: e.target.value.toUpperCase() })}
+            sx={{ mb: 2 }}
+            disabled={loading}
+            helperText="Auto-filled from Kite after login if left empty"
+          />
+          <TextField
+            fullWidth
+            label="Kite API Key (optional)"
+            placeholder="Uses platform key if empty"
+            value={formData.api_key}
+            onChange={(e) => setFormData({ ...formData, api_key: e.target.value.trim() })}
+            sx={{ mb: 2 }}
+            disabled={loading}
+          />
+          <TextField
+            fullWidth
+            label="Kite API Secret (optional)"
+            type="password"
+            value={formData.api_secret}
+            onChange={(e) => setFormData({ ...formData, api_secret: e.target.value.trim() })}
+            sx={{ mb: 3 }}
+            disabled={loading}
+          />
+          <Stack spacing={2}>
+            <LoadingButton
+              fullWidth
+              variant="contained"
+              onClick={handleZerodhaConnect}
+              loading={loading}
+              color="primary"
+              size="large"
+              disabled={isAdmin}
+              sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
+              startIcon={<Iconify icon="simple-icons:zerodha" />}
+            >
+              {isConnected ? 'Re-Connect Zerodha' : 'Connect Zerodha'}
+            </LoadingButton>
+            {zerodhaStatus === 'expired' && (
+              <Alert severity="warning">Zerodha session expired. Please reconnect.</Alert>
+            )}
+            {isConnected && (
+              <LoadingButton
+                fullWidth
+                variant="outlined"
+                color="error"
+                loading={loading}
+                onClick={handleZerodhaDisconnect}
+                startIcon={<Iconify icon="solar:link-break-bold" />}
+              >
+                Disconnect Zerodha
+              </LoadingButton>
+            )}
+          </Stack>
+          <Typography variant="caption" sx={{ mt: 2, display: 'block', textAlign: 'center', color: 'text.secondary' }}>
+            You will be redirected to Kite for secure login. Session expires daily.
+          </Typography>
+        </Box>
+      );
+    }
+
+    return (
+      <Box component="form" onSubmit={handleAngelSubmit}>
+        <TextField
+          fullWidth
+          label="Client Code"
+          autoComplete="username"
+          placeholder="e.g. A123456"
+          value={formData.client_code}
+          onChange={(e) => setFormData({ ...formData, client_code: e.target.value.toUpperCase() })}
+          sx={{ mb: 2 }}
+          disabled={loading}
+          helperText={formData.client_code === MASKED_CREDENTIAL ? "Using saved Client ID" : ""}
+        />
+        <TextField
+          fullWidth
+          label="Password"
+          type={formData.password === MASKED_CREDENTIAL ? "text" : "password"}
+          autoComplete="current-password"
+          value={formData.password}
+          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+          sx={{ mb: 2.5 }}
+          disabled={loading}
+          helperText={formData.password === MASKED_CREDENTIAL ? "Using saved Password" : ""}
+        />
+        <TextField
+          fullWidth
+          label="SmartAPI Key"
+          placeholder="e.g. iSYTk7nA"
+          value={formData.api_key}
+          onChange={(e) => setFormData({ ...formData, api_key: e.target.value.trim() })}
+          sx={{ mb: 2.5 }}
+          disabled={loading}
+          helperText={formData.api_key === MASKED_CREDENTIAL ? "Using saved API Key" : "Required for SmartAPI Authentication"}
+        />
+
+        <Divider sx={{ mb: 2.5, borderStyle: 'dashed' }}>
+          <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 700, textTransform: 'uppercase' }}>
+            TOTP Method
+          </Typography>
+        </Divider>
+
+        <TextField
+          fullWidth
+          label="TOTP Secret Key (Auto-Login)"
+          placeholder="16-character secret from AngelOne"
+          value={formData.totp_secret}
+          onChange={(e) => setFormData({ ...formData, totp_secret: e.target.value.trim().toUpperCase() })}
+          sx={{ mb: 2 }}
+          disabled={loading}
+          required={!isMaskedCredential(user.broker_totp_secret)}
+          helperText={formData.totp_secret === MASKED_CREDENTIAL ? "Using saved TOTP Secret" : "Required for automated live trade execution"}
+        />
+
+        <Box sx={{ textAlign: 'center', mb: 2 }}>
+          <Typography variant="caption" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>— OR —</Typography>
+        </Box>
+
+        <TextField
+          fullWidth
+          label="Manual 6-Digit TOTP"
+          placeholder="Enter code from Google Authenticator"
+          value={formData.totp}
+          onChange={(e) => setFormData({ ...formData, totp: e.target.value })}
+          sx={{ mb: 4 }}
+          disabled={loading}
+          inputProps={{ maxLength: 6 }}
+          helperText="Leave empty if using TOTP Secret Key"
+        />
+
+        <Stack spacing={2}>
+          <LoadingButton
+            fullWidth
+            variant="contained"
+            type="submit"
+            loading={loading}
+            color="primary"
+            size="large"
+            sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
+            startIcon={<Iconify icon="solar:bolt-bold" />}
+          >
+            {isConnected ? 'Re-Sync Session' : 'Login & Connect'}
+          </LoadingButton>
+
+          {isConnected && (
+            <LoadingButton
+              fullWidth
+              variant="outlined"
+              color="error"
+              loading={loading}
+              onClick={confirm.onTrue}
+              sx={{ py: 1.2, fontWeight: 700, borderStyle: 'dashed' }}
+              startIcon={<Iconify icon="solar:link-break-bold" />}
+            >
+              Disconnect Broker
+            </LoadingButton>
+          )}
+        </Stack>
+      </Box>
+    );
+  };
+
   return (
     <Box sx={{ maxWidth: broker === 'AngelOne' ? 1200 : 500, mx: 'auto', mt: 4, px: 2 }}>
       <Grid container spacing={4}>
@@ -305,7 +551,7 @@ export default function BrokerConnect() {
                     }}
                   >
                     <Typography variant="subtitle2" sx={{ color: broker === item ? 'primary.dark' : 'text.secondary' }}>
-                      {item === 'AngelOne' ? 'Angel One' : item === 'AliceBlue' ? 'Alice Blue' : item}
+                      {getBrokerDisplayLabel(item)}
                     </Typography>
                   </Box>
                   ))}
@@ -321,220 +567,7 @@ export default function BrokerConnect() {
             {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
             {success && <Alert severity="success" sx={{ mb: 3 }}>{success}</Alert>}
 
-            {broker === 'AliceBlue' ? (
-              <Box>
-                 <TextField
-                  fullWidth
-                  label="Alice Blue Client ID"
-                  placeholder="e.g. 123456"
-                  value={formData.client_code}
-                  onChange={(e) => setFormData({ ...formData, client_code: e.target.value.toUpperCase() })}
-                  sx={{ mb: 3 }}
-                  disabled={loading}
-                  helperText={formData.client_code === MASKED_CREDENTIAL ? "Using saved Client ID" : "Your Alice Blue login ID"}
-                />
-                <LoadingButton
-                  fullWidth
-                  variant="contained"
-                  onClick={handleAliceConnect}
-                  loading={loading}
-                  color="primary"
-                  size="large"
-                  sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
-                  startIcon={<Iconify icon="solar:link-bold" />}
-                >
-                  Connect Alice Blue
-                </LoadingButton>
-                <Typography variant="caption" sx={{ mt: 2, display: 'block', textAlign: 'center', color: 'text.secondary' }}>
-                  You will be redirected to Alice Blue for secure login
-                </Typography>
-              </Box>
-            ) : broker === 'Upstox' ? (
-              <Box>
-                <LoadingButton
-                  fullWidth
-                  variant="contained"
-                  onClick={handleUpstoxConnect}
-                  loading={loading}
-                  color="primary"
-                  size="large"
-                  sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
-                  startIcon={<Iconify icon="simple-icons:upstox" />}
-                >
-                  {isConnected ? 'Re-Connect Upstox' : 'Connect Upstox'}
-                </LoadingButton>
-                <Typography variant="caption" sx={{ mt: 2, display: 'block', textAlign: 'center', color: 'text.secondary' }}>
-                  You will be redirected to Upstox for secure OAuth login
-                </Typography>
-              </Box>
-            ) : broker === 'Zerodha' ? (
-              <Box>
-                {isAdmin && (
-                  <Alert severity="info" sx={{ mb: 2 }}>
-                    Zerodha OAuth is configured for Live client users. Admins manage client broker connections from the client panel.
-                  </Alert>
-                )}
-                <TextField
-                  fullWidth
-                  label="Client Code (optional)"
-                  placeholder="Your Kite user ID"
-                  value={formData.client_code}
-                  onChange={(e) => setFormData({ ...formData, client_code: e.target.value.toUpperCase() })}
-                  sx={{ mb: 2 }}
-                  disabled={loading}
-                  helperText="Auto-filled from Kite after login if left empty"
-                />
-                <TextField
-                  fullWidth
-                  label="Kite API Key (optional)"
-                  placeholder="Uses platform key if empty"
-                  value={formData.api_key}
-                  onChange={(e) => setFormData({ ...formData, api_key: e.target.value.trim() })}
-                  sx={{ mb: 2 }}
-                  disabled={loading}
-                />
-                <TextField
-                  fullWidth
-                  label="Kite API Secret (optional)"
-                  type="password"
-                  value={formData.api_secret}
-                  onChange={(e) => setFormData({ ...formData, api_secret: e.target.value.trim() })}
-                  sx={{ mb: 3 }}
-                  disabled={loading}
-                />
-                <Stack spacing={2}>
-                  <LoadingButton
-                    fullWidth
-                    variant="contained"
-                    onClick={handleZerodhaConnect}
-                    loading={loading}
-                    color="primary"
-                    size="large"
-                    disabled={isAdmin}
-                    sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
-                    startIcon={<Iconify icon="simple-icons:zerodha" />}
-                  >
-                    {isConnected ? 'Re-Connect Zerodha' : 'Connect Zerodha'}
-                  </LoadingButton>
-                  {zerodhaStatus === 'expired' && (
-                    <Alert severity="warning">Zerodha session expired. Please reconnect.</Alert>
-                  )}
-                  {isConnected && (
-                    <LoadingButton
-                      fullWidth
-                      variant="outlined"
-                      color="error"
-                      loading={loading}
-                      onClick={handleZerodhaDisconnect}
-                      startIcon={<Iconify icon="solar:link-break-bold" />}
-                    >
-                      Disconnect Zerodha
-                    </LoadingButton>
-                  )}
-                </Stack>
-                <Typography variant="caption" sx={{ mt: 2, display: 'block', textAlign: 'center', color: 'text.secondary' }}>
-                  You will be redirected to Kite for secure login. Session expires daily.
-                </Typography>
-              </Box>
-            ) : (
-              <Box component="form" onSubmit={handleAngelSubmit}>
-                <TextField
-                  fullWidth
-                  label="Client Code"
-                  autoComplete="username"
-                  placeholder="e.g. A123456"
-                  value={formData.client_code}
-                  onChange={(e) => setFormData({ ...formData, client_code: e.target.value.toUpperCase() })}
-                  sx={{ mb: 2 }}
-                  disabled={loading}
-                  helperText={formData.client_code === MASKED_CREDENTIAL ? "Using saved Client ID" : ""}
-                />
-                <TextField
-                  fullWidth
-                  label="Password"
-                  type={formData.password === MASKED_CREDENTIAL ? "text" : "password"}
-                  autoComplete="current-password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  sx={{ mb: 2.5 }}
-                  disabled={loading}
-                  helperText={formData.password === MASKED_CREDENTIAL ? "Using saved Password" : ""}
-                />
-                <TextField
-                  fullWidth
-                  label="SmartAPI Key"
-                  placeholder="e.g. iSYTk7nA"
-                  value={formData.api_key}
-                  onChange={(e) => setFormData({ ...formData, api_key: e.target.value.trim() })}
-                  sx={{ mb: 2.5 }}
-                  disabled={loading}
-                  helperText={formData.api_key === MASKED_CREDENTIAL ? "Using saved API Key" : "Required for SmartAPI Authentication"}
-                />
-
-                <Divider sx={{ mb: 2.5, borderStyle: 'dashed' }}>
-                  <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 700, textTransform: 'uppercase' }}>
-                    TOTP Method
-                  </Typography>
-                </Divider>
-
-                <TextField
-                  fullWidth
-                  label="TOTP Secret Key (Auto-Login)"
-                  placeholder="16-character secret from AngelOne"
-                  value={formData.totp_secret}
-                  onChange={(e) => setFormData({ ...formData, totp_secret: e.target.value.trim().toUpperCase() })}
-                  sx={{ mb: 2 }}
-                  disabled={loading}
-                  required={!isMaskedCredential(user.broker_totp_secret)}
-                  helperText={formData.totp_secret === MASKED_CREDENTIAL ? "Using saved TOTP Secret" : "Required for automated live trade execution"}
-                />
-
-                <Box sx={{ textAlign: 'center', mb: 2 }}>
-                  <Typography variant="caption" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>— OR —</Typography>
-                </Box>
-
-                <TextField
-                  fullWidth
-                  label="Manual 6-Digit TOTP"
-                  placeholder="Enter code from Google Authenticator"
-                  value={formData.totp}
-                  onChange={(e) => setFormData({ ...formData, totp: e.target.value })}
-                  sx={{ mb: 4 }}
-                  disabled={loading}
-                  inputProps={{ maxLength: 6 }}
-                  helperText="Leave empty if using TOTP Secret Key"
-                />
-
-                <Stack spacing={2}>
-                  <LoadingButton
-                    fullWidth
-                    variant="contained"
-                    type="submit"
-                    loading={loading}
-                    color="primary"
-                    size="large"
-                    sx={{ py: 1.5, fontWeight: 800, fontSize: 16 }}
-                    startIcon={<Iconify icon="solar:bolt-bold" />}
-                  >
-                    {isConnected ? 'Re-Sync Session' : 'Login & Connect'}
-                  </LoadingButton>
-
-                  {isConnected && (
-                    <LoadingButton
-                      fullWidth
-                      variant="outlined"
-                      color="error"
-                      loading={loading}
-                      onClick={confirm.onTrue}
-                      sx={{ py: 1.2, fontWeight: 700, borderStyle: 'dashed' }}
-                      startIcon={<Iconify icon="solar:link-break-bold" />}
-                    >
-                      Disconnect Broker
-                    </LoadingButton>
-                  )}
-                </Stack>
-              </Box>
-            )}
+            {renderBrokerConnectPanel()}
             <Stack spacing={1.5} sx={{ mt: 4, p: 2, bgcolor: 'background.neutral', borderRadius: 1.5 }}>
               <Stack direction="row" spacing={1} alignItems="center">
                 <Iconify icon="solar:info-circle-bold" sx={{ color: 'info.main' }} width={18} />
