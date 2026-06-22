@@ -49,6 +49,8 @@ const getWsBase = (): string => {
 };
 
 const WS_BASE = getWsBase();
+/** Backend-only architecture: WS receives signals; BullMQ executes on server. */
+const FRONTEND_SIGNAL_EXECUTION_ENABLED = false;
 const FALLBACK_POLL_MS = 5000;
 const IP_CHECK_INTERVAL_MS = 60_000;
 
@@ -122,9 +124,7 @@ export function useSignalExecutor({
   }, [onSignalReceived, onOrderPlaced, onOrderFailed, onIpChanged]);
 
   // ─────────────────────────────────────────────────────────────────
-  // FIX #2: Execute a trade signal by calling /api/signals/execute
-  // This is a backend PROXY call — the backend routes to AngelOne
-  // using the USER's stored JWT session (user-side IP compliance).
+  // Signal display + optional backend queue (disabled — server-only execution)
   // ─────────────────────────────────────────────────────────────────
   const executeSignal = useCallback(
     async (signal: TradeSignal) => {
@@ -133,51 +133,36 @@ export function useSignalExecutor({
         return;
       }
 
-      if (String(signal.executionMode || "").toUpperCase() === "SERVER") {
-        console.info(
-          `[SignalExecutor] SERVER signal ${signal.signalId || signal._id} — backend executes on Angel One; skipping client queue.`
-        );
-        return;
-      }
-
-      // Safe normalization layer supporting signalId, _id (Mongo), and id
       const resolvedSignalId = signal.signalId || signal._id || signal.id;
+      const mode = String(signal.executionMode || "SERVER").toUpperCase();
 
-      // 1. Validation guard before execution
-      if (!resolvedSignalId) {
-        console.error("%c[SignalExecutor] ❌ Missing signal identifier in payload:", "color: #ff3333; font-weight: bold;", signal);
-        return;
-      }
-
-      console.log("[SignalExecutor] Normalized Signal ID:", resolvedSignalId);
-
-      // 🛡️ Duplicate Execution Suppression
-      if (processedSignalsRef.current.has(resolvedSignalId)) {
-        console.warn(`%c[SignalExecutor] 🛑 Duplicate Suppression: Signal ${resolvedSignalId} already processed by this runtime. Skipping execution.`, "color: #ff9800; font-weight: bold;");
-        return;
-      }
-
-      console.log(
-        `%c[SignalExecutor] 📡 TRADE SIGNAL RECEIVED:\nSymbol: ${signal.tradingsymbol}\nSide: ${signal.side}\nQty: ${signal.quantity}\nSignalType: ${signal.signalType}\nStrategy: ${signal.strategy || "Manual"}`,
-        "color: #9c27b0; font-weight: bold; font-size: 12px;"
+      console.info(
+        `[SignalStream] TRADE_SIGNAL received (${mode}) id=${resolvedSignalId || "unknown"} — display only; backend BullMQ executes orders.`
       );
 
-      // Normalize representation internally for callbacks
-      const normalizedSignal = { ...signal, signalId: resolvedSignalId };
+      if (resolvedSignalId) {
+        onSignalReceivedRef.current?.({ ...signal, signalId: resolvedSignalId });
+      }
 
-      onSignalReceivedRef.current?.(normalizedSignal);
+      if (!FRONTEND_SIGNAL_EXECUTION_ENABLED) {
+        return;
+      }
 
-      // Lock execution immediately to avoid race conditions during async operations
+      if (mode === "SERVER") {
+        return;
+      }
+
+      if (!resolvedSignalId) {
+        console.error("[SignalExecutor] Missing signal identifier:", signal);
+        return;
+      }
+
+      if (processedSignalsRef.current.has(resolvedSignalId)) {
+        console.warn(`[SignalExecutor] Duplicate suppression: ${resolvedSignalId}`);
+        return;
+      }
+
       processedSignalsRef.current.add(resolvedSignalId);
-
-      // ⏱️ Execution ACK Timeout Handling (Abort request if server takes >10 seconds)
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        console.error(`%c[SignalExecutor] ⏰ Execution ACK Timeout: Server failed to respond to signal ${resolvedSignalId} within 10s.`, "color: #ef4444; font-weight: bold;");
-        controller.abort();
-      }, 10_000);
-
-      console.log(`%c[SignalExecutor] ⚡ INITIATING BROKER EXECUTION:\nRequest: POST /queue-execution\nSignal ID: ${resolvedSignalId}`, "color: #2196f3; font-weight: bold;");
 
       try {
         const res = await fetch(`${API_BASE}/signals/queue-execution`, {
@@ -187,46 +172,18 @@ export function useSignalExecutor({
             Authorization: `Bearer ${token}`,
             "x-access-token": token,
           },
-          body: JSON.stringify({
-            signalId: resolvedSignalId,
-            lots: 1,
-          }),
-          signal: controller.signal,
+          body: JSON.stringify({ signalId: resolvedSignalId, lots: 1 }),
         });
-
-        clearTimeout(timeoutId);
         const result = await res.json();
-
         if (result.status) {
-          console.log(
-            `%c[SignalExecutor] ✅ BROKER EXECUTION RESPONSE:\nOrder ID: ${result.clientOrderId || "PENDING"}\nMessage: ${result.message || "Order queued successfully"}`,
-            "color: #4caf50; font-weight: bold;"
-          );
-          console.log(
-            `%c[SignalExecutor] 🔄 OMS TRANSITION: Signal ${resolvedSignalId} → QUEUED (Client Order: ${result.clientOrderId || "PENDING"})`,
-            "color: #ffeb3b; background: #000; font-weight: bold;"
-          );
-          onOrderPlacedRef.current?.(normalizedSignal, result);
+          onOrderPlacedRef.current?.({ ...signal, signalId: resolvedSignalId }, result);
         } else {
-          // Release lock on server rejection so retry is possible
           processedSignalsRef.current.delete(resolvedSignalId);
-          const errorMsg = result.error || "Unknown broker error";
-          console.error(
-            `%c[SignalExecutor] ❌ OMS FAILURE: Signal ${resolvedSignalId} → FAILED (Broker Error: ${errorMsg})`,
-            "color: #fff; background: #f44336; font-weight: bold;"
-          );
-          onOrderFailedRef.current?.(normalizedSignal, errorMsg);
+          onOrderFailedRef.current?.({ ...signal, signalId: resolvedSignalId }, result.error || "Unknown error");
         }
       } catch (err: any) {
-        clearTimeout(timeoutId);
-        // Release lock on exception to permit retry / fallback polling recovery
         processedSignalsRef.current.delete(resolvedSignalId);
-        const errorMsg = err.name === "AbortError" ? "Execution ACK Timeout (10s exceeded)" : (err.message || "Network error");
-        console.error(
-          `%c[SignalExecutor] ❌ OMS FAILURE: Signal ${resolvedSignalId} → FAILED (Connection Error: ${errorMsg})`,
-          "color: #fff; background: #f44336; font-weight: bold;"
-        );
-        onOrderFailedRef.current?.(normalizedSignal, errorMsg);
+        onOrderFailedRef.current?.({ ...signal, signalId: resolvedSignalId }, err?.message || "Network error");
       }
     },
     [token, enabled]
@@ -239,6 +196,9 @@ export function useSignalExecutor({
   // Reconnect Replay Logic & Gap-Fill Poller
   // ─────────────────────────────────────────────────────────────────
   const replayPendingSignals = useCallback(async () => {
+    if (!FRONTEND_SIGNAL_EXECUTION_ENABLED) {
+      return;
+    }
     if (!token || !enabled) return;
     console.log("%c[SignalExecutor] 🔍 Querying active/pending signal queue replay...", "color: #00bcd4; font-weight: bold;");
     try {
@@ -282,6 +242,7 @@ export function useSignalExecutor({
   // when WebSocket is disconnected
   // ─────────────────────────────────────────────────────────────────
   const startFallbackPolling = useCallback(() => {
+    if (!FRONTEND_SIGNAL_EXECUTION_ENABLED) return;
     if (fallbackTimerRef.current) return;
     console.warn("%c[SignalExecutor] ⚠️ WebSocket offline. Starting HTTP fallback poller...", "color: #ff9800; font-weight: bold;");
     fallbackTimerRef.current = setInterval(async () => {
@@ -355,12 +316,7 @@ export function useSignalExecutor({
         if (msg.type === "TRADE_SIGNAL" && msg.data) {
           const rawSignal = msg.data as TradeSignal;
           const resolvedId = rawSignal.signalId || rawSignal._id || rawSignal.id;
-          const mode = String(rawSignal.executionMode || "CLIENT").toUpperCase();
-          if (mode === "SERVER") {
-            console.info("[SignalExecutor] TRADE_SIGNAL (SERVER) — worker handles broker placement.");
-          } else {
-            executeSignalRef.current({ ...rawSignal, signalId: resolvedId });
-          }
+          executeSignalRef.current({ ...rawSignal, signalId: resolvedId });
         }
 
         if (msg.type === "TRADE_EXECUTION_UPDATE" && msg.data) {

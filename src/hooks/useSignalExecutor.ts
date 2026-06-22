@@ -10,6 +10,8 @@ const WS_BASE = process.env.REACT_APP_WS_URL || HOST_API.replace(/^http/i, 'ws')
 const API_BASE = process.env.REACT_APP_API_URL || `${HOST_API}/api`;
 const WS_PATH = '/ws/signals';
 const FALLBACK_POLL_MS = 5000;
+/** Backend-only: BullMQ on server executes; browser must not place orders. */
+const FRONTEND_SIGNAL_EXECUTION_ENABLED = false;
 
 export interface TradeSignal {
   signalId: string;
@@ -102,8 +104,11 @@ export function useSignalExecutor({
     async (signal: TradeSignal) => {
       onSignalReceived?.(signal);
 
-      // 🛡️ [DUPLICATE PREVENTION]
-      // If the signal is marked for server-side execution, ignore it on the client.
+      if (!FRONTEND_SIGNAL_EXECUTION_ENABLED) {
+        console.info('[SignalExecutor] Display-only mode — backend executes signals.');
+        return;
+      }
+
       if ((signal as any).executionMode === 'SERVER') {
         console.log(`[Executor] Signal ${signal.signalId} is handled by server. Skipping client execution.`);
         return;
@@ -176,7 +181,7 @@ export function useSignalExecutor({
 
   // 4. Fallback Polling (if WS dies)
   const startFallbackPolling = useCallback(() => {
-    if (!appToken || fallbackTimerRef.current) return;
+    if (!FRONTEND_SIGNAL_EXECUTION_ENABLED || !appToken || fallbackTimerRef.current) return;
     
     fallbackTimerRef.current = setInterval(async () => {
       try {

@@ -3,8 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const WS_BASE = process.env.REACT_APP_WS_URL || 'ws://localhost:5000';
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 const EXECUTOR_BASE = process.env.REACT_APP_EXECUTOR_URL || 'http://127.0.0.1:43119';
-const FALLBACK_POLL_MS = 5000;
-const OPS_LIMIT = 8;
+/** @deprecated Backend-only execution — hook retained for WS display in examples. */
+const FRONTEND_SIGNAL_EXECUTION_ENABLED = false;
 const ONE_SECOND_MS = 1000;
 
 export type ExecutionStatus = 'idle' | 'ready' | 'degraded' | 'unavailable';
@@ -189,9 +189,14 @@ export function useCompliantSignalExecutor({
   }, [executeViaUserDevice, onOrderFailed, onOrderPlaced, onSignalReceived, token]);
 
   const enqueueSignal = useCallback((signal: TradeSignal) => {
+    if (!FRONTEND_SIGNAL_EXECUTION_ENABLED) {
+      console.info('[CompliantSignalExecutor] Display-only — backend BullMQ executes orders.');
+      onSignalReceived?.(signal);
+      return;
+    }
     queueRef.current.push(signal);
     void drainQueue();
-  }, [drainQueue]);
+  }, [drainQueue, onSignalReceived]);
 
   const startFallbackPolling = useCallback(() => {
     if (!token || fallbackTimerRef.current) {

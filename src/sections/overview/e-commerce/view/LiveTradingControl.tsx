@@ -33,6 +33,9 @@ const SYMBOL_LOT_SIZES = {
     SENSEX: 10
 };
 
+/** Backend-only: orders execute via BullMQ on server (admin broadcast / place-all). */
+const FRONTEND_ORDER_EXECUTION_ENABLED = false;
+
 const SYMBOL_COLORS: Record<string, string> = {
     BankNifty: '#6366f1',
     FINNIFTY: '#3b82f6',
@@ -215,6 +218,10 @@ export default function LiveTradingControl({ user }: { user: any }) {
     };
 
     const handleExecuteSignal = async (signalId: string, lots: number) => {
+        if (!FRONTEND_ORDER_EXECUTION_ENABLED) {
+            enqueueSnackbar('Signal execution runs on the server. Wait for admin broadcast — no client action needed.', { variant: 'info' });
+            return;
+        }
         setBrokerResponse(null);
         setExecutionStatuses(prev => ({ ...prev, [signalId]: 'PENDING' }));
         try {
@@ -260,6 +267,10 @@ export default function LiveTradingControl({ user }: { user: any }) {
     };
 
     const handleExecute = async (row: TradingRow, optionType: 'CE' | 'PE') => {
+        if (!FRONTEND_ORDER_EXECUTION_ENABLED) {
+            enqueueSnackbar('Direct order placement from this panel is disabled. Use admin signal broadcast.', { variant: 'info' });
+            return;
+        }
         setBrokerResponse(null);
         try {
             const token = localStorage.getItem('authToken');
