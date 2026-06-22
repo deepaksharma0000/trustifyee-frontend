@@ -44,7 +44,7 @@ export default function DashboardLayout({ children }: Props) {
       (user?.broker_connected === true ||
         ['zerodha', 'upstox', 'aliceblue'].includes(String(user?.broker || '').toLowerCase()));
     return !!user && !!token && !isStaff && isLiveUser;
-  }, [user, token]);
+  }, [user?._id, user?.role, user?.licence, user?.broker_connected, user?.broker, token]);
 
   const handleSignalReceived = useCallback((signal: unknown) => {
     console.log("[BackgroundExecutor] Received signal:", signal);
