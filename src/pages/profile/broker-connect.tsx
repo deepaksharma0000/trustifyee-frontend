@@ -366,7 +366,7 @@ export default function BrokerConnect() {
           <TextField
             fullWidth
             label="Kite API Key (optional)"
-            placeholder="Uses platform key if empty"
+            placeholder="Your SmartAPI Private Key (required)"
             value={formData.api_key}
             onChange={(e) => setFormData({ ...formData, api_key: e.target.value.trim() })}
             sx={{ mb: 2 }}

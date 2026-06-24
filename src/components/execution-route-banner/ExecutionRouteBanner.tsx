@@ -304,7 +304,7 @@ export default function ExecutionRouteBanner() {
               WHITELIST: {brokerWhitelistMatch ? 'MATCHED' : 'MISMATCHED'}
             </Box>
             <Typography variant="caption" sx={{ color: 'text.secondary', maxWidth: 420, display: { xs: 'none', md: 'block' } }}>
-              Server egress only. Orders use platform ANGEL_API_KEY — whitelist {configuredPublicIp} on that SmartAPI app in Angel One.
+              Server egress IP {configuredPublicIp}. Each user must whitelist this IP on their own SmartAPI app (per-user Private Key).
             </Typography>
 
             {/* Safety status badge */}
