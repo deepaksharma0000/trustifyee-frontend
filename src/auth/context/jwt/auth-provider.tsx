@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useCallback, useMemo } from 'react';
 // utils
+import { clearStaleBrokerLocalCache, isServerBrokerConnected } from 'src/utils/broker-session';
 import axios, { endpoints } from 'src/utils/axios';
 //
 import { AuthContext } from './auth-context';
@@ -79,6 +80,11 @@ type Props = {
   children: React.ReactNode;
 };
 
+function syncBrokerLocalCache(user: Record<string, unknown> | null | undefined): void {
+  if (!user || isServerBrokerConnected(user as { broker_connected?: boolean })) return;
+  clearStaleBrokerLocalCache();
+}
+
 export function AuthProvider({ children }: Props) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
@@ -94,6 +100,7 @@ export function AuthProvider({ children }: Props) {
           const { user } = res.data;
 
           localStorage.setItem('authUser', JSON.stringify(user));
+          syncBrokerLocalCache(user);
 
           dispatch({
             type: Types.INITIAL,
@@ -105,10 +112,12 @@ export function AuthProvider({ children }: Props) {
           // If /me endpoint fails, try to recover from localStorage
           const localUser = localStorage.getItem('authUser');
           if (localUser) {
+            const parsed = JSON.parse(localUser);
+            syncBrokerLocalCache(parsed);
             dispatch({
               type: Types.INITIAL,
               payload: {
-                user: JSON.parse(localUser),
+                user: parsed,
               },
             });
           } else {
@@ -122,10 +131,12 @@ export function AuthProvider({ children }: Props) {
 
         if (localToken && isValidToken(localToken)) {
           setSession(localToken);
+          const parsedUser = localUser ? JSON.parse(localUser) : null;
+          syncBrokerLocalCache(parsedUser);
           dispatch({
             type: Types.INITIAL,
             payload: {
-              user: localUser ? JSON.parse(localUser) : null,
+              user: parsedUser,
             },
           });
         } else {
@@ -165,6 +176,7 @@ export function AuthProvider({ children }: Props) {
 
     setSession(accessToken);
     localStorage.setItem('authUser', JSON.stringify(user));
+    syncBrokerLocalCache(user);
 
     dispatch({
       type: Types.LOGIN,

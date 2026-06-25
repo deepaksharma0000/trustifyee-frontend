@@ -11,7 +11,7 @@ import Label from 'src/components/label';
 import Iconify from 'src/components/iconify';
 import { HOST_API } from 'src/config-global';
 import axios from 'src/utils/axios';
-import { useSnackbar } from 'src/components/snackbar';
+import { isServerBrokerConnected } from 'src/utils/broker-session';
 
 interface TradingRow {
     id: string;
@@ -323,7 +323,7 @@ export default function LiveTradingControl({ user }: { user: any }) {
         }
     };
 
-    const isConnected = user.licence === 'Demo' || !!user.broker_connected || localStorage.getItem('angel_jwt') !== null;
+    const isConnected = user.licence === 'Demo' || isServerBrokerConnected(user);
 
     if (!isConnected) {
         return (

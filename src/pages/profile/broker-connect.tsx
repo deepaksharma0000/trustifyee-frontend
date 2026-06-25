@@ -6,6 +6,7 @@ import { useAuthUser } from 'src/hooks/use-auth-user';
 import { useBoolean } from 'src/hooks/use-boolean';
 import Iconify from 'src/components/iconify';
 import axios from 'src/utils/axios';
+import { syncAuthUserBrokerFlags } from 'src/utils/broker-session';
 import { ConfirmDialog } from 'src/components/custom-dialog';
 
 // ----------------------------------------------------------------------
@@ -271,6 +272,11 @@ export default function BrokerConnect() {
         setSuccess('Broker connected successfully! Redirecting...');
         localStorage.setItem('angel_clientcode', res.data.clientcode);
         localStorage.setItem('angel_jwt', 'connected_manually');
+        syncAuthUserBrokerFlags({
+          broker_connected: true,
+          broker_verified: true,
+          requiresReconnect: false,
+        });
 
         setTimeout(() => {
           window.location.href = '/dashboard/banking';

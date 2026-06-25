@@ -39,7 +39,9 @@ import { ConfirmDialog } from 'src/components/custom-dialog';
 import OpenPositionView from 'src/sections/account/view/user-account-view';
 import LiveTradingControl from 'src/sections/overview/e-commerce/view/LiveTradingControl';
 import AlgoRiskDisclaimer from 'src/components/algo-risk-disclaimer/AlgoRiskDisclaimer';
-import DemoUpgradePromotion from '../demo-upgrade-promotion';
+import {
+  isServerBrokerConnected,
+} from 'src/utils/broker-session';
 
 // ----------------------------------------------------------------------
 
@@ -76,7 +78,8 @@ export default function OverviewAppView() {
     return undefined;
   }, []);
   const isAdmin = user?.role === 'admin' || user?.role === 'sub-admin';
-  const isBrokerConnected = !!user?.broker_connected || localStorage.getItem('angel_jwt') !== null;
+  const isBrokerConnected = isServerBrokerConnected(user);
+  const requiresBrokerReconnect = user?.requiresReconnect === true;
   const canViewDashboard = isAdmin || isBrokerConnected;
 
   const [stats, setStats] = useState<StatsResponse | null>(null);
@@ -500,9 +503,19 @@ export default function OverviewAppView() {
                   }}>
                     <Iconify icon="mdi:check-circle" width={32} sx={{ color: theme.palette.success.light, mb: 0.5 }} />
                     <Typography variant="caption" sx={{ color: alpha('#fff', 0.7), display: 'block', letterSpacing: 0.8 }}>BROKER STATUS</Typography>
-                    <Typography variant="h6" fontWeight={800} sx={{ color: '#4ade80', mb: 1 }}>
-                      {isBrokerConnected ? 'Connected' : 'Pending'}
+                    <Typography variant="h6" fontWeight={800} sx={{ color: isBrokerConnected ? '#4ade80' : requiresBrokerReconnect ? theme.palette.warning.light : '#fbbf24', mb: 1 }}>
+                      {isBrokerConnected ? 'Connected' : requiresBrokerReconnect ? 'Reconnect Required' : 'Not Connected'}
                     </Typography>
+                    {!isBrokerConnected && requiresBrokerReconnect && (
+                      <Button
+                        variant="soft" color="warning" size="small"
+                        sx={{ fontSize: '0.65rem', height: 24, px: 1, mb: 1 }}
+                        startIcon={<Iconify icon="eva:link-fill" width={12} />}
+                        onClick={() => navigate(paths.dashboard.brokerConnect)}
+                      >
+                        Broker Connect
+                      </Button>
+                    )}
                     {isBrokerConnected && (
                       <Button
                         variant="soft" color="error" size="small"

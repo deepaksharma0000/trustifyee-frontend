@@ -40,6 +40,7 @@ import { paths } from 'src/routes/paths';
 import { HOST_API } from "src/config-global";
 import Iconify from 'src/components/iconify';
 import { useAuthUser } from "src/hooks/use-auth-user";
+import { isServerBrokerConnected } from "src/utils/broker-session";
 
 /* ---------------- TYPES ---------------- */
 
@@ -409,7 +410,7 @@ export default function OptionChainPage() {
   }, [marketData, symbol]);
 
   /* ---------------- EXPIRY CHECK ---------------- */
-  const isBrokerConnected = !!authUser?.broker_connected || localStorage.getItem('angel_jwt') !== null;
+  const isBrokerConnected = isServerBrokerConnected(authUser);
 
   const isDemo = authUser?.licence === "Demo";
   const endDate = authUser?.end_date ? new Date(authUser.end_date) : null;

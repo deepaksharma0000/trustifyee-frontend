@@ -43,6 +43,7 @@ export type AuthUserType = null | {
   // future use (API connect status)
   broker_connected?: boolean;
   broker_verified?: boolean;
+  requiresReconnect?: boolean;
   client_key?: string;
   api_key?: string;
   status?: 'active' | 'inactive';
