@@ -29,6 +29,7 @@ import { HOST_API } from 'src/config-global';
 import { useBoolean } from 'src/hooks/use-boolean';
 import { useSettingsContext } from 'src/components/settings';
 import { useAuthUser } from 'src/hooks/use-auth-user';
+import DemoUpgradePromotion from '../demo-upgrade-promotion';
 
 // assets
 import { SeoIllustration } from 'src/assets/illustrations';
