@@ -5,6 +5,7 @@ import {
     IconButton, Stack, alpha, Tooltip,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { useSnackbar } from 'notistack';
 import { Link as RouterLink } from 'react-router-dom';
 import { paths } from 'src/routes/paths';
 import Label from 'src/components/label';
