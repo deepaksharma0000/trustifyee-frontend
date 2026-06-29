@@ -57,6 +57,8 @@ interface ClientFormData {
   client_key?: string;
   broker_verified?: boolean;
   is_star?: boolean;
+  assignedExecutionIp?: string;
+  dedicated_ip_enabled?: boolean;
 }
 
 interface ApiResponse {
@@ -92,6 +94,8 @@ interface ClientData {
   broker_verified?: boolean;
   broker_session_active?: boolean;  // [NEW] Live broker token check
   is_star: boolean;
+  assignedExecutionIp?: string;
+  dedicated_ip_enabled?: boolean;
 }
 
 type Props = {
@@ -122,12 +126,12 @@ const apiService = {
     const { _id, id: rid, password, email, user_name, client_key, api_key, ...profileData } = data;
 
     // We only send specific allowed fields
-    const { full_name, phone_number, status, trading_status, licence, start_date, end_date, sub_admin, group_service, strategies } = profileData;
+    const { full_name, phone_number, status, trading_status, licence, start_date, end_date, sub_admin, group_service, strategies, assignedExecutionIp, dedicated_ip_enabled } = profileData;
 
     const res = await fetch(`${API_BASE_URL}/api/user/update-register/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'x-access-token': token || '' },
-      body: JSON.stringify({ full_name, phone_number, status, trading_status, licence, start_date, end_date, sub_admin, group_service, strategies }),
+      body: JSON.stringify({ full_name, phone_number, status, trading_status, licence, start_date, end_date, sub_admin, group_service, strategies, assignedExecutionIp, dedicated_ip_enabled }),
     });
     return res.json();
   },
@@ -239,6 +243,24 @@ const getColumns = (
           {params.value}
         </Label>
       )
+    },
+    {
+      field: 'assignedExecutionIp',
+      headerName: 'Execution IP',
+      width: 140,
+      renderCell: (params) => {
+        const ip = params.row.assignedExecutionIp || params.row.outgoing_ip;
+        const dedicated = !!params.row.dedicated_ip_enabled;
+        if (!ip) return <Typography variant="caption" sx={{ color: 'text.disabled' }}>Shared VPS</Typography>;
+        return (
+          <Tooltip title={dedicated ? 'Dedicated IP Route' : 'Shared IP Route'}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Iconify icon={dedicated ? 'solar:shield-keyhole-bold-duotone' : 'solar:globus-outline'} sx={{ color: dedicated ? 'success.main' : 'info.main' }} width={16} />
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: dedicated ? 600 : 400 }}>{ip}</Typography>
+            </Box>
+          </Tooltip>
+        );
+      }
     },
     {
       field: 'broker',
@@ -443,7 +465,8 @@ export default function DataGridCustom({ data = [] }: Props) {
   const [formData, setFormData] = useState<ClientFormData>({
     user_name: '', email: '', full_name: '', phone_number: '', broker: 'AngelOne', licence: 'Live',
     sub_admin: '', group_service: '', strategies: [], status: 'active', trading_status: 'enabled',
-    api_key: '', client_key: '', start_date: new Date().toISOString().split('T')[0],
+    api_key: '', client_key: '', assignedExecutionIp: '', dedicated_ip_enabled: false,
+    start_date: new Date().toISOString().split('T')[0],
     end_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
   });
 
@@ -586,7 +609,17 @@ export default function DataGridCustom({ data = [] }: Props) {
           <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h4">Client Management</Typography>
             {canAddClient && (
-              <Button variant="contained" onClick={() => { setShowForm(!showForm); setEditMode(false); }} startIcon={<Iconify icon="eva:plus-fill" />}>
+              <Button variant="contained" onClick={() => {
+                setShowForm(!showForm);
+                setEditMode(false);
+                setFormData({
+                  user_name: '', email: '', full_name: '', phone_number: '', broker: 'AngelOne', licence: 'Live',
+                  sub_admin: '', group_service: '', strategies: [], status: 'active', trading_status: 'enabled',
+                  api_key: '', client_key: '', assignedExecutionIp: '', dedicated_ip_enabled: false,
+                  start_date: new Date().toISOString().split('T')[0],
+                  end_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
+                });
+              }} startIcon={<Iconify icon="eva:plus-fill" />}>
                 {showForm ? "Hide Form" : "Add New Client"}
               </Button>
             )}
@@ -678,6 +711,26 @@ export default function DataGridCustom({ data = [] }: Props) {
                           value={formData.api_key}
                           onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
                           placeholder={editingClient?.api_key?.startsWith('****') ? 'Encrypted (Enter to update)' : ''}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={formData.dedicated_ip_enabled || false}
+                              onChange={(e) => setFormData({ ...formData, dedicated_ip_enabled: e.target.checked })}
+                            />
+                          }
+                          label="Dedicated IP Routing"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth label="Assigned Execution IP"
+                          value={formData.assignedExecutionIp || ''}
+                          onChange={(e) => setFormData({ ...formData, assignedExecutionIp: e.target.value })}
+                          placeholder="e.g. 168.231.122.105"
+                          disabled={!formData.dedicated_ip_enabled}
                         />
                       </Grid>
                     </>

@@ -359,7 +359,7 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
           <Grid container spacing={2.5}>
 
             {/* Session Card */}
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={6} md={4}>
               <MetricCard
                 title="Broker Connectivity"
                 subtitle="Real-time Session Status"
@@ -371,7 +371,7 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
             </Grid>
 
             {/* Funds Card */}
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={6} md={4}>
               <MetricCard
                 title="Fund Sufficiency"
                 subtitle="Usable Trading Margin"
@@ -379,6 +379,18 @@ export default function RiskHealthView({ userId: propUserId, disablePadding = fa
                 caption={data?.margin_message || 'Calculating...'}
                 status={data?.margin_valid ? 'success' : 'warning'}
                 icon="solar:wallet-2-bold"
+              />
+            </Grid>
+
+            {/* Outgoing Routing Card */}
+            <Grid item xs={12} sm={12} md={4}>
+              <MetricCard
+                title="Execution Route"
+                subtitle="IP Binding Status"
+                value={data?.dedicated_ip_enabled ? 'Dedicated IP' : 'Shared VPS'}
+                caption={`Route IP: ${data?.assignedExecutionIp || '147.93.18.15'}`}
+                status={data?.dedicated_ip_enabled ? 'success' : 'info'}
+                icon="solar:globus-bold"
               />
             </Grid>
 
@@ -622,6 +634,7 @@ function MetricCard({ title, subtitle, value, caption, status, icon }: any) {
   let color = theme.palette.error.main;
   if (status === 'success') color = theme.palette.success.main;
   else if (status === 'warning') color = theme.palette.warning.main;
+  else if (status === 'info') color = theme.palette.info.main;
 
   return (
     <Card sx={{ p: 2.5, height: '100%', boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>

@@ -63,6 +63,8 @@ export default function UserProfileView() {
     role: userRole,
     email: user?.email || _userAbout.email,
     country: user?.country || _userAbout.country,
+    assignedExecutionIp: user?.assignedExecutionIp || user?.outgoing_ip || '',
+    dedicated_ip_enabled: !!user?.dedicated_ip_enabled || !!user?.assignedExecutionIp,
   };
 
   const [searchFriends, setSearchFriends] = useState('');

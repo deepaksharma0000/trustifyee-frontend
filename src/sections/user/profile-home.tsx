@@ -95,6 +95,18 @@ export default function ProfileHome({ info, posts }: Props) {
           </Box>
         </Stack>
 
+        {(info as any).assignedExecutionIp && (
+          <Stack direction="row" spacing={2}>
+            <Iconify icon={(info as any).dedicated_ip_enabled ? "solar:shield-keyhole-bold-duotone" : "solar:globus-outline"} width={24} sx={{ color: (info as any).dedicated_ip_enabled ? 'success.main' : 'info.main' }} />
+            <Box sx={{ typography: 'body2' }}>
+              {`Execution Route: `}
+              <Link variant="subtitle2" color="inherit" sx={{ fontFamily: 'monospace' }}>
+                {(info as any).assignedExecutionIp} ({(info as any).dedicated_ip_enabled ? 'Dedicated' : 'Shared VPS'})
+              </Link>
+            </Box>
+          </Stack>
+        )}
+
       </Stack>
     </Card>
   );
