@@ -689,6 +689,17 @@ export default function BrokerConnect() {
 
                     <Grid item xs={6} sm={3}>
                       <Box sx={{ p: 2, bgcolor: 'background.neutral', borderRadius: 1.5, textAlign: 'center' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 700 }}>ASSIGNED EXECUTION IP</Typography>
+                        <Tooltip title="The IP stored in MongoDB for this user. The backend resolves an active execution agent mapped to this exact IP before routing live Angel orders.">
+                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'primary.main', cursor: 'help' }}>
+                            {agentData.assignedExecutionIp || (user as any)?.assignedExecutionIp || 'Not configured'}
+                          </Typography>
+                        </Tooltip>
+                      </Box>
+                    </Grid>
+
+                    <Grid item xs={6} sm={3}>
+                      <Box sx={{ p: 2, bgcolor: 'background.neutral', borderRadius: 1.5, textAlign: 'center' }}>
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 700 }}>HEARTBEAT</Typography>
                         <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
                           {agentData.lastHeartbeat ? new Date(agentData.lastHeartbeat).toLocaleTimeString() : 'N/A'}
