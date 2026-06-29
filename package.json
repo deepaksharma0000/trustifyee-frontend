@@ -5,8 +5,8 @@
   "description": "Cra & TypeScript",
   "private": true,
   "scripts": {
-    "start": "react-scripts start",
-    "build": "node --max-old-space-size=8192 node_modules/react-scripts/bin/react-scripts.js build",
+    "start": "node init && react-scripts start",
+    "build": "node init && node --max-old-space-size=8192 node_modules/react-scripts/bin/react-scripts.js build",
     "eject": "react-scripts eject",
     "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\"",
     "lint:fix": "eslint --fix \"src/**/*.{js,jsx,ts,tsx}\"",
