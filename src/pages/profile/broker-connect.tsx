@@ -67,6 +67,8 @@ export default function BrokerConnect() {
 
   const [agentData, setAgentData] = useState<any>(null);
   const [agentLoading, setAgentLoading] = useState(false);
+  const [routeData, setRouteData] = useState<any>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
 
   const fetchAgentStatus = React.useCallback(async () => {
     if (broker !== 'AngelOne') return;
@@ -83,11 +85,30 @@ export default function BrokerConnect() {
     }
   }, [broker]);
 
+  const fetchRouteStatus = React.useCallback(async () => {
+    if (broker !== 'AngelOne') return;
+    setRouteLoading(true);
+    try {
+      const res = await axios.get('/api/execution/route-status');
+      if (res.data?.status === 'success') {
+        setRouteData(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch route status', err);
+    } finally {
+      setRouteLoading(false);
+    }
+  }, [broker]);
+
   React.useEffect(() => {
     fetchAgentStatus();
-    const interval = setInterval(fetchAgentStatus, 15000);
+    fetchRouteStatus();
+    const interval = setInterval(() => {
+      fetchAgentStatus();
+      fetchRouteStatus();
+    }, 15000);
     return () => clearInterval(interval);
-  }, [fetchAgentStatus]);
+  }, [fetchAgentStatus, fetchRouteStatus]);
 
   React.useEffect(() => {
     if (user) {
@@ -295,6 +316,11 @@ export default function BrokerConnect() {
     navigator.clipboard.writeText(text);
     alert('Copied to clipboard!');
   };
+
+  const currentVpsIp = routeData?.detectedOutboundIp || routeData?.configuredPublicIp || '';
+  const routeVerificationRegistered = Boolean(routeData?.brokerWhitelistMatch && (user as any)?.api_key_ip_pair_verified);
+  const routeVerificationLabel = routeVerificationRegistered ? 'IP Registered' : 'IP Not Registered';
+  const routeVerificationColor = routeVerificationRegistered ? 'success' : 'warning';
 
   const renderBrokerConnectPanel = () => {
     if (broker === 'AliceBlue') {
@@ -597,6 +623,40 @@ export default function BrokerConnect() {
 
               {agentData ? (
                 <Stack spacing={3}>
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={2}
+                    sx={{ p: 2, borderRadius: 1.5, bgcolor: 'background.neutral', border: '1px solid', borderColor: 'divider' }}
+                  >
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 700 }}>
+                        CURRENT VPS PUBLIC IP
+                      </Typography>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, fontFamily: 'monospace' }}>
+                          {routeLoading && !currentVpsIp ? 'Loading...' : currentVpsIp || 'Unavailable'}
+                        </Typography>
+                        {currentVpsIp && (
+                          <Tooltip title="Copy IP">
+                            <IconButton size="small" onClick={() => handleCopy(currentVpsIp)}>
+                              <Iconify icon="solar:copy-bold" width={16} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Stack>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 700 }}>
+                        WHITELIST STATUS
+                      </Typography>
+                      <Chip label={routeVerificationLabel} color={routeVerificationColor as any} size="small" sx={{ fontWeight: 700 }} />
+                    </Box>
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+                    Angel One does not expose a portal API to read the broker developer-dashboard whitelist directly.
+                    This screen verifies the saved API key/IP pair we store after a successful connection and shows the current VPS egress IP used by the server.
+                  </Typography>
+
                   {agentData.justCreated && (
                     <Alert severity="warning" sx={{ mb: 1 }}>
                       <b>CRITICAL:</b> Copy your Agent Secret Key now! For security reasons, this token will not be displayed in full again.
